@@ -1,4 +1,5 @@
 import io
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -132,10 +133,11 @@ class BriefVerbTest(unittest.TestCase):
         self.workflow = fixture_text("workflow-blender.md")
         (self.root / "docs" / "agents" / "workflow.md").write_text(self.workflow)
 
-    def run_cli(self, argv: list[str], fixture: str | None = None) -> tuple[int, str, str, FakeRunner]:
+    def run_cli(self, argv: list[str], *fixtures: str) -> tuple[int, str, str, FakeRunner]:
         runner = FakeRunner()
-        if fixture:
-            runner.on("gh", "api", "graphql", stdout=fixture_json(fixture))
+        for fixture in fixtures:
+            stdout = fixture if fixture.startswith("{") else fixture_json(fixture)
+            runner.on("gh", "api", "graphql", stdout=stdout)
         for _ in range(3):
             runner.on("git", "rev-parse", "--show-toplevel", stdout=str(self.root) + "\n")
         out, err = io.StringIO(), io.StringIO()
@@ -172,21 +174,34 @@ class BriefVerbTest(unittest.TestCase):
         self.assertTrue(out.endswith(newest))
         self.assertNotIn("[cut: ", newest)
 
-    def test_review_prints_the_rules_then_the_pr_from_its_second_line(self) -> None:
-        code, out, _, _ = self.run_cli(["brief", "review", "66"], "pr-blender-66.json")
+    def test_review_prints_the_rules_then_the_task_then_the_pr(self) -> None:
+        code, out, _, _ = self.run_cli(["brief", "review", "66"], "pr-blender-66.json", "issue-blender-35.json")
         _, pr, _, _ = self.run_cli(["pr", "66"], "pr-blender-66.json")
+        _, build, _, _ = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
+        task = build.removeprefix(self.rules("build") + "# Issue #35\n")
+        self.assertEqual(code, 0)
+        self.assertEqual(out, self.rules("review") + "# Task #49\n" + task + "# PR #66\n" + pr.split("\n", 1)[1])
+
+    def test_review_with_no_task_prints_only_the_pr(self) -> None:
+        data = json.loads(fixture_json("pr-blender-66.json"))
+        node = data["data"]["repository"]["pullRequest"]
+        node["closingIssuesReferences"]["nodes"], node["body"], node["headRefName"] = [], "", "misc"
+        code, out, _, runner = self.run_cli(["brief", "review", "66"], json.dumps(data))
+        _, pr, _, _ = self.run_cli(["pr", "66"], json.dumps(data))
         self.assertEqual(code, 0)
         self.assertEqual(out, self.rules("review") + "# PR #66\n" + pr.split("\n", 1)[1])
+        self.assertEqual(len(runner.gh_calls()), 1)
 
     def test_the_gh_calls_equal_those_of_issue(self) -> None:
         _, _, _, brief_runner = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
         _, _, _, issue_runner = self.run_cli(["issue", "35"], "issue-blender-35.json")
         self.assertEqual(brief_runner.gh_calls(), issue_runner.gh_calls())
 
-    def test_the_gh_calls_equal_those_of_pr(self) -> None:
-        _, _, _, brief_runner = self.run_cli(["brief", "review", "66"], "pr-blender-66.json")
+    def test_review_adds_only_the_issue_call_of_the_task(self) -> None:
+        _, _, _, brief_runner = self.run_cli(["brief", "review", "66"], "pr-blender-66.json", "issue-blender-35.json")
         _, _, _, pr_runner = self.run_cli(["pr", "66"], "pr-blender-66.json")
-        self.assertEqual(brief_runner.gh_calls(), pr_runner.gh_calls())
+        _, _, _, issue_runner = self.run_cli(["issue", "49"], "issue-blender-35.json")
+        self.assertEqual(brief_runner.gh_calls(), pr_runner.gh_calls() + issue_runner.gh_calls())
 
     def test_every_stage_but_review_uses_issue(self) -> None:
         for stage in ("idea", "design", "spec", "plan", "bug", "test"):

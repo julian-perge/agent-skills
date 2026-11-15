@@ -39,7 +39,7 @@ These are all the rules of docs/agents/workflow.md that this stage needs. Do not
 
 The sections keep their order in the file and their text byte for byte. The intro loses only its `# ` title line and its first paragraph, which tells the agent to read the whole file. An intro with nothing left is skipped.
 
-The issue part prints the whole body, because a build needs its acceptance criteria and verification, and only the newest comment, also whole. In urchin the newest comment is often the long "Agent Brief", and a cut made every trial build run `agent-skills issue <n> --full`. With `--full`, it equals `agent-skills issue <n> --full`. For `review`, the last part is the output of `agent-skills pr <n>`, with its own cuts. The `gh` calls are the calls of `issue` or `pr`, and `brief` adds none.
+The issue part prints the whole body, because a build needs its acceptance criteria and verification, and only the newest comment, also whole. In urchin the newest comment is often the long "Agent Brief", and a cut made every trial build run `agent-skills issue <n> --full`. With `--full`, it equals `agent-skills issue <n> --full`. For `review`, the brief prints the task issue under `# Task #<task>`, as the issue part above, then the output of `agent-skills pr <n>`, with its own cuts. The PR part comes last, so the review line stays the last line. A PR with no task gets no task part. The `gh` calls are the calls of `issue`, or of `pr` plus one `issue` call for the task. The user added the task part on 2026-11-15, because the trial review of PR #278 ran `agent-skills issue 273 --full` to read the task.
 
 ### Section map
 
@@ -73,7 +73,7 @@ In urchin and in blender, one PR each, after the user approves: the same `## Wor
 
 ## Testing strategy
 
-Unit tests with `unittest` and the recorded `gh` responses of slice 1. For each stage, a test checks which headings of the fixture appear and in which order. One test adds an unknown heading and checks that every stage prints it. One test checks the issue part against the `issue` output, its whole body and its one comment, and one that `review` uses `pr`. One test checks that the intro loses its title and first paragraph. One test checks the exit 2 for a repo with no `workflow.md`.
+Unit tests with `unittest` and the recorded `gh` responses of slice 1. For each stage, a test checks which headings of the fixture appear and in which order. One test adds an unknown heading and checks that every stage prints it. One test checks the issue part against the `issue` output, its whole body and its one comment, and one that `review` prints the task issue, then the `pr` output. One test checks that the intro loses its title and first paragraph. One test checks the exit 2 for a repo with no `workflow.md`.
 
 ## Boundaries
 

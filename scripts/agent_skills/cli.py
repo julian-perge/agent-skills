@@ -73,14 +73,19 @@ def brief_verb(gh: GitHub, args: argparse.Namespace) -> str:
     rules = f"# Rules for {args.stage}, from docs/agents/workflow.md\n\n{brief.RULES_NOTE}\n\n" + "".join(brief.stage_sections(path.read_text(), args.stage))
     if args.number is None:
         return rules
-    if args.stage == "review":
-        heading, report = f"# PR #{args.number}\n", pr_verb(gh, args)
-    else:
-        issue = gh.issue(args.number)
-        spec = tracker.spec_for(issue, spec_files(checkout_root(gh)))
-        heading = f"# Issue #{args.number}\n"
-        report = render.issue_report(issue, spec, args.full, render.BRIEF_BODY_LIMIT, render.BRIEF_COMMENTS_SHOWN, render.BRIEF_COMMENT_LIMIT)
-    return rules + heading + report.split("\n", 1)[1]
+    if args.stage != "review":
+        return rules + brief_issue(gh, args.number, f"# Issue #{args.number}\n", args.full)
+    pr, task, title, spec, standard = pr_parts(gh, args.number)
+    task_part = brief_issue(gh, task.number, f"# Task #{task.number}\n", args.full) if task.number is not None else ""
+    report = render.pr_report(pr, task, title, spec, standard, args.full)
+    return rules + task_part + f"# PR #{args.number}\n" + report.split("\n", 1)[1]
+
+
+def brief_issue(gh: GitHub, number: int, heading: str, full: bool) -> str:
+    issue = gh.issue(number)
+    spec = tracker.spec_for(issue, spec_files(checkout_root(gh)))
+    report = render.issue_report(issue, spec, full, render.BRIEF_BODY_LIMIT, render.BRIEF_COMMENTS_SHOWN, render.BRIEF_COMMENT_LIMIT)
+    return heading + report.split("\n", 1)[1]
 
 
 def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:

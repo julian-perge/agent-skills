@@ -10,7 +10,7 @@ The user types each stage. Run one stage per session. When it ends, print the ne
 
 | Verb | Use |
 | --- | --- |
-| `agent-skills brief <stage> [<n>]` | The rules of this file that the stage needs, then the `issue` output, or the `pr` output for `review`. With no number it prints the rules only. `--full` is passed on to `issue` or `pr`. |
+| `agent-skills brief <stage> [<n>]` | The rules of this file that the stage needs, then the `issue` output. For `review` it prints the task issue, then the `pr` output. With no number it prints the rules only. `--full` is passed on to `issue` or `pr`. |
 | `agent-skills issue <n>` | The issue with its labels, assignee, parent, spec, blockers, pull requests, sub-issues and comments. `--full` prints all of it. |
 | `agent-skills pr <pr>` | The PR with its task, spec, standard, checks and files, and the review command. |
 | `agent-skills frontier <parent>` | The parent's open sub-issues and the next task to build. |
