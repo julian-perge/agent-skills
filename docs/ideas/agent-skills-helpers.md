@@ -76,6 +76,33 @@ For slice 2, this suggests:
 - Tell agents to read the whole `agent-skills pr` output, and to use `--full` for the whole issue body.
 - Tell agents in the `run` section that the summary already holds the tail, so no `| tail` is needed.
 
+## Trial results (slice 2, 2026-11-15)
+
+Six urchin sessions ran after the `agent-skills brief` merges: 4 builds and 2 reviews. Blender had no task ready to build. The counts come from `targets.py` in `~/tmp/2026-11-15-agent-cli-audit/`, run with `SOURCE_DIRS='scripts|test|spec|scenes|dev'`, because urchin keeps its code in those folders and not in `src/`. A source read is also the first `git diff` or `gh pr diff`.
+
+| Session | Stage | Brief version | Bash calls | Before the first source read | Whole `workflow.md` reads | Raw `gh issue view` | Tail-only reruns |
+|---|---|---|---|---|---|---|---|
+| `120882cc` (`local_4c9adbe0`) | build #186 | first | 13 | 4 | 1 | 0 | 0 |
+| `b9440472` (`local_4c9adbe0`) | build #188 | first | 29 | 6 | 1 | 0 | 0 |
+| `abd7a5f5` (`local_4c9adbe0`) | build #189 | first | 77 | 4 | 1 | 0 | 0 |
+| `affeb6f2` | build #204 | fixed | 30 | 3 | 0 | 0 | 0 |
+| `83fe1bea` | review PR 278 | fixed, no task part | 23 | 3 | 0 | 0 | 0 |
+| `305393dc` | review PR 285 | fixed, with task part | 19 | 1 | 0 | 0 | 0 |
+
+The three first builds ran in one session, with the context cleared between runs. The #188 prompt also asked for a fresh branch and worktree, which added worktree calls.
+
+The first three builds found two problems, which were fixed before the other three sessions:
+
+- **The brief cut the newest comment at 600 characters.** In urchin the newest comment is often the long "Agent Brief". All three builds said the brief "got cut off" and ran `agent-skills issue <n> --full`. The brief now prints that comment whole.
+- **Every build read all of `workflow.md`.** The `AGENTS.md` line said "Read all of `docs/agents/workflow.md` before other work in this repo". The #189 session named that line as its reason (evidence). The other two sessions gave no reason (guess). The brief header now says not to read the file, and urchin #284 and blender #81 changed the `AGENTS.md` line.
+
+Then the review of PR 278 ran `agent-skills issue 273 --full`, because the review brief named the task but did not print it. The review brief now prints the task issue before the PR.
+
+- **At most 1 Bash call before the first source read: met in 1 of 3 fixed sessions.** The review of PR 285 met it. Build #204 used `brief`, `claim` and `papercut find`. `claim` is a required step before code, and `papercut find` comes from the user's `CLAUDE.md`. So 2 calls is the floor for a build. The review of PR 278 used `brief`, `gh pr checkout` and `agent-skills issue`, and the task part now removes the third call.
+- **0 whole `workflow.md` reads: met** after the fix, against 1 in each first build.
+- **0 raw `gh issue view` calls: met** in all six sessions.
+- **0 tail-only test reruns: met** in all six sessions.
+
 ## Not Doing (and Why)
 
 - **An MCP server:** each tool schema loads into every session, and the GitHub MCP already exists. A script costs nothing until an agent calls it.

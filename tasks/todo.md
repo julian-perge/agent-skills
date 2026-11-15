@@ -87,7 +87,7 @@ Plugin check: claude plugin validate .
 
 - [x] Spec criterion 5 holds. urchin#280 and blender#80 merged on 2026-11-15.
 
-- [ ] **Task 6: Run the trial again**
+- [x] **Task 6: Run the trial again**
   - Description: Count a read of a `spec/` file as a source read in `~/tmp/2026-11-15-agent-cli-audit/targets.py`, and count calls that read all of `docs/agents/workflow.md`. After the user runs 3 build sessions and 2 review sessions in urchin (blender had no task ready to build), run `targets.py` over them and write the numbers into the idea doc.
   - Acceptance:
     - At most 1 Bash call before the first read of `src/`, `tests/` or `spec/`, or a `git diff`.
@@ -101,4 +101,4 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint D: slice 2 complete
 
-- [ ] Every success criterion in `spec/helpers-stage-brief.md` holds, or the user accepts the miss.
+- [x] Every success criterion in `spec/helpers-stage-brief.md` holds, or the user accepts the miss. The user accepted the miss of criterion 6 on 2026-11-15: build #204 used 3 Bash calls before its first source read, and `claim` makes 2 the floor for a build.
