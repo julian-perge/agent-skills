@@ -52,7 +52,7 @@ Plugin check: claude plugin validate .
   - Files: `references/workflow/workflow-github.md`, `workflow-files.md`, `issue-tracker-github.md`, `survey-prompt.md`.
   - Scope: S.
 
-- [ ] **Task 4: The `setup-workflow` command**
+- [x] **Task 4: The `setup-workflow` command**
   - Description: Add `/agent-skills:setup-workflow`, whose body is today's setup SKILL.md body. Its seed links point at `${CLAUDE_PLUGIN_ROOT}/references/workflow/`, and it names `/agent-skills:next`.
   - Acceptance:
     - The command exists in all three directories with one `description`.
