@@ -42,7 +42,7 @@ Plugin check: claude plugin validate .
 - [ ] All three hosts and the shell read `~/code/agent-skills`.
 - [ ] Review the Codex cache finding with the user before going on.
 
-- [ ] **Task 3: Move the workflow seeds into the fork**
+- [x] **Task 3: Move the workflow seeds into the fork**
   - Description: Copy the 4 seed files to `references/workflow/`. Change the skill search path in `survey-prompt.md` to `~/code/agent-skills`, and the next-command name in `workflow-github.md` to `/agent-skills:next`.
   - Acceptance:
     - The 4 files exist, with only those changes compared with the dotfiles originals.
