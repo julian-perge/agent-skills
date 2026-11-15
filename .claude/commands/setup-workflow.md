@@ -32,7 +32,7 @@ Build the gap table. One row per artifact, one state per row:
 
 | Artifact | States |
 |---|---|
-| Agent file `## Workflow` block | missing, current, stale (an `## Agent skills` block still exists) |
+| Agent file `## Workflow` block | missing, current, stale (an `## Agent skills` block still exists, or the block says "Read `docs/agents/workflow.md` before any `/agent-skills` command.") |
 | Agent file `## Every task` verify line | missing, current |
 | `docs/agents/workflow.md` | missing, current, stale (names old stage skills, says specs live in issues, or has no rule that a stage ends by printing the next command with real values, or GitHub mode has no `## Helpers` section), foreign (owner-written, different shape) |
 | `docs/agents/issue-tracker.md` | missing, current, stale (still has the triage, "When a skill says" or wayfinding sections, reads issues with raw `gh` where the seed names an `agent-skills` verb, or has a frontier query without the `ready-for-agent` condition) |
@@ -66,7 +66,7 @@ Rules for every edit: edit the existing file; update a block in place; keep owne
   - Tasks are tracked in GitHub Issues for <owner>/<repo>, with the `gh` CLI. `/agent-skills:plan` creates one sub-issue per task. `tasks/` is git-ignored scratch.
   - Specs are files at `spec/<issue>-<slug>.md`, not `SPEC.md`.
   - ADRs go in `docs/adr/`. Read `GLOSSARY.md` and `docs/adr/` (those that exist) before design work.
-  - Read `docs/agents/workflow.md` before any `/agent-skills` command.
+  - Start each `/agent-skills` stage with `agent-skills brief <stage> <n>`. Read all of `docs/agents/workflow.md` before other work in this repo.
   ```
 
   Files mode: the first bullet becomes "Tasks are tracked in `tasks/todo.md`, and `tasks/` is committed." and the spec path is `spec/<slug>.md`.

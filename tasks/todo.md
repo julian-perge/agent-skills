@@ -54,7 +54,7 @@ Plugin check: claude plugin validate .
   - Files: `.claude/commands/build.md`, `review.md`, `plan.md`, `spec.md`, `test.md`.
   - Scope: S.
 
-- [ ] **Task 4: The seed and the setup template name `brief`**
+- [x] **Task 4: The seed and the setup template name `brief`**
   - Description: Change the intro of `references/workflow/workflow-github.md` and add a `brief` row to its Helpers table. Change the `## Workflow` block in `setup-workflow.md` to the new line from the spec, and mark the old line **stale** in the gap table.
   - Acceptance:
     - The seed's intro says that `agent-skills brief` prints the parts a stage needs, and the Helpers table has the `brief` row.
