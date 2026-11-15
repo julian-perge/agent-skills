@@ -1,0 +1,12 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 31,
+        "title": "The appearance panel says nothing when a cache definition fails to decode",
+        "body": "The appearance panel only catches `MissingResourceError` in `appearance_props.py` (the kit dropdown callback, `_names` and `_kits`). If the Cache folder holds a cache other than snapshot 430, the decoders can raise `ValueError` for an unknown opcode or `IndexError` for a definition that is cut short. That error escapes the callback, so the panel shows nothing and the reason only lands in the console.\n\nThis came up in the review of PR #1.\n\n**TASKS:**\n\n- Catch the decoders' `ValueError` and `IndexError` in the three handlers, next to `MissingResourceError`.\n- Set `profile_error` to a message that names the Cache folder preference and the definition that failed to decode.\n- Add a unit test that feeds a kit definition with an unknown opcode and checks the message.\n\n**AC:**\n\n- With a cache whose kit definitions do not decode, the panel shows a message that says which definition failed and points to the Cache folder preference.\n- A missing resource still shows the message it shows today.\n\n**Verification:** `prek run --all-files`.\n",
+        "parent": null
+      }
+    }
+  }
+}

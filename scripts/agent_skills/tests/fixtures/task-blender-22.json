@@ -1,0 +1,16 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 22,
+        "title": "The acceptance run of the hand-made motion runbook",
+        "body": "## Parent\n\n#12. Spec: `spec/12-contact-sheet-and-runbook.md` (success criteria 5 and 6).\n\n## What to build\n\nThe acceptance run of the runbook. It adds no code.\n\n- A new Claude session gets only the path of `docs/hand-made-motion.md` and a motion of one or two sentences from the owner.\n- The session does not read the scratch folder of the sword flourish test.\n- It makes the motion with `rsps.contact_sheet` and a copy of `docs/research/sword-flourish-test/flourish.py`.\n- The owner reviews at most three videos.\n\nThe owner starts a Blender with the extension and the Blender MCP before the session.\n\n## Acceptance criteria\n\n- [ ] The owner accepts the review video within three reviews, or the run fails.\n- [ ] Issue 12 has a comment with the result: the motion asked for, the verdict, the number of reviews, each place where the runbook or the reference script was wrong or silent, and each tooling problem.\n- [ ] No .blend, render or contact sheet is committed, and the comment holds no local path.\n\n## Verification\n\nThe owner's verdict on the review video. Then:\n\n```bash\ngh issue view 12 --repo julian-perge/blender-addon-rs317-667mqo-makeup --json comments --jq '.comments[-1].body'\n```\n",
+        "parent": {
+          "number": 12,
+          "title": "Hand-made motion for players in Blender scenes",
+          "body": "As a user, I want to pose a player in a way the client does not have, e.g. someone holding a sword and performing a different action with it, in the same Blender scenes that play the native OSRS animations.\n\nRight now a presentation copy only plays baked game clips. `spec/old/game-animation.md` left this out on purpose (\"Poseable rig editing comes later\").\n\nThe pose stays in Blender: a `.blend` an"
+        }
+      }
+    }
+  }
+}

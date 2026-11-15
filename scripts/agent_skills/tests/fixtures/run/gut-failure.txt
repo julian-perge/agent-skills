@@ -1,0 +1,223 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+Loading all units data
+Loading all item data
+Loading all move data
+Loading all buff data
+---  GUT  ---
+[1m[INFO]:  [0musing [/home/user/Library/Application Support/Godot/app_userdata/urchin] for temporary output.
+Godot version:  4.7.2
+GUT version:  9.7.1
+SCRIPT ERROR: Parse Error: Static function "money_levels()" not found in base "BattleRewards".
+          at: GDScript::reload (res://test/unit/test_battle_rewards.gd:24)
+          GDScript backtrace (most recent call first):
+              [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+              [1] _parse_script (res://addons/gut/test_collector.gd:76)
+              [2] add_script (res://addons/gut/test_collector.gd:128)
+              [3] add_script (res://addons/gut/gut.gd:1070)
+              [4] add_directory (res://addons/gut/gut.gd:1093)
+              [5] _apply_options (res://addons/gut/gut_config.gd:136)
+              [6] apply_options (res://addons/gut/gut_config.gd:207)
+              [7] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+              [8] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+              [9] main (res://addons/gut/cli/gut_cli.gd:297)
+              [10] _init (res://addons/gut/gut_cmdln.gd:39)
+SCRIPT ERROR: Parse Error: Static function "money_levels()" not found in base "BattleRewards".
+          at: GDScript::reload (res://test/unit/test_battle_rewards.gd:27)
+          GDScript backtrace (most recent call first):
+              [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+              [1] _parse_script (res://addons/gut/test_collector.gd:76)
+              [2] add_script (res://addons/gut/test_collector.gd:128)
+              [3] add_script (res://addons/gut/gut.gd:1070)
+              [4] add_directory (res://addons/gut/gut.gd:1093)
+              [5] _apply_options (res://addons/gut/gut_config.gd:136)
+              [6] apply_options (res://addons/gut/gut_config.gd:207)
+              [7] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+              [8] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+              [9] main (res://addons/gut/cli/gut_cli.gd:297)
+              [10] _init (res://addons/gut/gut_cmdln.gd:39)
+SCRIPT ERROR: Parse Error: Static function "money_levels()" not found in base "BattleRewards".
+          at: GDScript::reload (res://test/unit/test_battle_rewards.gd:30)
+          GDScript backtrace (most recent call first):
+              [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+              [1] _parse_script (res://addons/gut/test_collector.gd:76)
+              [2] add_script (res://addons/gut/test_collector.gd:128)
+              [3] add_script (res://addons/gut/gut.gd:1070)
+              [4] add_directory (res://addons/gut/gut.gd:1093)
+              [5] _apply_options (res://addons/gut/gut_config.gd:136)
+              [6] apply_options (res://addons/gut/gut_config.gd:207)
+              [7] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+              [8] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+              [9] main (res://addons/gut/cli/gut_cli.gd:297)
+              [10] _init (res://addons/gut/gut_cmdln.gd:39)
+SCRIPT ERROR: Parse Error: Static function "money_levels()" not found in base "BattleRewards".
+          at: GDScript::reload (res://test/unit/test_battle_rewards.gd:41)
+          GDScript backtrace (most recent call first):
+              [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+              [1] _parse_script (res://addons/gut/test_collector.gd:76)
+              [2] add_script (res://addons/gut/test_collector.gd:128)
+              [3] add_script (res://addons/gut/gut.gd:1070)
+              [4] add_directory (res://addons/gut/gut.gd:1093)
+              [5] _apply_options (res://addons/gut/gut_config.gd:136)
+              [6] apply_options (res://addons/gut/gut_config.gd:207)
+              [7] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+              [8] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+              [9] main (res://addons/gut/cli/gut_cli.gd:297)
+              [10] _init (res://addons/gut/gut_cmdln.gd:39)
+SCRIPT ERROR: Parse Error: Static function "money_levels()" not found in base "BattleRewards".
+          at: GDScript::reload (res://test/unit/test_battle_rewards.gd:43)
+          GDScript backtrace (most recent call first):
+              [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+              [1] _parse_script (res://addons/gut/test_collector.gd:76)
+              [2] add_script (res://addons/gut/test_collector.gd:128)
+              [3] add_script (res://addons/gut/gut.gd:1070)
+              [4] add_directory (res://addons/gut/gut.gd:1093)
+              [5] _apply_options (res://addons/gut/gut_config.gd:136)
+              [6] apply_options (res://addons/gut/gut_config.gd:207)
+              [7] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+              [8] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+              [9] main (res://addons/gut/cli/gut_cli.gd:297)
+              [10] _init (res://addons/gut/gut_cmdln.gd:39)
+ERROR: Failed to load script "res://test/unit/test_battle_rewards.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+   GDScript backtrace (most recent call first):
+       [0] load_script_using_custom_warnings (res://addons/gut/warnings_manager.gd:173)
+       [1] _parse_script (res://addons/gut/test_collector.gd:76)
+       [2] add_script (res://addons/gut/test_collector.gd:128)
+       [3] add_script (res://addons/gut/gut.gd:1070)
+       [4] add_directory (res://addons/gut/gut.gd:1093)
+       [5] _apply_options (res://addons/gut/gut_config.gd:136)
+       [6] apply_options (res://addons/gut/gut_config.gd:207)
+       [7] run_tests (res://addons/gut/gui/GutRunner.gd:192)
+       [8] _run_tests (res://addons/gut/cli/gut_cli.gd:239)
+       [9] main (res://addons/gut/cli/gut_cli.gd:297)
+       [10] _init (res://addons/gut/gut_cmdln.gd:39)
+[33m[GUT WARNING]:  [0mIgnoring script res://test/unit/test_battle_rewards.gd because it does not extend GutTest
+[4m
+
+res://test/unit/test_ability_pool_row.gd
+[0m[4m
+
+res://test/unit/test_ability_tooltip_builder.gd
+[0m[4m
+
+res://test/unit/test_ability_tooltip_fields.gd
+[0m[4m
+
+res://test/unit/test_ability_visual_effect.gd
+[0m[4m
+
+res://test/unit/test_achievements.gd
+[0m[4m
+
+res://test/unit/test_audio_manager.gd
+[0m[4m
+
+res://test/unit/test_buff_icons.gd
+[0m[4m
+
+res://test/unit/test_character_visual.gd
+[0m[4m
+
+res://test/unit/test_combat_log_panel.gd
+[0m[4m
+
+res://test/unit/test_cutscene_player.gd
+[0m[4m
+
+res://test/unit/test_equipment.gd
+[0m[4m
+
+res://test/unit/test_game_data.gd
+[0m[4m
+
+res://test/unit/test_game_item.gd
+[0m[4m
+
+res://test/unit/test_impact_effect.gd
+[0m[4m
+
+res://test/unit/test_leveling.gd
+[0m[4m
+
+res://test/unit/test_projectile.gd
+[0m[4m
+
+res://test/unit/test_talent_tree.gd
+[0m[4m
+
+res://test/unit/test_vfx_frames.gd
+[0m[4m
+
+res://test/unit/test_zone_progression.gd
+[0m[4m
+
+res://test/integration/test_battle_runner.gd
+[0m[4m
+
+res://test/integration/test_battle_scene.gd
+[0m* test_victory_money_counts_the_companion_markers
+[battle 1.438] === battle 109 start: { "battle_id": 109, "is_story_progress": false, "is_boss": false, "train_cap": 9 } ===
+[battle 1.438] unit slot=2 name=Felicity lvl=7 team=0 hp=4044/4044 focus=100
+[battle 1.438] unit slot=3 name=Veradux lvl=1 team=0 hp=627/627 focus=100
+[battle 1.438] unit slot=1 name=MoneyFlow lvl=1 team=0 hp=132/132 focus=100
+[battle 1.489] battle over: outcome=1 turns=0
+[31m    [Failed]:  [0m[130.0] expected to equal [36.0]:  round(0.7 * respecValue((7 + 1 + 1) / 3))
+      at line 212
+[1m0/1 passed.
+[0m[4m
+
+res://test/integration/test_game_tooltip.gd
+[0m[4m
+
+res://test/integration/test_hotbar.gd
+[0m[4m
+
+res://test/integration/test_inventory_panel.gd
+[0m[4m
+
+res://test/integration/test_item_slot.gd
+[0m[4m
+
+res://test/integration/test_store_window.gd
+[0m[4m
+
+res://test/integration/test_ui_scenes.gd
+[0m[4m
+
+res://test/integration/test_unit_overlay.gd
+[0m[4m
+
+res://test/integration/test_zone_battle_flow.gd
+[0m
+
+
+
+[33m==============================================
+[0m[33m= Run Summary
+[0m[33m==============================================
+[0m[4m
+res://test/integration/test_battle_scene.gd
+[0m- test_victory_money_counts_the_companion_markers
+[31m    [Failed]:  [0m[130.0] expected to equal [36.0]:  round(0.7 * respecValue((7 + 1 + 1) / 3))
+          at line 212
+
+Totals
+------
+Warnings              1
+
+Scripts              29
+Tests                 1
+Passing Tests      none
+Failing Tests         1
+Asserts             1/2
+Time              0.619s
+
+
+Ran Tests matching "money"
+[31m---- 1 failing tests ----
+[0m
+WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 1 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:822)

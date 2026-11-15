@@ -55,6 +55,9 @@ jobs:
       - name: Test session-start hook payload
         run: bash hooks/session-start-test.sh
 
+      - name: Test the agent-skills CLI
+        run: PYTHONPATH=scripts python3 -m unittest discover -s scripts/agent_skills/tests
+
   validate-commands:
     name: Validate command parity and description sync
     runs-on: ubuntu-latest

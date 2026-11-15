@@ -1,0 +1,15 @@
+check for added large files..............................................Passed
+check for case conflicts.................................................Passed
+check for merge conflicts................................................Passed
+check toml...............................................................Passed
+fix end of files.........................................................Passed
+trim trailing whitespace.................................................Passed
+ruff check...............................................................Passed
+ruff format..............................................................Failed
+- hook id: ruff-format
+- description: Run 'ruff format' for extremely fast Python formatting
+- files were modified by this hook
+
+  1 file reformatted, 256 files left unchanged
+Pyrefly (type checking)..................................................Passed
+Unit tests...............................................................Passed

@@ -1,0 +1,5 @@
+description = "List what to do next in a repo that /agent-skills:setup-workflow set up in GitHub mode: PRs to review, tasks to build, and issues to spec, plan or refine, each with the /agent-skills command to paste. Read-only."
+
+prompt = """
+This command needs Claude Code and the agent-skills CLI. Run `agent-skills next` from the repository root and print its output unchanged.
+"""

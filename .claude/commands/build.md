@@ -5,6 +5,8 @@ disable-model-invocation: true
 
 Invoke the agent-skills:incremental-implementation skill alongside agent-skills:test-driven-development.
 
+In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills issue <n>`, take the task with `agent-skills claim <n>`, run tests and checks with `agent-skills run --`, and end with the line that `agent-skills next-cmd review <pr>` prints.
+
 ## Modes
 
 - **`/build`** — implement the *next* pending task, then stop (careful, one slice at a time).
