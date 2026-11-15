@@ -182,7 +182,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 3: run-wrapper (spec/helpers-run-wrapper.md)
 
-- [ ] **Task 15: `run` process mechanics**
+- [x] **Task 15: `run` process mechanics**
   - Description: Add the argv execution, the log path, the ANSI-free log written as output arrives, the `log:` first line, the exit-code rules (pass-through, 125, 127, `128 + n`) and the signal forwarding.
   - Acceptance:
     - Spec criteria 2 to 4 hold.

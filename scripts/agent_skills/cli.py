@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from agent_skills import REFUSED, CliError, render, tracker
+from agent_skills import REFUSED, CliError, render, run, tracker
 from agent_skills.github import GitHub, Runner, run_process
 
 Handler = Callable[[GitHub, argparse.Namespace], str]
@@ -179,6 +179,9 @@ def build_parser() -> argparse.ArgumentParser:
     frontier = verbs.add_parser("frontier", help="the open sub-issues of P and the next one to build")
     frontier.add_argument("number", type=issue_number, metavar="P")
     frontier.set_defaults(handler=frontier_verb)
+
+    run_parser = run.add_parser(verbs)
+    run_parser.set_defaults(handler=None, run_parser=run_parser)
     return parser
 
 
@@ -187,6 +190,11 @@ def main(argv: list[str] | None = None, runner: Runner = run_process) -> int:
         args = build_parser().parse_args(argv)
     except SystemExit as stop:
         return int(stop.code or 0)
+    if args.verb == "run":
+        try:
+            return run.run_verb(GitHub(runner, args.repo), args, args.run_parser)
+        except SystemExit as stop:
+            return int(stop.code or 0)
     handler: Handler = args.handler
     try:
         output = handler(GitHub(runner, args.repo), args)
