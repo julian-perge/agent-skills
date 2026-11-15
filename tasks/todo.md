@@ -224,7 +224,7 @@ Plugin check: claude plugin validate .
   - Files: `references/workflow/workflow-github.md`, `issue-tracker-github.md`, `workflow-files.md`, `.claude/commands/setup-workflow.md`.
   - Scope: S.
 
-- [ ] **Task 19: Hook rules in dotfiles**
+- [x] **Task 19: Hook rules in dotfiles**
   - Description: Unwrap `agent-skills run` in `enforce-tools.sh`, add Rule A and Rule B, and add the cases script with the spec's table.
   - Acceptance:
     - Every case in the table gives its expected exit through the Claude Code hook path and the Codex hook path.
