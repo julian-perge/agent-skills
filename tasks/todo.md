@@ -122,7 +122,7 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint C: after tasks 7 to 9
 
-- [ ] The unit tests pass locally and in CI on a pushed branch.
+- [x] The unit tests pass locally and in CI on a pushed branch.
 - [ ] Manual `issue` and `frontier` runs in urchin and blender look right to the user.
 
 - [x] **Task 10: `pr`**
@@ -239,7 +239,7 @@ Plugin check: claude plugin validate .
 - [ ] Success criteria 1, 2 and 4 of `spec/helpers-stage-wiring.md` hold.
 - [ ] The user approves opening the urchin and blender PRs.
 
-- [ ] **Task 20: Refresh urchin and blender workflow docs**
+- [x] **Task 20: Refresh urchin and blender workflow docs**
   - Description: Run `/agent-skills:setup-workflow` in each repo and open one PR per repo. The user merges.
   - Acceptance:
     - Each `workflow.md` has `## Helpers` and keeps its owner text.

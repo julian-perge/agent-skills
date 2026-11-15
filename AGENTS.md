@@ -93,7 +93,7 @@ For the full format, naming conventions, frontmatter rules, supporting-file thre
 
 ## Pull Requests and Upstream
 
-PRs target `main` of this fork, `julian-perge/agent-skills`, which is the `origin` remote. This checkout also has an `upstream` remote, so pass `--repo julian-perge/agent-skills` on every `gh` write, or it can land on the parent repo. Upstream changes come in with `git fetch upstream && git merge upstream/main`.
+PRs target `main` of this fork, `julian-perge/agent-skills`, which is the `origin` remote. Pass `--repo julian-perge/agent-skills` on every `gh` write, so it never lands on the parent repo `addyosmani/agent-skills`. This checkout has no `upstream` remote. To bring in upstream changes, add it with `git remote add upstream https://github.com/addyosmani/agent-skills.git`, then run `git fetch upstream && git merge upstream/main`.
 
 ## Local Install
 

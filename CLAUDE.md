@@ -46,9 +46,9 @@ Before adding a new skill or significantly reworking an existing one, run the pr
 
 ## Pull Requests
 
-PRs target `main` of this fork, `julian-perge/agent-skills`, which is the `origin` remote. This checkout also has an `upstream` remote, so a `gh` write without `--repo julian-perge/agent-skills` can land on the parent repo.
+PRs target `main` of this fork, `julian-perge/agent-skills`, which is the `origin` remote. Pass `--repo julian-perge/agent-skills` on every `gh` write, so it never lands on the parent repo `addyosmani/agent-skills`.
 
-- Upstream changes come in with `git fetch upstream && git merge upstream/main`. Expect conflicts in the files this fork edits on purpose, such as `.claude/commands/`, `.claude-plugin/marketplace.json`, `CLAUDE.md` and `AGENTS.md`.
+- This checkout has no `upstream` remote. To bring in upstream changes, add it with `git remote add upstream https://github.com/addyosmani/agent-skills.git`, then run `git fetch upstream && git merge upstream/main`. Expect conflicts in the files this fork edits on purpose, such as `.claude/commands/`, `.claude-plugin/marketplace.json`, `CLAUDE.md` and `AGENTS.md`.
 - Prefer small, focused PRs over large refactors of widely shared files (for example, files under `scripts/`), because those collide with upstream merges.
 
 ## Boundaries
