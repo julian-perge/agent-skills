@@ -7,8 +7,14 @@ from agent_skills.tracker import SubIssue, frontier
 from fakes import FakeRunner, fixture_json, fixture_text, names_repo, with_origin
 
 
-def sub(number: int, state: str = "OPEN", assignees: tuple[str, ...] = (), open_blockers: int = 0) -> SubIssue:
-    return SubIssue(number, f"Task {number}", state, assignees, open_blockers)
+def sub(
+    number: int,
+    state: str = "OPEN",
+    assignees: tuple[str, ...] = (),
+    open_blockers: int = 0,
+    labels: tuple[str, ...] = ("ready-for-agent",),
+) -> SubIssue:
+    return SubIssue(number, f"Task {number}", state, assignees, open_blockers, labels)
 
 
 class FrontierRuleTest(unittest.TestCase):
@@ -16,13 +22,22 @@ class FrontierRuleTest(unittest.TestCase):
         subs = [sub(12), sub(9, open_blockers=1), sub(10, assignees=("julian-perge",)), sub(8, state="CLOSED"), sub(11)]
         self.assertEqual(frontier(subs).number, 11)
 
+    def test_a_sub_issue_without_ready_for_agent_is_skipped(self) -> None:
+        subs = [sub(5, labels=("ready-for-human",)), sub(6, labels=("enhancement", "ready-for-agent"))]
+        self.assertEqual(frontier(subs).number, 6)
+
     def test_order_of_the_sub_issues_does_not_matter(self) -> None:
         self.assertEqual(frontier([sub(30), sub(21), sub(25)]).number, 21)
 
     def test_blocked_and_assigned_tasks_give_no_frontier(self) -> None:
         result = frontier([sub(5, open_blockers=2), sub(6, assignees=("someone",)), sub(7, state="CLOSED")])
         self.assertIsNone(result.number)
-        self.assertEqual(result.reason, "each open sub-issue is blocked or assigned: 1 blocked, 1 assigned")
+        self.assertEqual(result.reason, "no open sub-issue is ready-for-agent, unblocked and unassigned: 1 blocked, 1 assigned")
+
+    def test_sub_issues_without_ready_for_agent_give_no_frontier(self) -> None:
+        result = frontier([sub(51, labels=("ready-for-human",)), sub(67, labels=("needs-triage",)), sub(68, open_blockers=1)])
+        self.assertIsNone(result.number)
+        self.assertEqual(result.reason, "no open sub-issue is ready-for-agent, unblocked and unassigned: 2 without ready-for-agent, 1 blocked")
 
     def test_all_closed_gives_no_frontier(self) -> None:
         result = frontier([sub(5, state="CLOSED"), sub(6, state="CLOSED")])
@@ -56,7 +71,7 @@ class FrontierVerbTest(unittest.TestCase):
     def test_every_open_sub_issue_blocked_or_assigned_exits_0(self) -> None:
         code, out, _ = self.run_frontier("frontier-urchin-107-all-blocked.json", "107")
         self.assertEqual(code, 0)
-        self.assertEqual(out.splitlines()[-1], "Frontier: none (each open sub-issue is blocked or assigned: 2 blocked, 1 assigned)")
+        self.assertEqual(out.splitlines()[-1], "Frontier: none (no open sub-issue is ready-for-agent, unblocked and unassigned: 2 blocked, 1 assigned)")
 
     def test_all_closed_exits_0(self) -> None:
         code, out, _ = self.run_frontier("frontier-blender-35-all-closed.json", "35")

@@ -72,7 +72,7 @@ For `/agent-skills:build auto`: `claim <source> --no-assign` makes the one branc
 
 ### `frontier P`
 
-A table of the open sub-issues of `P` with assignee and open blockers. The last line is `Frontier: #<n>`, the lowest open number with no open blocker and no assignee. When there is no such issue, the last line is `Frontier: none (<reason>)`. Exit 0 in both cases.
+A table of the open sub-issues of `P` with assignee and open blockers. The last line is `Frontier: #<n>`, the lowest open number with the `ready-for-agent` label, no open blocker and no assignee. When there is no such issue, the last line is `Frontier: none (<reason>)`. Exit 0 in both cases.
 
 ### `next`
 
@@ -92,7 +92,7 @@ Prints one paste line with no Markdown, for the end of a stage:
 | Call | Prints | Exit 1 when |
 | --- | --- | --- |
 | `next-cmd review <pr>` | the review line of `pr` | never. The parts with no value are left out, and stderr names them |
-| `next-cmd build <parent>` | `/agent-skills:build #<frontier>` | there is no frontier |
+| `next-cmd build <parent>` | `/agent-skills:build #<frontier>`, with the frontier rule of `frontier` | there is no frontier: no open sub-issue has `ready-for-agent`, no open blocker and no assignee |
 | `next-cmd plan <issue>` | `/agent-skills:plan #<issue>, spec <spec>` | the issue has no spec |
 | `next-cmd spec <issue>` | `/agent-skills:spec #<issue>` | never |
 

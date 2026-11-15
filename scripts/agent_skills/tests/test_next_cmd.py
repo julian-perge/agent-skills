@@ -49,16 +49,21 @@ class NextCmdTest(unittest.TestCase):
         self.assertEqual(err, "Task #22 is from the branch name (guess).\n")
 
     def test_build_prints_the_frontier(self) -> None:
-        code, out, _, runner = self.run_cmd(["--repo", BLENDER, "next-cmd", "build", "35"], ["frontier-blender-35.json"])
+        code, out, _, runner = self.run_cmd(["--repo", "julian-perge/urchin", "next-cmd", "build", "107"], ["frontier-urchin-107.json"])
         self.assertEqual(code, 0)
-        self.assertEqual(out, "/agent-skills:build #51\n")
+        self.assertEqual(out, "/agent-skills:build #204\n")
         self.assertEqual(len(runner.gh_calls()), 1)
+
+    def test_build_with_no_ready_for_agent_sub_issue_exits_1(self) -> None:
+        code, _, err, _ = self.run_cmd(["--repo", BLENDER, "next-cmd", "build", "35"], ["frontier-blender-35.json"])
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "No frontier for #35: no open sub-issue is ready-for-agent, unblocked and unassigned: 1 without ready-for-agent.\n")
 
     def test_build_with_no_frontier_exits_1(self) -> None:
         code, out, err, _ = self.run_cmd(["--repo", "julian-perge/urchin", "next-cmd", "build", "107"], ["frontier-urchin-107-all-blocked.json"])
         self.assertEqual(code, 1)
         self.assertEqual(out, "")
-        self.assertEqual(err, "No frontier for #107: each open sub-issue is blocked or assigned: 2 blocked, 1 assigned.\n")
+        self.assertEqual(err, "No frontier for #107: no open sub-issue is ready-for-agent, unblocked and unassigned: 2 blocked, 1 assigned.\n")
 
     def test_plan_prints_the_spec(self) -> None:
         code, out, err, _ = self.run_cmd(["--repo", BLENDER, "next-cmd", "plan", "22"], ["task-blender-22.json"])

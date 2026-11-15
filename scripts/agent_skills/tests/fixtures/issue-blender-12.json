@@ -28,6 +28,13 @@
               "number": 14,
               "title": "Build the test scene for the sword flourish test",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -43,6 +50,13 @@
               "number": 15,
               "title": "Contact sheets and the review video work on the baked clips",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -58,6 +72,13 @@
               "number": 16,
               "title": "Key the sword flourish and get the owner's verdict",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-human"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -73,6 +94,13 @@
               "number": 17,
               "title": "Record the result of the sword flourish test",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -88,6 +116,13 @@
               "number": 19,
               "title": "The contact sheet operator renders the active player into one PNG",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -103,6 +138,13 @@
               "number": 20,
               "title": "The reference script of the pose solver goes in docs/research",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -114,6 +156,13 @@
               "number": 21,
               "title": "The hand-made motion runbook",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -129,6 +178,13 @@
               "number": 22,
               "title": "The acceptance run of the hand-made motion runbook",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-human"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {

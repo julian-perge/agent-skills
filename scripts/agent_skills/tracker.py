@@ -17,6 +17,7 @@ class SubIssue:
     state: str
     assignees: tuple[str, ...]
     open_blockers: int
+    labels: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -31,12 +32,16 @@ def frontier(subs: Sequence[SubIssue]) -> Frontier:
     open_subs = [s for s in subs if s.state == "OPEN"]
     if not open_subs:
         return Frontier(None, f"all {len(subs)} sub-issues are closed")
-    ready = [s.number for s in open_subs if not s.assignees and s.open_blockers == 0]
+    ready = [s.number for s in open_subs if "ready-for-agent" in s.labels and not s.assignees and s.open_blockers == 0]
     if ready:
         return Frontier(min(ready))
-    blocked = sum(1 for s in open_subs if s.open_blockers)
-    assigned = sum(1 for s in open_subs if s.assignees)
-    return Frontier(None, f"each open sub-issue is blocked or assigned: {blocked} blocked, {assigned} assigned")
+    counts = (
+        (sum(1 for s in open_subs if "ready-for-agent" not in s.labels), "without ready-for-agent"),
+        (sum(1 for s in open_subs if s.open_blockers), "blocked"),
+        (sum(1 for s in open_subs if s.assignees), "assigned"),
+    )
+    found = ", ".join(f"{count} {what}" for count, what in counts if count)
+    return Frontier(None, f"no open sub-issue is ready-for-agent, unblocked and unassigned: {found}")
 
 
 @dataclass(frozen=True)

@@ -10,6 +10,13 @@
               "number": 49,
               "title": "The region import places the level 0 scenery as objects",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -25,6 +32,13 @@
               "number": 50,
               "title": "The terrain light includes loc shadows and the import reports what it did",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -39,9 +53,20 @@
             {
               "number": 51,
               "title": "Compare the viewport render of region 48_50 with the live-client picture",
-              "state": "OPEN",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-human"
+                  }
+                ]
+              },
               "assignees": {
-                "nodes": []
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
               },
               "issueDependenciesSummary": {
                 "blockedBy": 0
@@ -51,6 +76,13 @@
               "number": 67,
               "title": "The scenery meshes of a region import share their materials",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "needs-triage"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },

@@ -32,6 +32,13 @@
               "number": 108,
               "title": "Prototype the victory screen on containers whose spacing comes from the SWF",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "wayfinder:prototype"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -47,6 +54,13 @@
               "number": 109,
               "title": "Which UI pieces does the SWF hold for each screen, and which has the port extracted?",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "wayfinder:research"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -62,6 +76,13 @@
               "number": 110,
               "title": "Which Godot demo project patterns fit the original's nested panels?",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "wayfinder:research"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -73,6 +94,16 @@
               "number": 204,
               "title": "Re-pad the four cutscene clips to 800x575",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -84,6 +115,19 @@
               "number": 209,
               "title": "Generalize the compare tool from the victory prototype",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "question"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -95,6 +139,16 @@
               "number": 215,
               "title": "Open the game on the title and add the shared menu pieces",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -106,6 +160,16 @@
               "number": 216,
               "title": "Rebuild the choice Screen and leave out PvP Arena",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -117,6 +181,16 @@
               "number": 217,
               "title": "Rebuild the slot list as the original's four rows",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -128,6 +202,16 @@
               "number": 218,
               "title": "Extract the hotbar icons, glow colors and hover ranges",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -139,6 +223,16 @@
               "number": 219,
               "title": "Rebuild the bottom bar and the hotbar at the SWF rects",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -150,6 +244,16 @@
               "number": 220,
               "title": "Read hotbar and orb tooltips from strings and add set_inert",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -161,6 +265,16 @@
               "number": 221,
               "title": "Rebuild the zone progress at the SWF rects",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -172,6 +286,16 @@
               "number": 222,
               "title": "Rebuild the seven zone scenes and add set_art_visible",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -183,6 +307,16 @@
               "number": 223,
               "title": "Add the info card, and show it when the game is saved",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },

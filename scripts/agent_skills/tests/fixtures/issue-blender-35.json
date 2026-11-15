@@ -31,6 +31,13 @@
               "number": 36,
               "title": "The placements of region 48_50 are read from the encrypted landscape",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -46,6 +53,13 @@
               "number": 37,
               "title": "The terrain of region 48_50 and its 8 neighbours is read from the cache",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -61,6 +75,13 @@
               "number": 38,
               "title": "The underlay, overlay and loc definitions of region 48_50 are decoded",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -76,6 +97,13 @@
               "number": 39,
               "title": "Cache textures are decoded and match RuneLite pixel for pixel",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -91,6 +119,13 @@
               "number": 40,
               "title": "A terrain tile gets the triangles of its shape",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -106,6 +141,13 @@
               "number": 41,
               "title": "Each terrain tile corner gets its blended and lit colour",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -121,6 +163,13 @@
               "number": 42,
               "title": "A placement shows the model that the client picks for its loc type",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -136,6 +185,13 @@
               "number": 43,
               "title": "Each placement gets the position, height and turn of the client",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -151,6 +207,13 @@
               "number": 44,
               "title": "A contoured placement on uneven ground gets its own vertices",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -166,6 +229,13 @@
               "number": 45,
               "title": "Loc shadows darken the terrain light at the tile corners",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -181,6 +251,13 @@
               "number": 46,
               "title": "Decoded textures become packed Blender images for face materials",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -196,6 +273,13 @@
               "number": 47,
               "title": "The RS Region operator imports the terrain of a region",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -211,6 +295,13 @@
               "number": 48,
               "title": "A tile-to-position function puts a player on the terrain",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -226,6 +317,13 @@
               "number": 49,
               "title": "The region import places the level 0 scenery as objects",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -241,6 +339,13 @@
               "number": 50,
               "title": "The terrain light includes loc shadows and the import reports what it did",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -256,6 +361,13 @@
               "number": 51,
               "title": "Compare the viewport render of region 48_50 with the live-client picture",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-human"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -267,6 +379,13 @@
               "number": 67,
               "title": "The scenery meshes of a region import share their materials",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "needs-triage"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },

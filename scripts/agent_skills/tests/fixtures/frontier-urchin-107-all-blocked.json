@@ -10,6 +10,16 @@
               "number": 203,
               "title": "Make the viewport the original's 800x575 Stage",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -25,6 +35,16 @@
               "number": 215,
               "title": "Open the game on the title and add the shared menu pieces",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -36,6 +56,16 @@
               "number": 216,
               "title": "Rebuild the choice Screen and leave out PvP Arena",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -47,6 +77,16 @@
               "number": 273,
               "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {

@@ -11,6 +11,7 @@ REMOTE = re.compile(r"[/:](?P<owner>[\w.-]+)/(?P<name>[\w.-]+?)(?:\.git)?/?$")
 
 SUB_ISSUE_FIELDS = """
         number title state
+        labels(first: 20) { nodes { name } }
         assignees(first: 5) { nodes { login } }
         issueDependenciesSummary { blockedBy }"""
 
@@ -114,6 +115,7 @@ def parse_sub_issue(node: dict[str, Any]) -> SubIssue:
         state=node["state"],
         assignees=tuple(a["login"] for a in node["assignees"]["nodes"]),
         open_blockers=node["issueDependenciesSummary"]["blockedBy"],
+        labels=tuple(label["name"] for label in node["labels"]["nodes"]),
     )
 
 

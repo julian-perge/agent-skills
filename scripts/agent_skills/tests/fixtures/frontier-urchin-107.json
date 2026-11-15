@@ -10,6 +10,16 @@
               "number": 203,
               "title": "Make the viewport the original's 800x575 Stage",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -25,6 +35,16 @@
               "number": 204,
               "title": "Re-pad the four cutscene clips to 800x575",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -36,6 +56,19 @@
               "number": 209,
               "title": "Generalize the compare tool from the victory prototype",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "question"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -47,6 +80,16 @@
               "number": 215,
               "title": "Open the game on the title and add the shared menu pieces",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -58,6 +101,16 @@
               "number": 232,
               "title": "Score the Inventory window against the SWF",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": []
               },
@@ -69,6 +122,16 @@
               "number": 161,
               "title": "Extract the Screen and Window chrome a StyleBoxFlat can't draw",
               "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
@@ -84,6 +147,16 @@
               "number": 273,
               "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
               "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
               "assignees": {
                 "nodes": [
                   {
