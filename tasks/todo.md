@@ -38,13 +38,13 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint A: the verb works
 
-- [ ] The unit tests pass locally and in CI on the pushed branch.
-- [ ] Spec criteria 2 to 4 hold in blender.
-- [ ] The user looks at the `brief build 74` output before the stage files name the verb.
+- [x] The unit tests pass locally and in CI on the pushed branch.
+- [x] Spec criteria 2 to 4 hold in blender.
+- [x] The user looks at the `brief build 74` output before the stage files name the verb.
 
 ## Phase 2: the fork's text
 
-- [ ] **Task 3: The stage commands start with `brief`**
+- [x] **Task 3: The stage commands start with `brief`**
   - Description: In `build.md`, `review.md`, `plan.md` and `spec.md`, replace the first `agent-skills issue <n>` or `agent-skills pr <pr>` with `agent-skills brief <stage> <n>`. Add the same line to `test.md`. Each line says to read the whole output, with no `head` or `tail`, and to add `--full` for the whole issue body.
   - Acceptance:
     - Each of the five files names `agent-skills brief` with its own stage.

@@ -5,7 +5,7 @@ disable-model-invocation: true
 
 Invoke the agent-skills:planning-and-task-breakdown skill.
 
-In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills issue <n>` and end with the line that `agent-skills next-cmd build <n>` prints.
+In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills brief plan <n>` and read its whole output, with no `head` or `tail` (add `--full` for the whole issue body). End with the line that `agent-skills next-cmd build <n>` prints.
 
 Read the existing spec (SPEC.md or equivalent) and the relevant codebase sections. Then:
 
