@@ -206,7 +206,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 4: stage-wiring (spec/helpers-stage-wiring.md)
 
-- [ ] **Task 17: Stage commands name the verbs**
+- [x] **Task 17: Stage commands name the verbs**
   - Description: Add one sentence each to `build.md`, `review.md`, `plan.md` and `spec.md`, worded as in the spec. Replace the `next.md` body with "run `agent-skills next` and print its output".
   - Acceptance:
     - Each file names the verbs that the spec lists for it.

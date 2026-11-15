@@ -5,6 +5,8 @@ disable-model-invocation: true
 
 Invoke the agent-skills:code-review-and-quality skill.
 
+In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills pr <pr>`, which names the task, the spec and the standard, and run tests with `agent-skills run --`.
+
 Review the current changes (staged or recent commits) across all five axes:
 
 1. **Correctness** — Does it match the spec? Edge cases handled? Tests adequate?
