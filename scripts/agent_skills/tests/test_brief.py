@@ -1,7 +1,14 @@
+import io
+import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 
-from agent_skills import brief
-from fakes import fixture_text
+from agent_skills import brief, cli
+from fakes import FakeRunner, fixture_json, fixture_text
+
+BLENDER = "julian-perge/blender-addon-rs317-667mqo-makeup"
+BLENDER_SPECS = ["12-contact-sheet-and-runbook.md", "12-sword-flourish-test.md", "35-draynor-region-import.md"]
 
 INTRO = None
 EVERY = [INTRO, "Helpers"]
@@ -98,6 +105,98 @@ class StageNameTest(unittest.TestCase):
     def test_an_unknown_stage_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             brief.stage_name("ship")
+
+
+class BriefVerbTest(unittest.TestCase):
+    def setUp(self) -> None:
+        checkout = tempfile.TemporaryDirectory()
+        self.addCleanup(checkout.cleanup)
+        self.root = Path(checkout.name)
+        (self.root / "spec").mkdir()
+        for name in BLENDER_SPECS:
+            (self.root / "spec" / name).write_text("# spec\n")
+        for name in ("AGENTS.md", "CLAUDE.md", "CODING_STANDARDS.md"):
+            (self.root / name).write_text("# rules\n")
+        (self.root / "docs" / "agents").mkdir(parents=True)
+        self.workflow = fixture_text("workflow-blender.md")
+        (self.root / "docs" / "agents" / "workflow.md").write_text(self.workflow)
+
+    def run_cli(self, argv: list[str], fixture: str | None = None) -> tuple[int, str, str, FakeRunner]:
+        runner = FakeRunner()
+        if fixture:
+            runner.on("gh", "api", "graphql", stdout=fixture_json(fixture))
+        for _ in range(3):
+            runner.on("git", "rev-parse", "--show-toplevel", stdout=str(self.root) + "\n")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(["--repo", BLENDER, *argv], runner)
+        return code, out.getvalue(), err.getvalue(), runner
+
+    def rules(self, stage: str) -> str:
+        return f"# Rules for {stage}, from docs/agents/workflow.md\n" + "".join(brief.stage_sections(self.workflow, stage))
+
+    def test_build_prints_the_rules_then_the_issue_from_its_second_line(self) -> None:
+        code, out, _, _ = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
+        _, issue, _, _ = self.run_cli(["issue", "35"], "issue-blender-35.json")
+        self.assertEqual(code, 0)
+        self.assertEqual(out, self.rules("build") + "# Issue #35\n" + issue.split("\n", 1)[1])
+
+    def test_review_prints_the_rules_then_the_pr_from_its_second_line(self) -> None:
+        code, out, _, _ = self.run_cli(["brief", "review", "66"], "pr-blender-66.json")
+        _, pr, _, _ = self.run_cli(["pr", "66"], "pr-blender-66.json")
+        self.assertEqual(code, 0)
+        self.assertEqual(out, self.rules("review") + "# PR #66\n" + pr.split("\n", 1)[1])
+
+    def test_the_gh_calls_equal_those_of_issue(self) -> None:
+        _, _, _, brief_runner = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
+        _, _, _, issue_runner = self.run_cli(["issue", "35"], "issue-blender-35.json")
+        self.assertEqual(brief_runner.gh_calls(), issue_runner.gh_calls())
+
+    def test_the_gh_calls_equal_those_of_pr(self) -> None:
+        _, _, _, brief_runner = self.run_cli(["brief", "review", "66"], "pr-blender-66.json")
+        _, _, _, pr_runner = self.run_cli(["pr", "66"], "pr-blender-66.json")
+        self.assertEqual(brief_runner.gh_calls(), pr_runner.gh_calls())
+
+    def test_every_stage_but_review_uses_issue(self) -> None:
+        for stage in ("idea", "design", "spec", "plan", "bug", "test"):
+            with self.subTest(stage=stage):
+                code, out, _, _ = self.run_cli(["brief", stage, "35"], "issue-blender-35.json")
+                self.assertEqual(code, 0)
+                self.assertIn("\n# Issue #35\n", out)
+
+    def test_a_leading_hash_is_accepted(self) -> None:
+        _, plain, _, _ = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
+        code, hashed, _, _ = self.run_cli(["brief", "build", "#35"], "issue-blender-35.json")
+        self.assertEqual(code, 0)
+        self.assertEqual(hashed, plain)
+
+    def test_full_is_passed_to_issue(self) -> None:
+        _, out, _, _ = self.run_cli(["brief", "build", "35", "--full"], "issue-blender-35.json")
+        _, issue, _, _ = self.run_cli(["issue", "35", "--full"], "issue-blender-35.json")
+        self.assertTrue(out.endswith(issue.split("\n", 1)[1]))
+
+    def test_a_command_name_prints_its_stage_name(self) -> None:
+        _, out, _, _ = self.run_cli(["brief", "test"])
+        self.assertEqual(out, self.rules("bug"))
+
+    def test_no_number_prints_the_rules_only_and_calls_no_gh(self) -> None:
+        code, out, _, runner = self.run_cli(["brief", "build"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out, self.rules("build"))
+        self.assertEqual(runner.gh_calls(), [])
+
+    def test_no_workflow_file_gives_exit_2_and_names_setup_workflow(self) -> None:
+        (self.root / "docs" / "agents" / "workflow.md").unlink()
+        code, out, err, runner = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("/agent-skills:setup-workflow", err)
+        self.assertEqual(runner.gh_calls(), [])
+
+    def test_an_unknown_stage_is_a_usage_error(self) -> None:
+        code, out, _, _ = self.run_cli(["brief", "ship"])
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
 
 
 if __name__ == "__main__":

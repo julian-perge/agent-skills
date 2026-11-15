@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from agent_skills import REFUSED, CliError, render, run, tracker
+from agent_skills import REFUSED, CliError, brief, render, run, tracker
 from agent_skills.github import GitHub, Runner, run_process
 
 Handler = Callable[[GitHub, argparse.Namespace], str]
@@ -21,6 +21,13 @@ def issue_number(value: str) -> int:
     if not digits.isdigit():
         raise argparse.ArgumentTypeError(f"expected an issue number, got {value!r}")
     return int(digits)
+
+
+def stage_arg(value: str) -> str:
+    try:
+        return brief.stage_name(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from None
 
 
 def branch_kind(value: str) -> str:
@@ -57,6 +64,20 @@ def pr_parts(gh: GitHub, number: int) -> tuple[tracker.PullRequest, tracker.Task
 def pr_verb(gh: GitHub, args: argparse.Namespace) -> str:
     pr, task, title, spec, standard = pr_parts(gh, args.number)
     return render.pr_report(pr, task, title, spec, standard, args.full)
+
+
+def brief_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    path = checkout_root(gh) / "docs" / "agents" / "workflow.md"
+    if not path.is_file():
+        raise CliError("No docs/agents/workflow.md in this repo. Run /agent-skills:setup-workflow first.")
+    rules = f"# Rules for {args.stage}, from docs/agents/workflow.md\n" + "".join(brief.stage_sections(path.read_text(), args.stage))
+    if args.number is None:
+        return rules
+    if args.stage == "review":
+        heading, report = f"# PR #{args.number}\n", pr_verb(gh, args)
+    else:
+        heading, report = f"# Issue #{args.number}\n", issue_verb(gh, args)
+    return rules + heading + report.split("\n", 1)[1]
 
 
 def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:
@@ -160,6 +181,12 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("number", type=issue_number, metavar="N")
     pr.add_argument("--full", action="store_true", help="print the whole body")
     pr.set_defaults(handler=pr_verb)
+
+    brief_parser = verbs.add_parser("brief", help="the parts of docs/agents/workflow.md that a stage needs, then the issue or PR")
+    brief_parser.add_argument("stage", type=stage_arg, metavar="STAGE", help=f"one of {', '.join(brief.STAGES)}, or {', '.join(brief.COMMAND_NAMES)}")
+    brief_parser.add_argument("number", type=issue_number, nargs="?", metavar="N", help="the PR for review, else the issue; leave out to print the rules only")
+    brief_parser.add_argument("--full", action="store_true", help="passed to issue or pr")
+    brief_parser.set_defaults(handler=brief_verb)
 
     next_verb_parser = verbs.add_parser("next", help="what to do next: PRs to review, tasks to build, issues to plan, spec or refine")
     next_verb_parser.set_defaults(handler=next_verb)

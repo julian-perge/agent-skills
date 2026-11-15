@@ -23,7 +23,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/brief.py`, `scripts/agent_skills/tests/test_brief.py`, `scripts/agent_skills/tests/fixtures/workflow-blender.md`, `scripts/agent_skills/tests/fixtures/workflow-urchin.md`.
   - Scope: S.
 
-- [ ] **Task 2: The `brief` verb**
+- [x] **Task 2: The `brief` verb**
   - Description: Add `brief <stage> [<n>] [--full]` to `cli.py`. It reads `docs/agents/workflow.md` at the checkout root, prints the rules from task 1, then the output of `issue_verb` or `pr_verb` from its second line under a new heading.
   - Acceptance:
     - `review` uses `pr`. Every other stage uses `issue`. A leading `#` on the number is accepted.
