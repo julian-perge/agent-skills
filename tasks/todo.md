@@ -249,7 +249,7 @@ Plugin check: claude plugin validate .
   - Files: urchin and blender `docs/agents/workflow.md` and `docs/agents/issue-tracker.md`.
   - Scope: S.
 
-- [ ] **Task 21: Measure the core bet**
+- [x] **Task 21: Measure the core bet**
   - Description: After both PRs merge, the user runs 3 build sessions and 2 review sessions in blender. Run `audit.py` and `openers.py` over those sessions and write the numbers into the idea doc.
   - Acceptance:
     - At most 1 Bash call before the first source read.

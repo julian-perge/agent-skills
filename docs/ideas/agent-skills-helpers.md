@@ -44,11 +44,37 @@ Slice 2, after a measurement:
 
 ## Key Assumptions to Validate
 
-- [ ] **Agents call the verbs when the command file names them.** Test: after slice 1, run 3 build and 2 review sessions in blender, then run `audit.py`. Targets: 1 Bash call before the first source read, and 0 raw `gh issue view` calls.
+- [x] **Agents call the verbs when the command file names them.** Test: after slice 1, run 3 build and 2 review sessions in blender, then run `audit.py`. Targets: 1 Bash call before the first source read, and 0 raw `gh issue view` calls. Result: the agents call the verbs, but 2 of the 3 targets miss. See "Trial results" below.
 - [ ] **Claude Code installs from a directory marketplace whose plugin source is `./`.** Test: check that `/agent-skills:build` resolves to `~/code/agent-skills` and not to the plugin cache.
 - [ ] **The OpenCode workers and Codex see `~/.local/bin`.** Test: run `worker-run` on one issue and look for `agent-skills issue` in its log.
 - [ ] **The default brief stays small.** Test: `agent-skills issue 107` in urchin (its body is over 12k characters) stays under about 4k characters.
 - [ ] **An upstream merge costs minutes.** Test: merge the next upstream release and count the conflicts.
+
+## Trial results (slice 1, 2026-11-15)
+
+Six blender sessions ran after the slice 1 merges: 3 builds and 3 reviews. The counts come from `audit.py`, `openers.py` and `targets.py` in `~/tmp/2026-11-15-agent-cli-audit/`, with the output in its `trial/` folder.
+
+| Session | Stage | Bash calls | Before the first source read | Raw `gh issue view` | Tail-only reruns |
+|---|---|---|---|---|---|
+| `ed3335d7` (`local_164fb59c`) | build #73 | 21 | 2 | 1 (blocked) | 0 |
+| `7f4ce06f` (`local_21dde977`) | review PR 77 | 25 | 2 | 2 | 0 |
+| `6d3ac9a0` (`local_ecb5e47b`) | build #74 | 41 | 4 | 0 | 0 |
+| `1580f836` (`local_515a070a`) | build #31 | 53 | 2 | 0 | 0 |
+| `7075996d` (`local_0da34974`) | review PR 79 | 37 | 4 | 0 | 0 |
+| `355612a2` (`local_2c4a9a38`) | review PR 78 | 11 | 3 | 0 | 0 |
+
+A source read is the first read of a file under `src/` or `tests/`, or the first `git diff` in a review. A tail-only rerun is the same command with only its `tail` or `head` changed and no edit between the two runs.
+
+- **At most 1 Bash call before the first source read: missed.** Every session used 2 to 4 calls. The first call always reads `docs/agents/workflow.md`, because the agent file says to read it before any stage. The second reads the issue or the PR with `agent-skills issue` or `agent-skills pr`. The other calls read the spec, a research doc, or the linked-session note that the desktop app adds. So 2 calls is the floor with the current `workflow.md` rule. The verbs did replace the 3 to 6 `gh` calls of the old openers.
+- **0 raw `gh issue view` calls: missed.** There were 3 calls in 2 sessions. In build #73, the hook blocked `gh issue view 73 --comments`, and the next call used `agent-skills issue 73`. Review PR 77 called `gh issue view 73 --json body --jq .body` twice. The hook allows that form. It also called `gh pr view 77 --json ...` after `agent-skills pr 77`, so the PR brief did not hold what the reviewer wanted (a guess: the commit list and the file stats).
+- **0 tail-only test reruns: met.** Review PR 79 ran `prek run --all-files` twice with `tail -30` and `tail -14`, but it edited files between the two runs.
+- **Verb use:** 53 calls in 6 sessions. `run` 33, `issue` 7, `claim` 5, `pr` 3, `next-cmd` 3, `frontier` 1, `--help` 1. Of 40 test, lint and type-check runs, 31 went through `agent-skills run`. The agents still piped 9 of the wrapped runs to `tail`, which the wrapper makes unnecessary.
+
+For slice 2, this suggests:
+
+- Put the `workflow.md` rules that a stage needs into the stage brief, or inject them with the `UserPromptSubmit` hook, so the first call can be the brief.
+- Add the commit list and the file stats to `agent-skills pr`.
+- Tell agents in the `run` section that the summary already holds the tail, so no `| tail` is needed.
 
 ## Not Doing (and Why)
 
