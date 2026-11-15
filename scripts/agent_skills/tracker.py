@@ -8,6 +8,7 @@ SPEC_NUMBER = re.compile(r"spec/(\d+)-")
 CLOSES = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b", re.IGNORECASE)
 BRANCH_NUMBER = re.compile(r"^[\w.-]+/(\d+)-")
 STANDARD_FILES = ("CODING_STANDARDS.md", "AGENTS.md", "CLAUDE.md")
+NOT_FOR_SPEC = frozenset({"ready-for-agent", "ready-for-human", "needs-info", "needs-triage", "wontfix"})
 
 
 @dataclass(frozen=True)
@@ -26,13 +27,17 @@ class Frontier:
     reason: str = ""
 
 
+def ready_to_build(labels: Sequence[str], assigned: bool, open_blockers: int) -> bool:
+    return "ready-for-agent" in labels and not assigned and open_blockers == 0
+
+
 def frontier(subs: Sequence[SubIssue]) -> Frontier:
     if not subs:
         return Frontier(None, "no sub-issues")
     open_subs = [s for s in subs if s.state == "OPEN"]
     if not open_subs:
         return Frontier(None, f"all {len(subs)} sub-issues are closed")
-    ready = [s.number for s in open_subs if "ready-for-agent" in s.labels and not s.assignees and s.open_blockers == 0]
+    ready = [s.number for s in open_subs if ready_to_build(s.labels, bool(s.assignees), s.open_blockers)]
     if ready:
         return Frontier(min(ready))
     counts = (
@@ -196,3 +201,142 @@ def claim_refusal(issue: Issue, me: str) -> str | None:
     if blockers:
         return f"#{issue.number} has open blockers: {', '.join(blockers)}."
     return None
+
+
+@dataclass(frozen=True)
+class TrackerIssue:
+    number: int
+    title: str
+    body: str = ""
+    labels: tuple[str, ...] = ()
+    assigned: bool = False
+    parent_number: int | None = None
+    parent_body: str = ""
+    sub_issue_total: int = 0
+    open_blockers: int = 0
+    open_pull_requests: tuple[int, ...] = ()
+
+    def lookup(self) -> Issue:
+        return Issue(self.number, self.title, body=self.body, parent_number=self.parent_number, parent_body=self.parent_body)
+
+
+@dataclass(frozen=True)
+class OpenPull:
+    number: int
+    title: str
+    head: str = ""
+    body: str = ""
+    draft: bool = False
+    created_at: str = ""
+
+
+@dataclass(frozen=True)
+class ReviewRow:
+    pr: int
+    title: str
+    task: TaskMatch
+    spec: SpecMatch
+
+
+@dataclass(frozen=True)
+class IssueRow:
+    number: int
+    title: str
+    spec: str | None = None
+    frontier: bool = False
+
+
+@dataclass(frozen=True)
+class Groups:
+    review: tuple[ReviewRow, ...] = ()
+    build: tuple[IssueRow, ...] = ()
+    plan: tuple[IssueRow, ...] = ()
+    spec: tuple[IssueRow, ...] = ()
+    idea: tuple[IssueRow, ...] = ()
+
+
+def review_rows(pulls: Sequence[OpenPull], issues: Sequence[TrackerIssue], spec_files: frozenset[str]) -> tuple[ReviewRow, ...]:
+    by_number = {issue.number: issue for issue in issues}
+    rows = []
+    for pull in sorted((p for p in pulls if not p.draft), key=lambda p: (p.created_at, p.number)):
+        task = pr_task((), pull.body, pull.head)
+        spec = SpecMatch(None, "none", guess=False)
+        if task.number is not None:
+            issue = by_number.get(task.number)
+            spec = spec_for(issue.lookup() if issue else Issue(task.number, ""), spec_files)
+        rows.append(ReviewRow(pull.number, pull.title, task, spec))
+    return tuple(rows)
+
+
+def is_buildable(issue: TrackerIssue) -> bool:
+    return ready_to_build(issue.labels, issue.assigned, issue.open_blockers) and not issue.open_pull_requests
+
+
+def specs_by_issue(spec_files: frozenset[str]) -> dict[int, list[str]]:
+    grouped: dict[int, list[str]] = {}
+    for path in sorted(spec_files):
+        number = spec_number(path)
+        if number is not None:
+            grouped.setdefault(number, []).append(path)
+    return grouped
+
+
+def plan_candidates(pulls: Sequence[OpenPull], issues: Sequence[TrackerIssue], spec_files: frozenset[str]) -> list[int]:
+    taken = {row.task.number for row in review_rows(pulls, issues, spec_files)}
+    with_specs = specs_by_issue(spec_files)
+    return sorted(i.number for i in issues if i.number in with_specs and i.number not in taken and not is_buildable(i))
+
+
+def frontier_marks(issues: Sequence[TrackerIssue], build: Sequence[TrackerIssue]) -> set[int]:
+    lowest: dict[int, int] = {}
+    for issue in issues:
+        if issue.parent_number is not None and ready_to_build(issue.labels, issue.assigned, issue.open_blockers):
+            lowest[issue.parent_number] = min(lowest.get(issue.parent_number, issue.number), issue.number)
+    build_numbers = {issue.number for issue in build}
+    return {n for n in lowest.values() if n in build_numbers} | {i.number for i in build if i.parent_number is None}
+
+
+def group(
+    pulls: Sequence[OpenPull],
+    issues: Sequence[TrackerIssue],
+    spec_files: frozenset[str],
+    sub_issue_bodies: dict[int, Sequence[str]],
+) -> Groups:
+    ordered = sorted(issues, key=lambda i: i.number)
+    review = review_rows(pulls, issues, spec_files)
+    placed = {row.task.number for row in review if row.task.number is not None}
+
+    buildable = [i for i in ordered if i.number not in placed and is_buildable(i)]
+    marks = frontier_marks(issues, buildable)
+    build = sorted((IssueRow(i.number, i.title, frontier=i.number in marks) for i in buildable), key=lambda r: (not r.frontier, r.number))
+    placed |= {row.number for row in build}
+
+    with_specs = specs_by_issue(spec_files)
+    plan = []
+    for issue in ordered:
+        if issue.number in placed or issue.number not in with_specs:
+            continue
+        bodies = sub_issue_bodies.get(issue.number, ())
+        plan += [IssueRow(issue.number, issue.title, spec=path) for path in with_specs[issue.number] if not any(path in body for body in bodies)]
+    placed |= {row.number for row in plan}
+
+    spec = [
+        IssueRow(i.number, i.title)
+        for i in ordered
+        if i.number not in placed
+        and i.parent_number is None
+        and i.sub_issue_total == 0
+        and not NOT_FOR_SPEC.intersection(i.labels)
+        and spec_for(i.lookup(), spec_files).path is None
+    ]
+    placed |= {row.number for row in spec}
+
+    idea = [IssueRow(i.number, i.title) for i in ordered if i.number not in placed and "needs-triage" in i.labels]
+    return Groups(review, tuple(build), tuple(plan), tuple(spec), tuple(idea))
+
+
+def next_step(groups: Groups) -> ReviewRow | IssueRow | None:
+    if groups.review:
+        return groups.review[0]
+    frontiers = [row for row in groups.build if row.frontier]
+    return min(frontiers, key=lambda row: row.number) if frontiers else None

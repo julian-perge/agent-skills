@@ -156,7 +156,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `github.py`, `cli.py`, `tests/test_claim.py`.
   - Scope: M.
 
-- [ ] **Task 13: `next` rules**
+- [x] **Task 13: `next` rules**
   - Description: Port the group rules (Review, Build, Plan, Spec, Idea), the priority order, the frontier mark and the guess list into pure functions.
   - Acceptance: one test per row of the group table in the old SKILL.md, plus the priority order when an issue fits several groups.
   - Verify: the unit tests pass.
