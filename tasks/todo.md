@@ -192,7 +192,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/run.py`, `cli.py`, `tests/test_run.py`.
   - Scope: M.
 
-- [ ] **Task 16: `run` summary patterns**
+- [x] **Task 16: `run` summary patterns**
   - Description: Add the fixed pattern table, the cap of 40 lines with no duplicates, and the `--tail` section.
   - Acceptance: spec criterion 1 holds for the four real fixtures.
   - Verify: the unit tests pass. A manual `agent-skills run` of `test-blender.sh -k pick` in blender needs no second run.

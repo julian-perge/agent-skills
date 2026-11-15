@@ -34,8 +34,8 @@ agent-skills run [--name LABEL] [--tail N] -- CMD [ARG...]
 
 | Runner | Patterns |
 | --- | --- |
-| pytest | `^(FAILED\|ERROR) `, `^E  `, `=+ .*(passed\|failed\|error).* =+$`, `short test summary` |
-| GUT | `Passing Tests`, `Failing Tests`, `Asserts`, `Risky`, `\[Failed\]`, `SCRIPT ERROR`, `Parse Error` |
+| pytest | `^(FAILED\|ERROR) `, `^E  `, `=+ .*(passed\|failed\|error).* =+$`, `^\d+ [a-z]+(, \d+ [a-z]+)* in \d+(\.\d+)?s`, `^no tests ran in `, `short test summary` |
+| GUT | `Passing Tests`, `Failing Tests`, `Asserts`, `Risky`, `\[Failed\]`, `^- test_\w+` (a failing test's name in the Run Summary), `SCRIPT ERROR`, `Parse Error` |
 | prek, pre-commit | `\.+Failed$`, `- hook id:`, `- exit code:` |
 | any | `Traceback \(most recent call last\)`, `^\w*Error:`, `^error(\[\w+\])?:`, `^fatal:` |
 

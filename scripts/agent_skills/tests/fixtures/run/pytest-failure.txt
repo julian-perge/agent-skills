@@ -1,0 +1,12 @@
+                continue
+            dx, dy = WALL_SHADOW_CORNERS[0][row["rotation"]][0]
+            x, y = row["x"] + dx, row["y"] + dy
+            if 3 <= x <= 60 and 3 <= y <= 60 and not any(abs(ox - x) <= 3 and abs(oy - y) <= 3 for ox, oy in objects):
+                return x, y
+>       raise AssertionError("48_50 has no wall of type 0 away from the objects that cast shadows")
+E       AssertionError: 48_50 has no wall of type 0 away from the objects that cast shadows
+
+tests/blender/test_region_import.py:875: AssertionError
+=========================== short test summary info ============================
+FAILED tests/blender/test_region_import.py::test_the_terrain_corners_next_to_a_wall_of_48_50_have_the_colour_with_the_shadow_of_the_wall
+1 failed, 1 passed, 923 deselected in 22.46s

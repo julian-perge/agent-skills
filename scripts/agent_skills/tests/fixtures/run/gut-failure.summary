@@ -1,0 +1,6 @@
+SCRIPT ERROR: Parse Error: Static function "money_levels()" not found in base "BattleRewards".
+    [Failed]:  [130.0] expected to equal [36.0]:  round(0.7 * respecValue((7 + 1 + 1) / 3))
+- test_victory_money_counts_the_companion_markers
+Passing Tests      none
+Failing Tests         1
+Asserts             1/2
