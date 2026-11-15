@@ -39,8 +39,8 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint A: after tasks 1 and 2
 
-- [ ] All three hosts and the shell read `~/code/agent-skills`.
-- [ ] Review the Codex cache finding with the user before going on.
+- [x] All three hosts and the shell read `~/code/agent-skills`.
+- [x] Review the Codex cache finding with the user before going on.
 
 - [x] **Task 3: Move the workflow seeds into the fork**
   - Description: Copy the 4 seed files to `references/workflow/`. Change the skill search path in `survey-prompt.md` to `~/code/agent-skills`, and the next-command name in `workflow-github.md` to `/agent-skills:next`.
@@ -84,8 +84,8 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint B: install complete
 
-- [ ] Success criteria 1 to 9 of `spec/helpers-install.md` hold.
-- [ ] Ask the user before deleting `~/.local/share/agent-skills`.
+- [x] Success criteria 1 to 9 of `spec/helpers-install.md` hold.
+- [x] Ask the user before deleting `~/.local/share/agent-skills`. The folder is gone (checked 2026-11-15).
 
 ## Phase 2: tracker-cli (spec/helpers-tracker-cli.md)
 
@@ -123,7 +123,7 @@ Plugin check: claude plugin validate .
 ### Checkpoint C: after tasks 7 to 9
 
 - [x] The unit tests pass locally and in CI on a pushed branch.
-- [ ] Manual `issue` and `frontier` runs in urchin and blender look right to the user.
+- [x] Manual `issue` and `frontier` runs in urchin and blender look right to the user.
 
 - [x] **Task 10: `pr`**
   - Description: Add the PR query, the task lookup (closing references, then `Closes #n`, then the branch number as a guess), the standard file, the output and the review line.
@@ -177,8 +177,8 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint D: tracker-cli complete
 
-- [ ] Success criteria 1 to 8 of `spec/helpers-tracker-cli.md` hold.
-- [ ] Review the CLI output with the user before the stage files name it.
+- [x] Success criteria 1 to 8 of `spec/helpers-tracker-cli.md` hold.
+- [x] Review the CLI output with the user before the stage files name it.
 
 ## Phase 3: run-wrapper (spec/helpers-run-wrapper.md)
 
@@ -202,7 +202,7 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint E: run-wrapper complete
 
-- [ ] Success criteria 1 to 5 of `spec/helpers-run-wrapper.md` hold.
+- [x] Success criteria 1 to 5 of `spec/helpers-run-wrapper.md` hold.
 
 ## Phase 4: stage-wiring (spec/helpers-stage-wiring.md)
 
@@ -236,8 +236,8 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint F: before touching other repos
 
-- [ ] Success criteria 1, 2 and 4 of `spec/helpers-stage-wiring.md` hold.
-- [ ] The user approves opening the urchin and blender PRs.
+- [x] Success criteria 1, 2 and 4 of `spec/helpers-stage-wiring.md` hold.
+- [x] The user approves opening the urchin and blender PRs.
 
 - [x] **Task 20: Refresh urchin and blender workflow docs**
   - Description: Run `/agent-skills:setup-workflow` in each repo and open one PR per repo. The user merges.
@@ -263,5 +263,15 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint G: slice 1 complete
 
-- [ ] Every success criterion in the four module specs holds.
-- [ ] The measurement decides what slice 2 does first.
+- [x] Every success criterion in the four module specs holds, except stage-wiring criterion 5. The user accepted that miss on 2026-11-15, and slice 2 addresses its cause.
+- [x] The measurement decides what slice 2 does first: inject the `workflow.md` rules that each stage needs, so the first call can be the brief.
+
+Evidence (2026-11-15):
+
+- Every criterion holds except stage-wiring criterion 5, the core bet. 2 of its 3 targets miss. The idea doc has the numbers.
+- The fork checks, `claude plugin validate .` and the 174 unit tests pass, and CI passes on `b461d21`.
+- The hook case table passes all 30 cases. Task 20 removed the `upstream` remote from this checkout, so the table now makes a temporary repo with one.
+- A new headless Claude Code session has `~/code/agent-skills/bin` on its PATH. `type -a agent-skills` finds the plugin copy and the `~/.local/bin` link.
+- In blender, `claude -p "/agent-skills:next"` prints the same 20 lines as `agent-skills next`. Two CLI runs give the same output byte for byte. This is a headless session, not an interactive one.
+- An OpenCode `worker-build-small` session in urchin ran `gh issue view 5 --comments` once, and the hook denied it with the `agent-skills issue` message.
+- `agent-skills issue 107` in urchin prints 4,804 characters.
