@@ -217,8 +217,8 @@ Plugin check: claude plugin validate .
   - Scope: S.
 
 - [ ] **Task 18: Workflow seeds name the verbs**
-  - Description: Add the `## Helpers` section and the Build, Review and verify changes to `workflow-github.md`. Make reads use verbs in `issue-tracker-github.md`. Add the `run` line to `workflow-files.md`. Add the stale rule and the `command -v agent-skills` check to `setup-workflow.md`.
-  - Acceptance: every change listed in items 3 to 6 of the spec is present.
+  - Description: Add the `## Helpers` section and the Build, Review and verify changes to `workflow-github.md`. Make reads use verbs in `issue-tracker-github.md`. Add the `run` line to `workflow-files.md`. Add the stale rule and the `command -v agent-skills` check to `setup-workflow.md`. Change the frontier query in `issue-tracker-github.md` to the rule the user set on 2026-11-15: the lowest open sub-issue with the `ready-for-agent` label, no open blocker and no assignee.
+  - Acceptance: every change listed in items 3 to 6 of the spec is present, and the frontier query has the label condition.
   - Verify: the fork checks pass, plus an `rg` for `## Helpers` and for each verb.
   - Dependencies: 4, 11, 12, 16.
   - Files: `references/workflow/workflow-github.md`, `issue-tracker-github.md`, `workflow-files.md`, `.claude/commands/setup-workflow.md`.
