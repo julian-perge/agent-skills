@@ -95,6 +95,8 @@ For the full format, naming conventions, frontmatter rules, supporting-file thre
 
 PRs target `main` of this fork, `julian-perge/agent-skills`, which is the `origin` remote. Pass `--repo julian-perge/agent-skills` on every `gh` write, so it never lands on the parent repo `addyosmani/agent-skills`. This checkout has no `upstream` remote. To bring in upstream changes, add it with `git remote add upstream https://github.com/addyosmani/agent-skills.git`, then run `git fetch upstream && git merge upstream/main`.
 
+Claude Code runs a copy of this plugin from `~/.claude/plugins/cache/addy-agent-skills/agent-skills/<version>`, not this checkout. `claude plugin update agent-skills@addy-agent-skills` copies the checkout again only when the version changes. So a change to commands, skills or hooks reaches new sessions only after you bump the version in every manifest that `scripts/validate-versions.js` lists and run that update. The `agent-skills` CLI in `bin/` runs from this checkout and needs no bump.
+
 ## Local Install
 
 On Julian's Mac, Claude Code (a directory marketplace) and OpenCode (its `skills` path) read `~/code/agent-skills` in place, so an edit applies at the next session or after `/reload-plugins`. Codex installs a copy into `~/.codex/plugins/cache/agent-skills/`, so after an edit run `codex plugin add agent-skills@agent-skills` to copy it again.
