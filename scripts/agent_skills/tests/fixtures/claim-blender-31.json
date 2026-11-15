@@ -1,0 +1,27 @@
+{
+  "data": {
+    "viewer": {
+      "login": "julian-perge"
+    },
+    "repository": {
+      "issue": {
+        "number": 31,
+        "title": "The appearance panel says nothing when a cache definition fails to decode",
+        "state": "OPEN",
+        "labels": {
+          "nodes": [
+            {
+              "name": "ready-for-agent"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": []
+        },
+        "blockedBy": {
+          "nodes": []
+        }
+      }
+    }
+  }
+}

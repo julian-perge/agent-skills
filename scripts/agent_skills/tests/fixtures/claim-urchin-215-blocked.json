@@ -1,0 +1,55 @@
+{
+  "data": {
+    "viewer": {
+      "login": "julian-perge"
+    },
+    "repository": {
+      "issue": {
+        "number": 215,
+        "title": "Open the game on the title and add the shared menu pieces",
+        "state": "OPEN",
+        "labels": {
+          "nodes": [
+            {
+              "name": "enhancement"
+            },
+            {
+              "name": "ready-for-agent"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": []
+        },
+        "blockedBy": {
+          "nodes": [
+            {
+              "number": 214,
+              "state": "CLOSED"
+            },
+            {
+              "number": 209,
+              "state": "OPEN"
+            },
+            {
+              "number": 208,
+              "state": "CLOSED"
+            },
+            {
+              "number": 207,
+              "state": "CLOSED"
+            },
+            {
+              "number": 205,
+              "state": "CLOSED"
+            },
+            {
+              "number": 203,
+              "state": "CLOSED"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

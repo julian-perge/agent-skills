@@ -1,0 +1,40 @@
+{
+  "data": {
+    "viewer": {
+      "login": "julian-perge"
+    },
+    "repository": {
+      "issue": {
+        "number": 49,
+        "title": "The region import places the level 0 scenery as objects",
+        "state": "CLOSED",
+        "labels": {
+          "nodes": [
+            {
+              "name": "ready-for-agent"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": [
+            {
+              "login": "julian-perge"
+            }
+          ]
+        },
+        "blockedBy": {
+          "nodes": [
+            {
+              "number": 47,
+              "state": "CLOSED"
+            },
+            {
+              "number": 44,
+              "state": "CLOSED"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

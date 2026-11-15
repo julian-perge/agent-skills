@@ -54,6 +54,18 @@ TASK_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
   }
 }"""
 
+CLAIM_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  viewer { login }
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      number title state
+      labels(first: 20) { nodes { name } }
+      assignees(first: 10) { nodes { login } }
+      blockedBy(first: 20) { nodes { number state } }
+    }
+  }
+}"""
+
 PR_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
@@ -172,6 +184,17 @@ def parse_pull_request(node: dict[str, Any]) -> PullRequest:
     )
 
 
+def parse_claim_issue(node: dict[str, Any]) -> Issue:
+    return Issue(
+        number=node["number"],
+        title=node["title"],
+        state=node["state"],
+        labels=tuple(label["name"] for label in node["labels"]["nodes"]),
+        assignees=tuple(a["login"] for a in node["assignees"]["nodes"]),
+        blockers=tuple(Link(b["number"], b["state"]) for b in node["blockedBy"]["nodes"]),
+    )
+
+
 def parse_remote(url: str) -> str:
     match = REMOTE.search(url.strip()) if "://" in url or "@" in url else None
     if match is None:
@@ -216,6 +239,31 @@ class GitHub:
     def task_issue(self, number: int) -> Issue:
         return parse_closing_issue(self.graphql(TASK_QUERY, number=number)["repository"]["issue"])
 
+    def claim_view(self, number: int) -> tuple[Issue, str]:
+        data = self.graphql(CLAIM_QUERY, number=number)
+        return parse_claim_issue(data["repository"]["issue"]), data["viewer"]["login"]
+
+    def add_assignee_me(self, number: int) -> None:
+        self._gh(["gh", "issue", "edit", str(number), "--repo", self.repo, "--add-assignee", "@me"])
+
+    def tree_has_changes(self) -> bool:
+        return bool(self._git(["git", "status", "--porcelain", "--untracked-files=no"]).strip())
+
+    def default_branch(self) -> str:
+        result = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"])
+        if result.returncode != 0:
+            raise CliError("Cannot read the default branch of origin. Run `git remote set-head origin --auto`.")
+        return result.stdout.strip().removeprefix("refs/remotes/origin/")
+
+    def branch_exists(self, branch: str) -> bool:
+        refs = self._git(["git", "for-each-ref", "--format=%(refname)", f"refs/heads/{branch}", f"refs/remotes/origin/{branch}"])
+        return bool(refs.strip())
+
+    def branch_from(self, branch: str, default: str) -> str:
+        self._git(["git", "fetch", "origin", default])
+        self._git(["git", "switch", "-c", branch, f"origin/{default}"])
+        return self._git(["git", "rev-parse", "--short", "HEAD"]).strip()
+
     def toplevel(self) -> str | None:
         result = self._run(["git", "rev-parse", "--show-toplevel"])
         return result.stdout.strip() if result.returncode == 0 else None
@@ -226,6 +274,12 @@ class GitHub:
             raise CliError("gh is not signed in. Run `gh auth login`.")
         if result.returncode != 0:
             raise CliError(f"gh failed: {(result.stderr or result.stdout).strip()}")
+        return result.stdout
+
+    def _git(self, argv: list[str]) -> str:
+        result = self._run(argv)
+        if result.returncode != 0:
+            raise CliError(f"`{' '.join(argv)}` failed: {(result.stderr or result.stdout).strip()}")
         return result.stdout
 
     def _run(self, argv: list[str]) -> Result:

@@ -153,3 +153,10 @@ def spec_problem(number: int, spec: SpecMatch) -> str:
 
 def spec_guess_note(spec: SpecMatch) -> str:
     return f"Spec {spec.path} is from the file name (guess)."
+
+
+def claim_report(number: int, assigned: str, branch: str | None, default: str, commit: str) -> str:
+    sentences = {"now": f"Claimed #{number} for @me.", "already": f"#{number} is already assigned to @me.", "skipped": ""}[assigned]
+    if branch:
+        sentences += f" Branch {branch} from origin/{default} at {commit}."
+    return (sentences.strip() or f"Nothing changed for #{number}.") + "\n"

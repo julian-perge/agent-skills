@@ -23,6 +23,12 @@ def issue_number(value: str) -> int:
     return int(digits)
 
 
+def branch_kind(value: str) -> str:
+    if not re.fullmatch(r"[a-z][a-z0-9-]*", value):
+        raise argparse.ArgumentTypeError(f"expected a lowercase branch type such as feat or fix, got {value!r}")
+    return value
+
+
 def spec_files(root: Path) -> frozenset[str]:
     return frozenset(f"spec/{path.name}" for path in (root / "spec").glob("*.md"))
 
@@ -76,6 +82,33 @@ def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return render.review_line(number, task, spec, standard) + "\n"
 
 
+def claim_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    issue, me = gh.claim_view(args.number)
+    refusal = tracker.claim_refusal(issue, me)
+    branch, default = None, ""
+    if refusal is None and not args.no_branch:
+        branch = tracker.branch_name(issue, args.type)
+        if gh.tree_has_changes():
+            refusal = "the working tree has changes. Commit or stash them, or pass --no-branch."
+        else:
+            default = gh.default_branch()
+            if gh.branch_exists(branch):
+                refusal = f"the branch {branch} already exists."
+    if refusal:
+        raise CliError(f"Not claimed: {refusal}", REFUSED)
+    assigned = "skipped" if args.no_assign else "already" if me in issue.assignees else "now"
+    if assigned == "now":
+        gh.add_assignee_me(issue.number)
+    commit = ""
+    if branch:
+        try:
+            commit = gh.branch_from(branch, default)
+        except CliError as error:
+            done = f"#{issue.number} is assigned to @me, but the branch step failed. " if assigned == "now" else ""
+            raise CliError(done + str(error)) from None
+    return render.claim_report(issue.number, assigned, branch, default, commit)
+
+
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
     title, subs = gh.sub_issues(args.number)
     return render.frontier_report(args.number, title, subs, tracker.frontier(subs))
@@ -103,6 +136,13 @@ def build_parser() -> argparse.ArgumentParser:
     next_cmd.add_argument("stage", choices=("review", "build", "plan", "spec"))
     next_cmd.add_argument("number", type=issue_number, metavar="N", help="the PR for review, the parent for build, the issue for plan and spec")
     next_cmd.set_defaults(handler=next_cmd_verb)
+
+    claim = verbs.add_parser("claim", help="assign an issue to @me and make its branch from the default branch")
+    claim.add_argument("number", type=issue_number, metavar="N")
+    claim.add_argument("--type", type=branch_kind, metavar="TYPE", help="branch type (default: fix for a bug label, else feat)")
+    claim.add_argument("--no-branch", action="store_true", help="assign only, make no branch")
+    claim.add_argument("--no-assign", action="store_true", help="make the branch only, assign no one")
+    claim.set_defaults(handler=claim_verb)
 
     frontier = verbs.add_parser("frontier", help="the open sub-issues of P and the next one to build")
     frontier.add_argument("number", type=issue_number, metavar="P")

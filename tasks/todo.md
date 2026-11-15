@@ -146,12 +146,12 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/cli.py`, `render.py`, `tests/test_next_cmd.py`.
   - Scope: S.
 
-- [ ] **Task 12: `claim`**
+- [x] **Task 12: `claim`**
   - Description: Add the preconditions, the type and slug rules, the assign step, the branch step from `origin/<default>`, and the `--no-branch` and `--no-assign` flags.
   - Acceptance:
     - A closed issue, an issue assigned to someone else, a blocked issue, a dirty tree and an existing branch each exit 1 and record no write.
     - The success path records exactly the assign call and the two git calls.
-  - Verify: the unit tests pass. One manual claim runs on a throwaway issue in a test branch, and the user approves the issue first.
+  - Verify: the unit tests pass. The user skipped the manual claim on 2026-11-15, so the fake-runner tests are the proof.
   - Dependencies: 9.
   - Files: `scripts/agent_skills/tracker.py`, `github.py`, `cli.py`, `tests/test_claim.py`.
   - Scope: M.

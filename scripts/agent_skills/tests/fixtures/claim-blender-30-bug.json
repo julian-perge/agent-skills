@@ -1,0 +1,30 @@
+{
+  "data": {
+    "viewer": {
+      "login": "julian-perge"
+    },
+    "repository": {
+      "issue": {
+        "number": 30,
+        "title": "A held item's fade property can follow a new fade group's curve",
+        "state": "OPEN",
+        "labels": {
+          "nodes": [
+            {
+              "name": "bug"
+            },
+            {
+              "name": "needs-triage"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": []
+        },
+        "blockedBy": {
+          "nodes": []
+        }
+      }
+    }
+  }
+}

@@ -160,3 +160,34 @@ def pr_task(closing: Sequence[int], body: str, head: str) -> TaskMatch:
 
 def standard_file(root_files: frozenset[str]) -> str | None:
     return next((name for name in STANDARD_FILES if name in root_files), None)
+
+
+def slug(title: str) -> str:
+    words = re.findall(r"[a-z0-9]+", title.lower().replace("'", "").replace("\u2019", ""))[:5]
+    while len(words) > 1 and len("-".join(words)) > 40:
+        words.pop()
+    return "-".join(words)[:40]
+
+
+def branch_type(labels: Sequence[str], override: str | None) -> str:
+    if override:
+        return override
+    return "fix" if "bug" in labels else "feat"
+
+
+def branch_name(issue: Issue, override: str | None) -> str:
+    name = slug(issue.title)
+    kind = branch_type(issue.labels, override)
+    return f"{kind}/{issue.number}-{name}" if name else f"{kind}/{issue.number}"
+
+
+def claim_refusal(issue: Issue, me: str) -> str | None:
+    if issue.state != "OPEN":
+        return f"#{issue.number} is closed."
+    others = [login for login in issue.assignees if login != me]
+    if others:
+        return f"#{issue.number} is assigned to {', '.join(f'@{login}' for login in others)}."
+    blockers = [f"#{b.number}" for b in issue.blockers if b.state == "OPEN"]
+    if blockers:
+        return f"#{issue.number} has open blockers: {', '.join(blockers)}."
+    return None
