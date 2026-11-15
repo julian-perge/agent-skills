@@ -12,6 +12,8 @@ SECTION_STAGES = {
     "labels": ("plan",),
     "build": ("build", "bug"),
     "review": ("review",),
+    # The Earlier layout section names old spec and task paths that no stage works on.
+    "earlier": (),
 }
 
 
@@ -39,6 +41,25 @@ def section_key(section: str) -> str | None:
     return words[0].lower() if words else ""
 
 
+def stage_rules(intro: str) -> str:
+    """Drops the title line and the first paragraph, which tells the agent to read the whole file."""
+    lines = [line for line in intro.splitlines(keepends=True) if not line.startswith("# ")]
+    start = 0
+    for wanted_blank in (True, False, True):
+        while start < len(lines) and (not lines[start].strip()) == wanted_blank:
+            start += 1
+    return "".join(lines[start:])
+
+
 def stage_sections(text: str, stage: str) -> list[str]:
     stage = stage_name(stage)
-    return [section for section in sections(text) if stage in SECTION_STAGES.get(section_key(section), STAGES)]
+    kept = []
+    for section in sections(text):
+        key = section_key(section)
+        if key is None:
+            section = stage_rules(section)
+            if section:
+                kept.append(section)
+        elif stage in SECTION_STAGES.get(key, STAGES):
+            kept.append(section)
+    return kept

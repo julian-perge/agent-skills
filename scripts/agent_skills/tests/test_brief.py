@@ -14,13 +14,13 @@ INTRO = None
 EVERY = [INTRO, "Helpers"]
 
 BLENDER_HEADINGS = {
-    "idea": EVERY + ["Stages", "Design", "Commit review", "Earlier layout", "Reports and output decisions"],
-    "design": EVERY + ["Stages", "Design", "Commit review", "Earlier layout", "Reports and output decisions"],
-    "spec": EVERY + ["Design", "Spec", "Commit review", "Earlier layout", "Reports and output decisions"],
-    "plan": EVERY + ["Labels", "Plan", "Commit review", "Earlier layout", "Reports and output decisions"],
-    "build": EVERY + ["Build", "Commit review", "Earlier layout", "Reports and output decisions"],
-    "bug": EVERY + ["Build", "Commit review", "Earlier layout", "Reports and output decisions"],
-    "review": EVERY + ["Commit review", "Review", "Earlier layout", "Reports and output decisions"],
+    "idea": EVERY + ["Stages", "Design", "Commit review", "Reports and output decisions"],
+    "design": EVERY + ["Stages", "Design", "Commit review", "Reports and output decisions"],
+    "spec": EVERY + ["Design", "Spec", "Commit review", "Reports and output decisions"],
+    "plan": EVERY + ["Labels", "Plan", "Commit review", "Reports and output decisions"],
+    "build": EVERY + ["Build", "Commit review", "Reports and output decisions"],
+    "bug": EVERY + ["Build", "Commit review", "Reports and output decisions"],
+    "review": EVERY + ["Commit review", "Review", "Reports and output decisions"],
 }
 
 URCHIN_HEADINGS = {
@@ -54,7 +54,7 @@ class StageSectionsTest(unittest.TestCase):
             with self.subTest(fixture=name, stage=stage):
                 got = brief.stage_sections(text, stage)
                 self.assertEqual([heading(section) for section in got], headings)
-                self.assertEqual(got, [whole[title] for title in headings])
+                self.assertEqual(got[1:], [whole[title] for title in headings[1:]])
 
     def test_blender_stages(self) -> None:
         self.check_fixture("workflow-blender.md", BLENDER_HEADINGS)
@@ -62,11 +62,22 @@ class StageSectionsTest(unittest.TestCase):
     def test_urchin_stages(self) -> None:
         self.check_fixture("workflow-urchin.md", URCHIN_HEADINGS)
 
-    def test_the_intro_is_the_text_before_the_first_heading(self) -> None:
-        text = fixture_text("workflow-blender.md")
-        intro = brief.stage_sections(text, "build")[0]
-        self.assertTrue(text.startswith(intro))
-        self.assertTrue(text[len(intro):].startswith("## Helpers\n"))
+    def test_the_intro_drops_its_title_and_its_first_paragraph(self) -> None:
+        for name in ("workflow-blender.md", "workflow-urchin.md"):
+            with self.subTest(fixture=name):
+                text = fixture_text(name)
+                intro = brief.stage_sections(text, "build")[0]
+                self.assertTrue(intro.startswith("The user types each stage."))
+                self.assertTrue(text.endswith(intro + text[text.index("## Helpers\n"):]))
+
+    def test_an_intro_of_one_paragraph_gives_no_section(self) -> None:
+        self.assertEqual(brief.stage_sections("# Workflow\n\nRead this first.\n## Build\nb\n", "build"), ["## Build\nb\n"])
+
+    def test_the_earlier_layout_section_goes_to_no_stage(self) -> None:
+        text = "## Earlier layout\nold paths\n## Build\nb\n"
+        for stage in brief.STAGES:
+            with self.subTest(stage=stage):
+                self.assertNotIn("## Earlier layout\nold paths\n", brief.stage_sections(text, stage))
 
     def test_an_unknown_heading_goes_to_every_stage(self) -> None:
         text = fixture_text("workflow-urchin.md") + "## Local notes\nKeep this.\n"
@@ -75,18 +86,18 @@ class StageSectionsTest(unittest.TestCase):
                 self.assertEqual(brief.stage_sections(text, stage)[-1], "## Local notes\nKeep this.\n")
 
     def test_headings_match_by_first_word_without_case(self) -> None:
-        text = "Intro\n## BUILD steps\nb\n## review\nr\n"
-        self.assertEqual(brief.stage_sections(text, "build"), ["Intro\n", "## BUILD steps\nb\n"])
+        text = "## BUILD steps\nb\n## review\nr\n"
+        self.assertEqual(brief.stage_sections(text, "build"), ["## BUILD steps\nb\n"])
 
     def test_a_missing_known_heading_is_skipped(self) -> None:
-        text = "Intro\n## Helpers\nh\n## Review\nr\n"
-        self.assertEqual(brief.stage_sections(text, "build"), ["Intro\n", "## Helpers\nh\n"])
+        text = "## Helpers\nh\n## Review\nr\n"
+        self.assertEqual(brief.stage_sections(text, "build"), ["## Helpers\nh\n"])
 
     def test_a_file_with_no_intro_gives_no_empty_section(self) -> None:
         self.assertEqual(brief.stage_sections("## Build\nb\n", "build"), ["## Build\nb\n"])
 
     def test_a_last_line_with_no_newline_is_kept(self) -> None:
-        self.assertEqual(brief.stage_sections("Intro\n## Build\nb", "build"), ["Intro\n", "## Build\nb"])
+        self.assertEqual(brief.stage_sections("# Workflow\n\nFirst.\n\nSecond.\n## Build\nb", "build"), ["Second.\n", "## Build\nb"])
 
 
 class StageNameTest(unittest.TestCase):
@@ -133,13 +144,24 @@ class BriefVerbTest(unittest.TestCase):
         return code, out.getvalue(), err.getvalue(), runner
 
     def rules(self, stage: str) -> str:
-        return f"# Rules for {stage}, from docs/agents/workflow.md\n" + "".join(brief.stage_sections(self.workflow, stage))
+        return f"# Rules for {stage}, from docs/agents/workflow.md\n\n" + "".join(brief.stage_sections(self.workflow, stage))
 
     def test_build_prints_the_rules_then_the_issue_from_its_second_line(self) -> None:
         code, out, _, _ = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
         _, issue, _, _ = self.run_cli(["issue", "35"], "issue-blender-35.json")
         self.assertEqual(code, 0)
-        self.assertEqual(out, self.rules("build") + "# Issue #35\n" + issue.split("\n", 1)[1])
+        self.assertTrue(out.startswith(self.rules("build") + "# Issue #35\n"))
+        header = issue.split("\n", 1)[1].split("## Body\n", 1)[0]
+        self.assertIn("# Issue #35\n" + header + "## Body\n", out)
+
+    def test_the_issue_part_prints_the_whole_body_and_one_comment(self) -> None:
+        _, out, _, _ = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
+        _, full, _, _ = self.run_cli(["issue", "35", "--full"], "issue-blender-35.json")
+        body = full.split("## Body\n", 1)[1].split("## Comments", 1)[0]
+        self.assertIn("## Body\n" + body + "## Comments", out)
+        self.assertNotIn("[cut: ", body)
+        self.assertIn("## Comments (1 of 3, newest last)", out)
+        self.assertEqual(out.count("\n### @"), 1)
 
     def test_review_prints_the_rules_then_the_pr_from_its_second_line(self) -> None:
         code, out, _, _ = self.run_cli(["brief", "review", "66"], "pr-blender-66.json")

@@ -1,6 +1,6 @@
 # Spec: stage-brief, V1
 
-Module of [helpers-map.md](helpers-map.md), slice 2. It inherits the tech stack, commands, code style and boundaries there. Status: approved by the user on 2026-11-15.
+Module of [helpers-map.md](helpers-map.md), slice 2. It inherits the tech stack, commands, code style and boundaries there. Status: approved by the user on 2026-11-15. The user changed the output at checkpoint A on 2026-11-15: one rules heading, no first intro paragraph, no `Earlier layout`, the whole issue body and one comment.
 
 ## Objective
 
@@ -23,7 +23,8 @@ agent-skills [--repo OWNER/REPO] brief <stage> [<n>] [--full]
 
 ```
 # Rules for build, from docs/agents/workflow.md
-<the text before the first ## heading>
+
+<the intro, without its title line and its first paragraph>
 ## Helpers
 ...
 ## Build
@@ -31,10 +32,12 @@ agent-skills [--repo OWNER/REPO] brief <stage> [<n>] [--full]
 ## Commit review
 ...
 # Issue #74
-<the output of agent-skills issue 74, from its second line>
+<the output of agent-skills issue 74, from its second line, with the whole body and one comment>
 ```
 
-The sections keep their order in the file and their text byte for byte. For `review`, the last part is the output of `agent-skills pr <n>`. The `gh` calls are the calls of `issue` or `pr`, and `brief` adds none.
+The sections keep their order in the file and their text byte for byte. The intro loses only its `# ` title line and its first paragraph, which tells the agent to read the whole file. An intro with nothing left is skipped.
+
+The issue part prints the whole body, because a build needs its acceptance criteria and verification, and only the newest comment, cut at 600 characters. With `--full`, it equals `agent-skills issue <n> --full`. For `review`, the last part is the output of `agent-skills pr <n>`, with its own cuts. The `gh` calls are the calls of `issue` or `pr`, and `brief` adds none.
 
 ### Section map
 
@@ -49,7 +52,8 @@ A section is a `## ` heading and the lines up to the next `## ` heading. Heading
 | `Plan`, `Labels` | plan |
 | `Build` | build, bug |
 | `Review` | review |
-| Any other heading, such as blender's `Commit review` and `Earlier layout` | every stage |
+| `Earlier`, such as blender's `Earlier layout` (old spec and task paths) | no stage |
+| Any other heading, such as blender's `Commit review` | every stage |
 
 An unknown heading goes to every stage, so owner text is never dropped. A known heading that is missing from the file is skipped with no note.
 
@@ -67,7 +71,7 @@ In urchin and in blender, one PR each, after the user approves: the same `## Wor
 
 ## Testing strategy
 
-Unit tests with `unittest` and the recorded `gh` responses of slice 1. For each stage, a test checks which headings of the fixture appear and in which order. One test adds an unknown heading and checks that every stage prints it. One test checks that the brief part equals the `issue` output, and one that `review` uses `pr`. One test checks the exit 2 for a repo with no `workflow.md`.
+Unit tests with `unittest` and the recorded `gh` responses of slice 1. For each stage, a test checks which headings of the fixture appear and in which order. One test adds an unknown heading and checks that every stage prints it. One test checks the issue part against the `issue` output, its whole body and its one comment, and one that `review` uses `pr`. One test checks that the intro loses its title and first paragraph. One test checks the exit 2 for a repo with no `workflow.md`.
 
 ## Boundaries
 
@@ -80,7 +84,7 @@ These add to the shared boundaries in the map.
 ## Success criteria
 
 1. The unit tests and the fork checks pass.
-2. In blender, `agent-skills brief build 74` prints the intro, `Helpers`, `Build`, `Commit review`, `Earlier layout` and `Reports and output decisions`, in file order. Then it prints the `agent-skills issue 74` output, equal byte for byte after its first line.
+2. In blender, `agent-skills brief build 74` prints one `# ` heading for the rules, the intro without its first paragraph, `Helpers`, `Build`, `Commit review` and `Reports and output decisions`, in file order, and no `Earlier layout`. Then it prints the `agent-skills issue 74` output after its first line, with the whole body and only the newest comment.
 3. `agent-skills brief review 79` in blender ends with the same two lines as `agent-skills pr 79`.
 4. `agent-skills brief build` with no number prints the rules and no brief, and it makes no `gh` call.
 5. The urchin and blender PRs are merged, and their `AGENTS.md` line names `agent-skills brief`.

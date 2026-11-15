@@ -70,13 +70,16 @@ def brief_verb(gh: GitHub, args: argparse.Namespace) -> str:
     path = checkout_root(gh) / "docs" / "agents" / "workflow.md"
     if not path.is_file():
         raise CliError("No docs/agents/workflow.md in this repo. Run /agent-skills:setup-workflow first.")
-    rules = f"# Rules for {args.stage}, from docs/agents/workflow.md\n" + "".join(brief.stage_sections(path.read_text(), args.stage))
+    rules = f"# Rules for {args.stage}, from docs/agents/workflow.md\n\n" + "".join(brief.stage_sections(path.read_text(), args.stage))
     if args.number is None:
         return rules
     if args.stage == "review":
         heading, report = f"# PR #{args.number}\n", pr_verb(gh, args)
     else:
-        heading, report = f"# Issue #{args.number}\n", issue_verb(gh, args)
+        issue = gh.issue(args.number)
+        spec = tracker.spec_for(issue, spec_files(checkout_root(gh)))
+        heading = f"# Issue #{args.number}\n"
+        report = render.issue_report(issue, spec, args.full, render.BRIEF_BODY_LIMIT, render.BRIEF_COMMENTS_SHOWN)
     return rules + heading + report.split("\n", 1)[1]
 
 

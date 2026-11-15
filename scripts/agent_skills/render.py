@@ -5,6 +5,8 @@ from agent_skills.tracker import Frontier, Groups, Issue, IssueRow, PullRequest,
 BODY_LIMIT = 2000
 COMMENT_LIMIT = 600
 COMMENTS_SHOWN = 3
+BRIEF_BODY_LIMIT: int | None = None
+BRIEF_COMMENTS_SHOWN = 1
 ROWS_SHOWN = 10
 NEXT_ROWS_SHOWN = 5
 
@@ -52,7 +54,7 @@ def blocker_line(issue: Issue) -> str:
     return f"{open_ones} (closed: {closed})" if closed else open_ones
 
 
-def issue_report(issue: Issue, spec: SpecMatch, full: bool) -> str:
+def issue_report(issue: Issue, spec: SpecMatch, full: bool, body_limit: int | None = BODY_LIMIT, comments_shown: int = COMMENTS_SHOWN) -> str:
     parent = f"#{issue.parent_number} {issue.parent_title}" if issue.parent_number else "none"
     pulls = ", ".join(f"#{pr.number} {pr.state}" for pr in issue.pull_requests) or "none"
     subs = issue.sub_issues
@@ -76,8 +78,8 @@ def issue_report(issue: Issue, spec: SpecMatch, full: bool) -> str:
         if len(shown) < len(rows):
             lines.append(f"[cut: {len(rows) - len(shown)} more rows, run with --full]")
         lines.append("")
-    lines += ["## Body", "", cut(issue.body.strip(), None if full else BODY_LIMIT) or "(empty)", ""]
-    comments = issue.comments if full else issue.comments[-COMMENTS_SHOWN:]
+    lines += ["## Body", "", cut(issue.body.strip(), None if full else body_limit) or "(empty)", ""]
+    comments = issue.comments if full else issue.comments[-comments_shown:]
     if not comments:
         lines.append("## Comments (none)")
     else:

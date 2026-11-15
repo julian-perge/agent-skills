@@ -31,6 +31,7 @@ Plugin check: claude plugin validate .
     - A repo with no `workflow.md` gives exit 2 and names `/agent-skills:setup-workflow`.
     - The recorded `gh` calls equal those of `issue` or `pr` for the same number.
   - Verify: the unit tests, then spec criteria 2 to 4 by hand in blender (`agent-skills brief build 74`, `agent-skills brief review 79`, `agent-skills brief build`).
+  - Change at checkpoint A (2026-11-15): the user asked for one rules heading, no first intro paragraph, no `Earlier layout`, the whole issue body and one comment. The spec has the new output.
   - Dependencies: 1.
   - Files: `scripts/agent_skills/cli.py`, `scripts/agent_skills/tests/test_brief.py`.
   - Scope: S.
