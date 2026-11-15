@@ -53,14 +53,14 @@ class RepoTest(unittest.TestCase):
             returncode=128, stderr="fatal: not a git repository (or any of the parent directories): .git\n",
         )
         with self.assertRaises(CliError) as caught:
-            GitHub(runner).repo
+            _ = GitHub(runner).repo
         self.assertEqual(caught.exception.code, 2)
         self.assertIn("not a git repository", str(caught.exception))
 
     def test_no_origin_is_an_environment_error(self) -> None:
         runner = FakeRunner().on("git", "remote", "get-url", "origin", returncode=2, stderr="error: No such remote 'origin'\n")
         with self.assertRaises(CliError) as caught:
-            GitHub(runner).repo
+            _ = GitHub(runner).repo
         self.assertEqual(caught.exception.code, 2)
         self.assertIn("--repo", str(caught.exception))
 

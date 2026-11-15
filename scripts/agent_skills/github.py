@@ -2,7 +2,8 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from agent_skills import CliError
 from agent_skills.tracker import Comment, FileChange, Issue, Link, OpenPull, PullRequest, Review, SubIssue, TrackerIssue
