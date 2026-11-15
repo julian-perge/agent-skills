@@ -5,7 +5,7 @@ disable-model-invocation: true
 
 Invoke the agent-skills:test-driven-development skill.
 
-In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills brief test <n>` and read its whole output, with no `head` or `tail` (add `--full` for the whole issue body).
+In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills brief test <n>` and read its whole output, with no `head` or `tail` (add `--full` for all comments and sub-issues).
 
 For new features:
 1. Write tests that describe the expected behavior (they should FAIL)

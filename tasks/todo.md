@@ -67,8 +67,8 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint B: the fork is done
 
-- [ ] Spec criterion 1 holds.
-- [ ] The user approves opening the urchin and blender PRs.
+- [x] Spec criterion 1 holds.
+- [x] The user approves opening the urchin and blender PRs.
 
 ## Phase 3: other repos and the trial
 

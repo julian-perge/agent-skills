@@ -5,7 +5,7 @@ disable-model-invocation: true
 
 Invoke the agent-skills:spec-driven-development skill.
 
-In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills brief spec <n>` and read its whole output, with no `head` or `tail` (add `--full` for the whole issue body). End with the line that `agent-skills next-cmd plan <n>` prints.
+In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills brief spec <n>` and read its whole output, with no `head` or `tail` (add `--full` for all comments and sub-issues). End with the line that `agent-skills next-cmd plan <n>` prints.
 
 First check whether SPEC.md already exists in the project root — that decides which flow applies.
 
