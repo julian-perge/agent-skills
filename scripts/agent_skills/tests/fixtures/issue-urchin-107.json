@@ -1,0 +1,223 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 107,
+        "title": "UI overhaul: faithful screens on native Godot containers",
+        "state": "OPEN",
+        "url": "https://github.com/julian-perge/urchin/issues/107",
+        "body": "## Destination\n\nA UI spec at `spec/107-ui-overhaul.md` that gives every screen and window a decided target layout and names the SWF pieces it's built from, plus ready-for-agent issues to build it. The map is done once nothing is left to decide, and the building happens in those issues.\n\n## Notes\n\n- **Look:** faithful to the original by default, with an ADR for any departure a player could notice, the same rule [Overhaul the port's structure while keeping behavior faithful to the original](https://github.com/julian-perge/urchin/issues/1) set for behavior.\n- **Structure:** Godot scenes on native containers (HBox, VBox, Margin, Panel and the shared project theme) instead of TextureRects with hardcoded sizes and offsets. The original's UI nests panels and backgrounds, and containers should handle that alignment. godotengine/godot-demo-projects is the reference for native nodes.\n- **History:** the UI so far was built to be good enough to play while extracting the art was the hard part. The very first version placed images at hardcoded pixel values.\n- **Terms:** a **Screen** is a full-window state the player navigates to (Title, Hub, Battle, Game over, Ending). A **Window** is a panel opened over the hub (Inventory, Store, Abilities, Victory). The **HUD** is the battle screen's status elements over the hall (unit overlays, member bars, top status bar, speech box).\n- **Every session:** follow `docs/agents/art-extraction.md` and `CODING_STANDARDS.md`, especially \"Extract the parts, rebuild the arrangement\", with `spec/old/2026-08-23-battle-bottom-bar-and-stance-rows.md` as the worked example. Read `docs/agents/workflow.md` first. Anything posted to the tracker uses julian-voice.\n- **Known work this map covers,** each issue keeping its own labels:\n  - [Add the original's title screen, logo and slot list layout to the main menu](https://github.com/julian-perge/urchin/issues/91)\n  - [Battle screen is missing the original's top status bar and hall framing, and the zone 4 boss dolls need checking](https://github.com/julian-perge/urchin/issues/67)\n  - [Fade to black before every battle result screen, like the original](https://github.com/julian-perge/urchin/issues/86)\n  - [Hub info spots and the post-battle hint popups aren't ported](https://github.com/julian-perge/urchin/issues/16)\n  - [Draw floating numbers with the original's NumberFixer digit clips](https://github.com/julian-perge/urchin/issues/144)\n  - [Replace the countdown number with the original's clock ring](https://github.com/julian-perge/urchin/issues/155)\n  - [Build the battle speech box the way the original shows it](https://github.com/julian-perge/urchin/issues/156)\n  - [Open the skills screen after a win that levels the player up](https://github.com/julian-perge/urchin/issues/52)\n  - [Start a new game with CS_INTRO2 and go straight into battle 100](https://github.com/julian-perge/urchin/issues/49)\n  - [Companions can't be equipped and the player can't choose who fights](https://github.com/julian-perge/urchin/issues/11)\n  - [Use TeX Gyre Heros as the stand-in font for _sans, instead of emboldened Open Sans](https://github.com/julian-perge/urchin/issues/127)\n  - [Turn off Godot's pixel snapping so fractional SWF positions reach the screen](https://github.com/julian-perge/urchin/issues/131)\n  - [Draw art with LINEAR and keep text NEAREST](https://github.com/julian-perge/urchin/issues/141)\n  - [Extract the Screen and Window chrome a StyleBoxFlat can't draw](https://github.com/julian-perge/urchin/issues/161)\n- **Known gaps from wave 5:**\n  - Buff icons are tinted with no backing. The original draws each icon untinted over buffColor, a solid backing in its element color (sprite 103) that `buff_icons.py` never extracted, so dark icons nearly vanish on dark halls.\n  - The buff row draws over each unit and redraws after every event. The original attaches up to 7 tiles of about 17x31 px to that unit's bar in the top status bar, and redraws them only when that unit's stats are recomputed.\n  - The sell and delete buttons still use native tooltips where the original shows a bold title over a body, and the port says \"Destroy Item\" where the original says \"Delete Item\".\n  - The hotbar's Abilities, Options, Re-Spec, World Map and Quit tooltips differ from the original's SYSTEM strings.\n  - Empty inventory cells show no tooltip, where the original shows \"None\" over \"This slot is empty.\"\n  - Item title bars aren't recolored by rarity, and tooltip fields have no border.\n  - The stance buttons, portrait frames, element bars and empty ability socket weren't checked against the original's tooltips.\n\n- **Known gaps from the [piece inventory](https://github.com/julian-perge/urchin/blob/research/ui-pieces-inventory/docs/research/2026-11-09-ui-pieces-inventory.md):**\n  - The battle HUD's parts aren't extracted yet: the buff tile, the unit bar, the speech box, the selector glow, the timer ring and the digits.\n  - The extracted bottom bar, top panel, alert icon and stage rect PNGs are only used by tests, while the scenes still load hand-made bars.\n  - The hotbar icons and the world map PNGs are hand exports with no extractor, and the hub's hover colors come from screenshots instead of the SWF's Glow filters.\n  - Menu captions lack the original's black glow and drop shadow, and the Store window lacks its equip slots and small doll.\n  - The cutscene frame lacks its SKIP control and subtitle field, which fits with [Start a new game with CS_INTRO2 and go straight into battle 100](https://github.com/julian-perge/urchin/issues/49).\n  - Three PNGs, `battle_pbar_full.png`, `battle_progress_bar_inner.png` and `hotbar_team_select.png`, match nothing in the SWF.\n\n## Decisions so far\n\n- [Which Godot demo project patterns fit the original's nested panels?](https://github.com/julian-perge/urchin/issues/110): panels keep their SWF rects as PanelContainers whose StyleBox content margins come from the SWF, with containers inside each panel and slots or anchored overlays for overlap, scaled art and fractional pitches.\n- [Which UI pieces does the SWF hold for each screen, and which has the port extracted?](https://github.com/julian-perge/urchin/issues/109): every Screen and Window is flat panels, invisible hit buttons and `_sans` text fields, and the Windows and Victory are labels of KRINMENU on three rescaled panels, so containers can rebuild them. What's left to extract is mostly the battle HUD's art.\n- [Where should the original's 800x575 stage sit in the port's 800x600 window?](https://github.com/julian-perge/urchin/issues/111): the base resolution becomes 800x575 so there's no strip to place, every Screen and Window treats a SWF coordinate as a viewport coordinate, and other window shapes get black bars. The viewport change is the first implementation issue.\n- [Where should the SWF-derived screen rects live?](https://github.com/julian-perge/urchin/issues/117): each Screen and Window types its numbers into its own scene in Stage coordinates, and one GUT test checks where every piece lands against a record an extractor writes from the SWF.\n- [Which font should stand in for the original's device _sans?](https://github.com/julian-perge/urchin/issues/118): the port ships TeX Gyre Heros in real regular, bold and bold italic faces with no embolden, and the swap lands before any Screen is rebuilt.\n- [Prototype the victory screen on containers whose spacing comes from the SWF](https://github.com/julian-perge/urchin/issues/108): containers at the SWF rects land within about 1 px of the original where the current screen is up to 54 px off, so every Screen and Window gets built on them, with fixed-height slots where fields overlap or gaps are uneven.\n- [Should the port turn off Godot's pixel snapping so fractional SWF positions reach the screen?](https://github.com/julian-perge/urchin/issues/128): both settings go off for the whole game so a piece is drawn where layout put it, on the premise that text draws NEAREST, and that lands on its own before any Screen is rebuilt.\n- [How should the port draw the inner drop shadow on the original's panels?](https://github.com/julian-perge/urchin/issues/115): a canvas item shader on the 16 flat KRINMENU Panels through one shared ShaderMaterial, with the SWF's blur 5, distance 5 and angle 45 checked by the rect test. Every other inner shadow stays baked into its art, and the fill and stroke stay with [Should panels draw as StyleBoxFlats built from the SWF shapes, or as the extracted textures?](https://github.com/julian-perge/urchin/issues/114).\n- [Should the port keep NEAREST as its default texture filter, or draw scaled art with LINEAR?](https://github.com/julian-perge/urchin/issues/130): LINEAR for art and NEAREST for text, with no mipmaps. The default filter goes to LINEAR, one autoload keeps every text node NEAREST, and that lands on its own before any Screen is rebuilt.\n- [Should panels draw as StyleBoxFlats built from the SWF shapes, or as the extracted textures?](https://github.com/julian-perge/urchin/issues/114): the 16 plain Panels are StyleBoxFlats with no PNGs, one whole-pixel border each at their fill rects, and everything a StyleBoxFlat can't draw, the backdrop with its bevel included, is art from one zoom 4 extractor.\n- [Should fractional pitches round to whole pixels, or does the port need a float-placing container?](https://github.com/julian-perge/urchin/issues/116): the port builds one `FloatBox` container with float separation and minimum sizes, every SWF-derived box uses it, grids become FloatBox rows, and the rect test passes a piece under 0.5 px from its SWF position.\n- [Should the port keep its turn label, or show whose turn it is the original's way?](https://github.com/julian-perge/urchin/issues/119): the label goes with no ADR, the timer ring glows blue for the player's side and orange for the enemy side through the whole half-turn, and the member bars show only on the player's side's half-turn.\n- [Are the Game Manual and Credits screens in scope for the UI overhaul?](https://github.com/julian-perge/urchin/issues/120): both are in scope as Screens with their own layouts, the title's two links open them, and ADR 0002 covers both, so they leave out the Armor Games logo and copyright line.\n- [Does leaving out the Armor Games branding also cover the title screen's links?](https://github.com/julian-perge/urchin/issues/121): ADR 0002 covers the whole title, so \"Play MORE Games!\" and \"Play the Original Sonny\" go and ADR 0002 widens to every publisher link, Credits' davidorr.net link becomes text, and the remaining captions keep their SWF positions.\n- [Should Victory stay its own Screen, or draw over the Hub like the original?](https://github.com/julian-perge/urchin/issues/122): Victory becomes a Window on the Hub, opened by KRINMENU's `win` label with the hotbar inert until Proceed, the fade cuts from black to the Hub, and no ADR.\n- [Does each Screen and Window also need an ffdec render comparison on top of the rect test?](https://github.com/julian-perge/urchin/issues/125): yes, one shared tool generalized from the victory prototype scores layout and art with text hidden, gates each build issue with a bar and a must-fail control, and runs by hand outside `uv run gut`.\n- [How should the Abilities window's talent pool draw its inner shadow over rows added at run time?](https://github.com/julian-perge/urchin/issues/190): a transparent blend_mul overlay above the pool's backing, rows and frame, sharing the panel shader's ramp, with the 16 panels keeping their own shader and no ADR.\n\n## Not yet specified\n\n- Each screen's and window's target layout and the pieces it's built from: Title and slots, the new game flow, the Game Manual and Credits screens, Hub and its hotbar panel, World map, the Inventory, Store, Abilities and Victory windows, the Game over and Ending screens, and the tooltips. The [container patterns note](https://github.com/julian-perge/urchin/blob/research/godot-container-patterns/docs/research/2026-11-09-godot-container-patterns.md) measures how far each current screen sits from its SWF rects, in section 4.\n- The order the implementation issues land in, and which existing issues they replace. The `FloatBox` issue lands first, with the snapping, font and filter issues.\n\n## Out of scope\n\n- Battle art: the fighter dolls, their animations and the hall art extraction.\n- Cutscene video content.\n- Combat logic.\n\n\n\n\n\n\n\n\n",
+        "labels": {
+          "nodes": [
+            {
+              "name": "ready-for-human"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": []
+        },
+        "parent": {
+          "number": 1,
+          "title": "Overhaul the port's structure while keeping behavior faithful to the original",
+          "body": "As an engineer, I want to restructure urchin so each game concept sits behind one module with a small interface, while the game keeps behaving like Sonny 2 unless we decide otherwise.\n\nUntil now the goal was matching the original as closely as possible. A re-review against the ActionScript found the port has drifted in a lot of places, and an architecture review found most of the battle presentati"
+        },
+        "subIssuesSummary": {
+          "total": 62,
+          "completed": 33
+        },
+        "subIssues": {
+          "nodes": [
+            {
+              "number": 108,
+              "title": "Prototype the victory screen on containers whose spacing comes from the SWF",
+              "state": "CLOSED",
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 109,
+              "title": "Which UI pieces does the SWF hold for each screen, and which has the port extracted?",
+              "state": "CLOSED",
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 110,
+              "title": "Which Godot demo project patterns fit the original's nested panels?",
+              "state": "CLOSED",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 204,
+              "title": "Re-pad the four cutscene clips to 800x575",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 209,
+              "title": "Generalize the compare tool from the victory prototype",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 215,
+              "title": "Open the game on the title and add the shared menu pieces",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 216,
+              "title": "Rebuild the choice Screen and leave out PvP Arena",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 217,
+              "title": "Rebuild the slot list as the original's four rows",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 2
+              }
+            },
+            {
+              "number": 218,
+              "title": "Extract the hotbar icons, glow colors and hover ranges",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 219,
+              "title": "Rebuild the bottom bar and the hotbar at the SWF rects",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 2
+              }
+            },
+            {
+              "number": 220,
+              "title": "Read hotbar and orb tooltips from strings and add set_inert",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 221,
+              "title": "Rebuild the zone progress at the SWF rects",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 222,
+              "title": "Rebuild the seven zone scenes and add set_art_visible",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 2
+              }
+            },
+            {
+              "number": 223,
+              "title": "Add the info card, and show it when the game is saved",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            }
+          ]
+        },
+        "blockedBy": {
+          "nodes": []
+        },
+        "closedByPullRequestsReferences": {
+          "nodes": []
+        },
+        "comments": {
+          "totalCount": 2,
+          "nodes": [
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-09T21:58:53Z",
+              "body": "Found while doing the Victory side by side for #127, in #139. The gold row's big euro sign isn't in the 22 px field, `dumbEuro` only holds the number, so the inventory panel's single \"€ 7\" label won't match the capture until that gets rebuilt.\n\nEight text sizes on Victory and the inventory panel were also 1 to 2 px off from their edit texts' `fontHeight`, which #139 fixes. I only checked those two, so the other Screens and Windows are worth pulling their sizes from the SWF when they get rebuilt.\n"
+            },
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-11T21:43:02Z",
+              "body": "Specs for Title and slots, Hub, Inventory, Store, Abilities and Victory are written, in `a9a4adf5` on `claude/agent-skills-spec-107-c525e4` (not pushed yet).\n\n- `spec/107-capability-map.md`\n- `spec/107-ui-foundation.md`\n- `spec/107-window-shell.md`\n- `spec/107-title-slots.md`\n- `spec/107-hub.md`\n- `spec/107-inventory.md`\n- `spec/107-store.md`\n- `spec/107-abilities.md`\n- `spec/107-victory.md`\n\nThe map adds a ui-foundation module, since the viewport, `FloatBox`, the rect test, the compare tool and a strings extractor were decided in closed tickets but had no spec or issue. Only #161 existed.\n\nThe specs need ADR 0006 (leave out PvP Arena) and ADR 0007 (the Abilities window departures), and ADR 0002 widens to every publisher link. Each spec lists its own open questions. Next is `/agent-skills:plan 107`.\n"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

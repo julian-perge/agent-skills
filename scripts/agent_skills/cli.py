@@ -2,6 +2,7 @@ import argparse
 import re
 import sys
 from collections.abc import Callable
+from pathlib import Path
 
 from agent_skills import CliError, render, tracker
 from agent_skills.github import GitHub, Runner, run_process
@@ -22,6 +23,16 @@ def issue_number(value: str) -> int:
     return int(digits)
 
 
+def spec_files(gh: GitHub) -> frozenset[str]:
+    root = Path(gh.toplevel() or ".")
+    return frozenset(f"spec/{path.name}" for path in (root / "spec").glob("*.md"))
+
+
+def issue_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    issue = gh.issue(args.number)
+    return render.issue_report(issue, tracker.spec_for(issue, spec_files(gh)), args.full)
+
+
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
     title, subs = gh.sub_issues(args.number)
     return render.frontier_report(args.number, title, subs, tracker.frontier(subs))
@@ -34,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--repo", type=repo_arg, metavar="OWNER/REPO", help="GitHub repo (default: parsed from the origin remote)")
     verbs = parser.add_subparsers(dest="verb", required=True, metavar="<verb>")
+
+    issue = verbs.add_parser("issue", help="one issue with its parent, spec, blockers, pull requests, sub-issues and comments")
+    issue.add_argument("number", type=issue_number, metavar="N")
+    issue.add_argument("--full", action="store_true", help="print the whole body, every comment read and every sub-issue read")
+    issue.set_defaults(handler=issue_verb)
 
     frontier = verbs.add_parser("frontier", help="the open sub-issues of P and the next one to build")
     frontier.add_argument("number", type=issue_number, metavar="P")

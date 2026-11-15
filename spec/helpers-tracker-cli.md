@@ -20,7 +20,7 @@ agent-skills [--repo OWNER/REPO] <verb> [args]
 
 ### `issue N [--full]`
 
-A single GraphQL query reads: number, title, state, url, body, labels, assignees, `parent { number title body }`, `subIssues(first: 50)` with the state, assignee count and blocker count of each, `blockedBy(first: 20)`, `closedByPullRequestsReferences(first: 5, includeClosedPrs: true)`, and `comments(last: 20)` with `totalCount`. Each of these fields was checked against julian-perge/urchin#161 on 2026-11-15.
+A single GraphQL query reads: number, title, state, url, body, labels, assignees, `parent { number title body }`, `subIssuesSummary { total completed }` for the counts, `subIssues(first: 100)` (GitHub's cap per parent) with the state, assignee count and blocker count of each, `blockedBy(first: 20)`, `closedByPullRequestsReferences(first: 5, includeClosedPrs: true)`, and `comments(last: 20)` with `totalCount`. Each of these fields was checked against julian-perge/urchin#161 on 2026-11-15.
 
 ```
 # #49 Region scenery [OPEN]
@@ -42,7 +42,7 @@ A single GraphQL query reads: number, title, state, url, body, labels, assignees
 ```
 
 - **Spec lookup:** the three rules of `next`. Rule 1: a `Spec` line or a `spec/...md` path in the issue body. Rule 2: the same in the parent body. Rule 3: exactly one file `spec/<issue>-*.md` or `spec/<parent>-*.md`, marked `(guess)`. When rule 3 finds several files, the line lists the candidates and names no spec.
-- **Limits without `--full`:** the body is cut at 2,000 characters. Only the newest 3 comments show, each cut at 600 characters. The sub-issue table has at most 30 rows. Each cut ends with `[cut: <n> more characters, run with --full]`.
+- **Limits without `--full`:** the body is cut at 2,000 characters. Only the newest 3 comments show, each cut at 600 characters. The sub-issue table has at most 10 rows, open sub-issues first. Each cut ends with `[cut: <n> more characters, run with --full]`, and the table's cut says `<n> more rows`.
 
 ### `pr N [--full]`
 

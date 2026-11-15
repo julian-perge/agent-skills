@@ -109,7 +109,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `render.py`, `cli.py`, `tests/test_frontier.py`, `tests/fixtures/frontier-*.json`.
   - Scope: S.
 
-- [ ] **Task 9: `issue`**
+- [x] **Task 9: `issue`**
   - Description: Add the issue query, the three spec-lookup rules, the cut limits, `--full` and the brief output.
   - Acceptance:
     - Each spec rule, several candidates, and no spec are covered by tests.
