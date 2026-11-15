@@ -66,14 +66,14 @@ Six blender sessions ran after the slice 1 merges: 3 builds and 3 reviews. The c
 A source read is the first read of a file under `src/` or `tests/`, or the first `git diff` in a review. A tail-only rerun is the same command with only its `tail` or `head` changed and no edit between the two runs.
 
 - **At most 1 Bash call before the first source read: missed.** Every session used 2 to 4 calls. The first call always reads `docs/agents/workflow.md`, because the agent file says to read it before any stage. The second reads the issue or the PR with `agent-skills issue` or `agent-skills pr`. The other calls read the spec, a research doc, or the linked-session note that the desktop app adds. So 2 calls is the floor with the current `workflow.md` rule. The verbs did replace the 3 to 6 `gh` calls of the old openers.
-- **0 raw `gh issue view` calls: missed.** There were 3 calls in 2 sessions. In build #73, the hook blocked `gh issue view 73 --comments`, and the next call used `agent-skills issue 73`. Review PR 77 called `gh issue view 73 --json body --jq .body` twice. The hook allows that form. It also called `gh pr view 77 --json ...` after `agent-skills pr 77`, so the PR brief did not hold what the reviewer wanted (a guess: the commit list and the file stats).
+- **0 raw `gh issue view` calls: missed.** There were 3 calls in 2 sessions. In build #73, the hook blocked `gh issue view 73 --comments`, and the next call used `agent-skills issue 73`. Review PR 77 called `gh issue view 73 --json body --jq .body` twice. The hook allows that form. It also called `gh pr view 77 --json ...` after `agent-skills pr 77`. The PR brief already holds the commits and the files, but the reviewer piped it through `head -80` (evidence: its second call). The issue calls read the whole body, which `agent-skills issue` cuts at 2,000 characters without `--full`.
 - **0 tail-only test reruns: met.** Review PR 79 ran `prek run --all-files` twice with `tail -30` and `tail -14`, but it edited files between the two runs.
 - **Verb use:** 53 calls in 6 sessions. `run` 33, `issue` 7, `claim` 5, `pr` 3, `next-cmd` 3, `frontier` 1, `--help` 1. Of 40 test, lint and type-check runs, 31 went through `agent-skills run`. The agents still piped 9 of the wrapped runs to `tail`, which the wrapper makes unnecessary.
 
 For slice 2, this suggests:
 
-- Put the `workflow.md` rules that a stage needs into the stage brief, or inject them with the `UserPromptSubmit` hook, so the first call can be the brief.
-- Add the commit list and the file stats to `agent-skills pr`.
+- Put the `workflow.md` rules that a stage needs into the stage brief, so the first call can be the brief. This is [spec/helpers-stage-brief.md](../../spec/helpers-stage-brief.md).
+- Tell agents to read the whole `agent-skills pr` output, and to use `--full` for the whole issue body.
 - Tell agents in the `run` section that the summary already holds the tail, so no `| tail` is needed.
 
 ## Not Doing (and Why)

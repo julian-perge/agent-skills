@@ -11,6 +11,12 @@ Source idea: [docs/ideas/agent-skills-helpers.md](../docs/ideas/agent-skills-hel
 
 Build order: install and tracker-cli (in either order), then run-wrapper, then stage-wiring.
 
+### Slice 2
+
+| Module id | Responsibility | Depends on | Spec |
+| --- | --- | --- | --- |
+| stage-brief | The verb `brief`: the `workflow.md` sections that one stage needs, then the issue or PR brief, in one call. The stage commands, the setup template, urchin and blender start each stage with it. | tracker-cli, stage-wiring | [helpers-stage-brief.md](helpers-stage-brief.md) |
+
 ## Interfaces at the boundaries
 
 - **install provides paths.** The fork is at `~/code/agent-skills` on every machine. `agent-skills` is on the PATH of Claude Code (plugin `bin/`), Codex and OpenCode (`~/.local/bin/agent-skills`).
