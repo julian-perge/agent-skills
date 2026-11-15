@@ -88,7 +88,7 @@ These add to the shared boundaries in the map.
 3. `agent-skills brief review 79` in blender ends with the same two lines as `agent-skills pr 79`.
 4. `agent-skills brief build` with no number prints the rules and no brief, and it makes no `gh` call.
 5. The urchin and blender PRs are merged, and their `AGENTS.md` line names `agent-skills brief`.
-6. **The trial.** Run 3 build sessions and 2 review sessions in blender. `targets.py` over them must show:
+6. **The trial.** Run 3 build sessions and 2 review sessions in urchin. Blender had no task ready to build on 2026-11-15, so the user moved the trial there. The slice 1 numbers are from blender. `targets.py` over them must show:
    - At most 1 Bash call before the first read of `src/`, `tests/` or `spec/`, or a `git diff`.
    - 0 calls that read all of `docs/agents/workflow.md`.
    - 0 raw `gh issue view` calls, and 0 tail-only test reruns.

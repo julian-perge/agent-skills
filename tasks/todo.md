@@ -72,7 +72,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 3: other repos and the trial
 
-- [ ] **Task 5: urchin and blender start each stage with `brief`**
+- [x] **Task 5: urchin and blender start each stage with `brief`**
   - Description: Open one PR in each repo. Each changes the `## Workflow` line of `AGENTS.md` to the setup template's new line, and changes the intro and the Helpers table of `docs/agents/workflow.md` to the seed's. Owner text stays.
   - Acceptance:
     - Each `AGENTS.md` names `agent-skills brief` and no longer says to read `workflow.md` before any command.
@@ -85,10 +85,10 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint C: before the trial
 
-- [ ] Spec criterion 5 holds.
+- [x] Spec criterion 5 holds. urchin#280 and blender#80 merged on 2026-11-15.
 
 - [ ] **Task 6: Run the trial again**
-  - Description: Count a read of a `spec/` file as a source read in `~/tmp/2026-11-15-agent-cli-audit/targets.py`, and count calls that read all of `docs/agents/workflow.md`. After the user runs 3 build sessions and 2 review sessions in blender, run `targets.py` over them and write the numbers into the idea doc.
+  - Description: Count a read of a `spec/` file as a source read in `~/tmp/2026-11-15-agent-cli-audit/targets.py`, and count calls that read all of `docs/agents/workflow.md`. After the user runs 3 build sessions and 2 review sessions in urchin (blender had no task ready to build), run `targets.py` over them and write the numbers into the idea doc.
   - Acceptance:
     - At most 1 Bash call before the first read of `src/`, `tests/` or `spec/`, or a `git diff`.
     - 0 calls that read all of `docs/agents/workflow.md`.
