@@ -164,7 +164,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `tests/test_next_groups.py`.
   - Scope: S.
 
-- [ ] **Task 14: `next` fetch and report**
+- [x] **Task 14: `next` fetch and report**
   - Description: Add the paged issue query, the open-PR list, the sub-issue bodies for Plan candidates, the preflight and the report.
   - Acceptance:
     - The golden output matches for a recorded blender tracker state.

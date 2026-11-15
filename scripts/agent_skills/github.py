@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from agent_skills import CliError
-from agent_skills.tracker import Comment, FileChange, Issue, Link, PullRequest, Review, SubIssue
+from agent_skills.tracker import Comment, FileChange, Issue, Link, OpenPull, PullRequest, Review, SubIssue, TrackerIssue
 
 REMOTE = re.compile(r"[/:](?P<owner>[\w.-]+)/(?P<name>[\w.-]+?)(?:\.git)?/?$")
 
@@ -64,6 +64,32 @@ CLAIM_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
       assignees(first: 10) { nodes { login } }
       blockedBy(first: 20) { nodes { number state } }
     }
+  }
+}"""
+
+NEXT_QUERY = """query($owner: String!, $name: String!, $after: String, $pulls: Boolean!) {
+  repository(owner: $owner, name: $name) {
+    issues(states: OPEN, first: 100, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        number title body
+        assignees(first: 1) { totalCount }
+        labels(first: 20) { nodes { name } }
+        parent { number body }
+        subIssuesSummary { total }
+        issueDependenciesSummary { blockedBy }
+        closedByPullRequestsReferences(first: 5, includeClosedPrs: false) { nodes { number } }
+      }
+    }
+    pullRequests(states: OPEN, first: 100) @include(if: $pulls) {
+      nodes { number title headRefName body isDraft createdAt }
+    }
+  }
+}"""
+
+SUB_ISSUE_BODIES_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) { subIssues(first: 100) { nodes { body } } }
   }
 }"""
 
@@ -197,6 +223,26 @@ def parse_claim_issue(node: dict[str, Any]) -> Issue:
     )
 
 
+def parse_tracker_issue(node: dict[str, Any]) -> TrackerIssue:
+    parent = node["parent"] or {}
+    return TrackerIssue(
+        number=node["number"],
+        title=node["title"],
+        body=text(node["body"]),
+        labels=tuple(label["name"] for label in node["labels"]["nodes"]),
+        assigned=node["assignees"]["totalCount"] > 0,
+        parent_number=parent.get("number"),
+        parent_body=text(parent.get("body")),
+        sub_issue_total=node["subIssuesSummary"]["total"],
+        open_blockers=node["issueDependenciesSummary"]["blockedBy"],
+        open_pull_requests=tuple(pr["number"] for pr in node["closedByPullRequestsReferences"]["nodes"]),
+    )
+
+
+def parse_open_pull(node: dict[str, Any]) -> OpenPull:
+    return OpenPull(node["number"], node["title"], node["headRefName"], text(node["body"]), node["isDraft"], node["createdAt"])
+
+
 def parse_remote(url: str) -> str:
     match = REMOTE.search(url.strip()) if "://" in url or "@" in url else None
     if match is None:
@@ -220,11 +266,13 @@ class GitHub:
             self._repo = parse_remote(result.stdout)
         return self._repo
 
-    def graphql(self, query: str, **variables: int | str | None) -> dict[str, Any]:
+    def graphql(self, query: str, **variables: bool | int | str | None) -> dict[str, Any]:
         owner, name = self.repo.split("/")
         argv = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}"]
         for key, value in variables.items():
-            if value is not None:
+            if isinstance(value, bool):
+                argv += ["-F", f"{key}={str(value).lower()}"]
+            elif value is not None:
                 argv += ["-F" if isinstance(value, int) else "-f", f"{key}={value}"]
         return json.loads(self._gh(argv))["data"]
 
@@ -265,6 +313,24 @@ class GitHub:
         self._git(["git", "fetch", "origin", default])
         self._git(["git", "switch", "-c", branch, f"origin/{default}"])
         return self._git(["git", "rev-parse", "--short", "HEAD"]).strip()
+
+    def open_tracker(self) -> tuple[list[TrackerIssue], list[OpenPull]]:
+        issues: list[TrackerIssue] = []
+        pulls: list[OpenPull] = []
+        after = None
+        while True:
+            repository = self.graphql(NEXT_QUERY, after=after, pulls=after is None)["repository"]
+            issues += [parse_tracker_issue(node) for node in repository["issues"]["nodes"]]
+            if "pullRequests" in repository:
+                pulls = [parse_open_pull(node) for node in repository["pullRequests"]["nodes"]]
+            page = repository["issues"]["pageInfo"]
+            if not page["hasNextPage"]:
+                return issues, pulls
+            after = page["endCursor"]
+
+    def sub_issue_bodies(self, number: int) -> tuple[str, ...]:
+        issue = self.graphql(SUB_ISSUE_BODIES_QUERY, number=number)["repository"]["issue"]
+        return tuple(text(node["body"]) for node in issue["subIssues"]["nodes"])
 
     def toplevel(self) -> str | None:
         result = self._run(["git", "rev-parse", "--show-toplevel"])

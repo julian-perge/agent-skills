@@ -1,11 +1,12 @@
 from collections.abc import Sequence
 
-from agent_skills.tracker import Frontier, Issue, PullRequest, SpecMatch, SubIssue, TaskMatch
+from agent_skills.tracker import Frontier, Groups, Issue, IssueRow, PullRequest, ReviewRow, SpecMatch, SubIssue, TaskMatch
 
 BODY_LIMIT = 2000
 COMMENT_LIMIT = 600
 COMMENTS_SHOWN = 3
 ROWS_SHOWN = 10
+NEXT_ROWS_SHOWN = 5
 
 
 def cell(text: str) -> str:
@@ -160,3 +161,58 @@ def claim_report(number: int, assigned: str, branch: str | None, default: str, c
     if branch:
         sentences += f" Branch {branch} from origin/{default} at {commit}."
     return (sentences.strip() or f"Nothing changed for #{number}.") + "\n"
+
+
+def issue_command(group: str, row: IssueRow) -> str:
+    if group == "Build":
+        return f"/agent-skills:build #{row.number}"
+    if group == "Plan":
+        return f"/agent-skills:plan #{row.number}, spec {row.spec}"
+    if group == "Spec":
+        return f"/agent-skills:spec #{row.number}"
+    return f"/agent-skills:idea-refine #{row.number}"
+
+
+def group_table(name: str, rows: Sequence[tuple[str, str, str]], notes: Sequence[str] = ()) -> list[str]:
+    lines = [f"## {name}", "", "| # | Title | Command |", "| --- | --- | --- |"]
+    lines += [f"| {number} | {cell(title)} | `{command}` |" for number, title, command in rows[:NEXT_ROWS_SHOWN]]
+    left_out = len(rows) - min(len(rows), NEXT_ROWS_SHOWN)
+    lines += ["", f"Left out: {left_out} {'row' if left_out == 1 else 'rows'}." if left_out else "Left out: none."]
+    return lines + [*notes, ""]
+
+
+def review_guesses(row: ReviewRow) -> list[str]:
+    guesses = []
+    if row.task.number is None:
+        guesses.append(f"- PR #{row.pr}: no task found.")
+    elif row.task.guess:
+        guesses.append(f"- PR #{row.pr}: task #{row.task.number} is from the branch name (guess).")
+    if row.spec.guess:
+        guesses.append(f"- PR #{row.pr}: spec {row.spec.path} is from the file name (guess).")
+    return guesses
+
+
+def next_report(repo: str, groups: Groups, standard: str | None, step: ReviewRow | IssueRow | None) -> str:
+    lines = [f"# What to do next in {repo}", ""]
+    if groups.review:
+        rows = [(f"#{r.pr}", r.title, review_line(r.pr, r.task, r.spec, standard)) for r in groups.review]
+        shown = groups.review[:NEXT_ROWS_SHOWN]
+        notes = [f"Spec candidates for PR #{r.pr}: {', '.join(r.spec.candidates)}." for r in shown if r.spec.candidates]
+        lines += group_table("Review", rows, notes)
+    if groups.build:
+        lines += group_table("Build", [(f"#{r.number} (frontier)" if r.frontier else f"#{r.number}", r.title, issue_command("Build", r)) for r in groups.build])
+    for name, rows in (("Plan", groups.plan), ("Spec", groups.spec), ("Idea", groups.idea)):
+        if rows:
+            lines += group_table(name, [(f"#{r.number}", r.title, issue_command(name, r)) for r in rows])
+    if not any((groups.review, groups.build, groups.plan, groups.spec, groups.idea)):
+        lines += ["No open PR or issue fits a group.", ""]
+    lines += ["## Next", ""]
+    if isinstance(step, ReviewRow):
+        lines += ["```", f"gh pr checkout {step.pr}", review_line(step.pr, step.task, step.spec, standard), "```"]
+    elif isinstance(step, IssueRow):
+        lines += ["```", issue_command("Build", step), "```"]
+    else:
+        lines.append("none (no open PR and no frontier task)")
+    guesses = [guess for row in groups.review for guess in review_guesses(row)]
+    lines += ["", "## Guesses", "", *(guesses or ["none"])]
+    return "\n".join(lines) + "\n"

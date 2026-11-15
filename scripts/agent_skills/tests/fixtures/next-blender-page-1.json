@@ -1,0 +1,304 @@
+{
+  "data": {
+    "repository": {
+      "issues": {
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": "Y3Vyc29yOnYyOpK0MjAyNi0xMS0xNVQwMzo1OTo1M1rPAAAAAX10Vts="
+        },
+        "nodes": [
+          {
+            "number": 9,
+            "title": "The texture mapping of the 13 complex-reference models was never viewed",
+            "body": "The cache 430 verification on 2026-11-06 rendered the 13 models with complex texture references. Their geometry and colours look plausible, but no cache textures were available, so the textured faces ",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "ready-for-human"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 10,
+            "title": "Render priority: overlaps that are not exact stacks, and priorities 10 and 11",
+            "body": "`formats/face_order.visible_faces` leaves out a face that an exactly stacked face of the same winding paints over, as the client does (see `docs/research/render-priority.md`). The preview mesh uses it",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "ready-for-human"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 11,
+            "title": "An Asset Browser entry for saved players",
+            "body": "Save Player writes a player to its own .blend for File > Append. I left an Asset Browser entry out of that phase on 2026-11-09.",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "needs-info"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 13,
+            "title": "Rigs and clip bakes for NPC models",
+            "body": "As a user, I want to animate NPC models such as gnomes and ents in Blender scenes, with the same joint controls and clip bakes that a player has.",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "needs-triage"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 30,
+            "title": "A held item's fade property can follow a new fade group's curve",
+            "body": "A bone bake keeps the fade properties of objects the new clip does not show (the held items of another clip), through `keep` in `appearance_clip.py`. I think a hidden object's fade property can share ",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "bug"
+                },
+                {
+                  "name": "needs-triage"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 31,
+            "title": "The appearance panel says nothing when a cache definition fails to decode",
+            "body": "The appearance panel only catches `MissingResourceError` in `appearance_props.py` (the kit dropdown callback, `_names` and `_kits`). If the Cache folder holds a cache other than snapshot 430, the deco",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "ready-for-agent"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 32,
+            "title": "Check the PMN tool alpha formula against a real export",
+            "body": "`_material_alpha` in `upgrade_materials.py` reads a PMN tool material's alpha as `(255 - alpha) / 255`. That formula came from `setup_material_alpha` in the removed importers, and nothing cites a sour",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "ready-for-human"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 34,
+            "title": "Bone bake refusal tells the user Update Player removes shape keys, but Update bakes them again",
+            "body": "Baking a bone clip onto a player that has shape keys gets refused with this message:",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "bug"
+                },
+                {
+                  "name": "needs-triage"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 35,
+            "title": "Import a map chunk (terrain and scenery) into Blender",
+            "body": "As an engineer, I want to import a chunk of the game map (e.g. Draynor Village) into Blender, with its terrain and the scenery on it, so that a player built with the add-on can stand in a real area in",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "enhancement"
+                },
+                {
+                  "name": "needs-triage"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 17
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 67,
+            "title": "The scenery meshes of a region import share their materials",
+            "body": "Part of #35",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "needs-triage"
+                }
+              ]
+            },
+            "parent": {
+              "number": 35,
+              "body": "As an engineer, I want to import a chunk of the game map (e.g. Draynor Village) into Blender, with its terrain and the scenery on it, so that a player built with the add-on can stand in a real area instead of an empty scene.\n\nRight now the add-on only handles models. `formats/js5.py` says encrypted "
+            },
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          },
+          {
+            "number": 69,
+            "title": "A missing neighbour region gets the loc shadow 127 on its corners",
+            "body": "Part of #35",
+            "assignees": {
+              "totalCount": 0
+            },
+            "labels": {
+              "nodes": [
+                {
+                  "name": "needs-triage"
+                }
+              ]
+            },
+            "parent": null,
+            "subIssuesSummary": {
+              "total": 0
+            },
+            "issueDependenciesSummary": {
+              "blockedBy": 0
+            },
+            "closedByPullRequestsReferences": {
+              "nodes": []
+            }
+          }
+        ]
+      },
+      "pullRequests": {
+        "nodes": []
+      }
+    }
+  }
+}

@@ -109,6 +109,35 @@ def claim_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return render.claim_report(issue.number, assigned, branch, default, commit)
 
 
+def workflow_block(text: str) -> str | None:
+    match = re.search(r"^## Workflow\s*$(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
+    return match[1] if match else None
+
+
+def preflight(root: Path) -> None:
+    if not (root / "docs" / "agents" / "workflow.md").is_file():
+        raise CliError("No docs/agents/workflow.md in this repo. Run /agent-skills:setup-workflow first.")
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        path = root / name
+        block = workflow_block(path.read_text()) if path.is_file() else None
+        if block is not None:
+            if re.search(r"tracked in GitHub Issues", block, re.IGNORECASE):
+                return
+            raise CliError(f"The ## Workflow block of {name} does not say that tasks are tracked in GitHub Issues. `next` does not support files mode.")
+    raise CliError("Neither AGENTS.md nor CLAUDE.md has a ## Workflow block that says tasks are tracked in GitHub Issues. `next` does not support files mode.")
+
+
+def next_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    root = checkout_root(gh)
+    preflight(root)
+    specs = spec_files(root)
+    issues, pulls = gh.open_tracker()
+    bodies = {number: gh.sub_issue_bodies(number) for number in tracker.plan_candidates(pulls, issues, specs)}
+    groups = tracker.group(pulls, issues, specs, bodies)
+    standard = tracker.standard_file(frozenset(name for name in tracker.STANDARD_FILES if (root / name).is_file()))
+    return render.next_report(gh.repo, groups, standard, tracker.next_step(groups))
+
+
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
     title, subs = gh.sub_issues(args.number)
     return render.frontier_report(args.number, title, subs, tracker.frontier(subs))
@@ -131,6 +160,9 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("number", type=issue_number, metavar="N")
     pr.add_argument("--full", action="store_true", help="print the whole body")
     pr.set_defaults(handler=pr_verb)
+
+    next_verb_parser = verbs.add_parser("next", help="what to do next: PRs to review, tasks to build, issues to plan, spec or refine")
+    next_verb_parser.set_defaults(handler=next_verb)
 
     next_cmd = verbs.add_parser("next-cmd", help="the one paste line that ends a stage")
     next_cmd.add_argument("stage", choices=("review", "build", "plan", "spec"))
