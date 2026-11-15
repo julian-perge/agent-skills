@@ -22,7 +22,11 @@ Plugin check: claude plugin validate .
   - Files: `.claude-plugin/marketplace.json`, `.claude/commands/next.md`, `.gemini/commands/next.toml`, `commands/next.toml`.
   - Scope: S.
 
-- [ ] **Task 2: Switch every host to the checkout (riskiest task)**
+- [x] **Task 2: Switch every host to the checkout (riskiest task)**
+  - Result (2026-11-15):
+    - The settings change alone left the plugin "added but ignored". `claude plugin marketplace add ~/code/agent-skills` re-registered it with no remove step, and `claude plugin list` now shows "Read from: /Users/sweetjp/code/agent-skills".
+    - Codex copies the plugin into `~/.codex/plugins/cache/agent-skills/agent-skills/<version>/`. `codex plugin add agent-skills@agent-skills` copies it again, also at the same version, so an edit reaches Codex only after that command.
+    - The live `~/.claude/settings.json` got the one entry by hand, because `chezmoi apply` would also revert 9 other live settings that drifted from the template.
   - Description: Change the dotfiles templates so that Claude Code, OpenCode and the shell use `~/code/agent-skills`. Then do the steps outside both repos: edit Codex's config, run `chezmoi apply`, and re-register the marketplace only if needed and only after the user says yes.
   - Acceptance:
     - `jq '."addy-agent-skills".source' ~/.claude/plugins/known_marketplaces.json` shows `directory` with `/Users/sweetjp/code/agent-skills`.
