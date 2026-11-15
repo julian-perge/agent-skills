@@ -2,7 +2,7 @@
 
 This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, Antigravity, etc.) when working with code in this repository.
 
-> **Scope:** This file configures agents working on the [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) repository itself. It is not meant to be copied into other projects or into a global agent configuration; the reusable assets are the skills in `skills/`, not this file.
+> **Scope:** This file configures agents working on `julian-perge/agent-skills` itself, a fork of [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) that diverges on purpose. It is not meant to be copied into other projects or into a global agent configuration; the reusable assets are the skills in `skills/`, not this file.
 
 ## Repository Overview
 
@@ -85,8 +85,16 @@ See [docs/agents.md](docs/agents.md) for the decision matrix and [references/orc
 
 ## Creating a New Skill
 
-> **Before you start:** run the pre-flight checks in [CONTRIBUTING.md](CONTRIBUTING.md#before-proposing-a-new-skill), search the catalog, check open PRs (`gh pr list --state open`), confirm the idea fits [docs/skill-anatomy.md](docs/skill-anatomy.md), and justify the gap in your PR description. Most new-skill ideas overlap an existing skill or an open PR; prefer extending an existing skill over adding a near-duplicate. CONTRIBUTING.md is the single source of truth for this workflow.
+> **Before you start:** run the pre-flight checks in [CONTRIBUTING.md](CONTRIBUTING.md#before-proposing-a-new-skill), search the catalog, check open PRs (`gh pr list --repo julian-perge/agent-skills --state open`), confirm the idea fits [docs/skill-anatomy.md](docs/skill-anatomy.md), and justify the gap in your PR description. Most new-skill ideas overlap an existing skill or an open PR; prefer extending an existing skill over adding a near-duplicate. CONTRIBUTING.md is the single source of truth for this workflow.
 
 Skills in this repo are markdown-first: each lives at `skills/<kebab-case-name>/SKILL.md` with YAML frontmatter (`name`, `description`) and follows the section anatomy (Overview, When to Use, Process, Common Rationalizations, Red Flags, Verification). Add a `scripts/` directory only when the skill ships runnable helpers; most skills are markdown only, and there are no per-skill zip packages.
 
 For the full format, naming conventions, frontmatter rules, supporting-file thresholds, and writing principles, see [docs/skill-anatomy.md](docs/skill-anatomy.md), the single source of truth for skill structure. Do not restate that guidance here, link to it.
+
+## Pull Requests and Upstream
+
+PRs target `main` of this fork, `julian-perge/agent-skills`, which is the `origin` remote. This checkout also has an `upstream` remote, so pass `--repo julian-perge/agent-skills` on every `gh` write, or it can land on the parent repo. Upstream changes come in with `git fetch upstream && git merge upstream/main`.
+
+## Local Install
+
+On Julian's Mac, Claude Code (a directory marketplace) and OpenCode (its `skills` path) read `~/code/agent-skills` in place, so an edit applies at the next session or after `/reload-plugins`. Codex installs a copy into `~/.codex/plugins/cache/agent-skills/`, so after an edit run `codex plugin add agent-skills@agent-skills` to copy it again.

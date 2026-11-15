@@ -62,7 +62,7 @@ Plugin check: claude plugin validate .
   - Files: `.claude/commands/setup-workflow.md`, `.gemini/commands/setup-workflow.toml`, `commands/setup-workflow.toml`.
   - Scope: S.
 
-- [ ] **Task 5: Fork agent files stop sending PRs upstream**
+- [x] **Task 5: Fork agent files stop sending PRs upstream**
   - Description: Rewrite the scope note and the Pull Requests rules in `CLAUDE.md` and `AGENTS.md`. PRs target `julian-perge/agent-skills` `main`, and upstream comes in with `git fetch upstream && git merge upstream/main`.
   - Acceptance:
     - No rule tells an agent to open a PR against upstream, or to search upstream PRs first.
