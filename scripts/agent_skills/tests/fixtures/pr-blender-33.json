@@ -1,0 +1,131 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "number": 33,
+        "title": "The open review findings of earlier PRs are settled",
+        "state": "MERGED",
+        "isDraft": false,
+        "url": "https://github.com/julian-perge/blender-addon-rs317-667mqo-makeup/pull/33",
+        "body": "These are the findings from re-running the reviews of PRs #1, #2, #6, #7, #28 and commit b82d7f2 that were still open on main. The bigger ones went to #29, #30, #31 and #32 instead.\n\n- Added ADR 0021, which records priority 0 for a model with no faces as my decision. The code, test and research notes now cite it instead of calling it \"our own choice\".\n- Updated `CODING_STANDARDS.md` so a comment can point to an evidence file in `docs/research/` that names the client file and line, since that is how the codec comments already cite the client.\n- Marked the PMN tool alpha formula as unverified in `upgrade_materials.py` and its test (#32).\n- Added a source entry for `ItemDefinitions.json` to the appearance fixture README, and removed the sentence that said no item catalog supplies expected fields.\n- Updated both cache string readers to give `?` for the five bytes Windows-1252 leaves undefined, as RuneLite's `InputStream.readString` does, with a test for each.\n- Updated the codec flag test to expect exact flags from the footer of `28634.dat`, and gave each malformed footer case a `match`.\n- Small cleanups: parentheses in the fade curve filter, the clip test helper now uses its `pose` argument, an unused test entry removed, an ADR 0020 link, and a stale plan path in `tasks/old`.\n\n`prek run --all-files` passes, and so do the Blender tests for `appearance_clip`, `upgrade_materials` and `contact_sheet` (139 passed).\n",
+        "baseRefName": "main",
+        "headRefName": "docs/review-followups",
+        "closingIssuesReferences": {
+          "nodes": []
+        },
+        "files": {
+          "totalCount": 17,
+          "nodes": [
+            {
+              "path": "CODING_STANDARDS.md",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "docs/adr/0021-a-model-with-no-faces-stores-priority-0.md",
+              "additions": 5,
+              "deletions": 0
+            },
+            {
+              "path": "docs/research/model-formats.md",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "docs/research/osrs-149-codec-client-rules.md",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "src/rsps_toolkit/blender/appearance_bone_action.py",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "src/rsps_toolkit/blender/appearance_contact_sheet.py",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "src/rsps_toolkit/blender/upgrade_materials.py",
+              "additions": 4,
+              "deletions": 1
+            },
+            {
+              "path": "src/rsps_toolkit/formats/enum_definition.py",
+              "additions": 8,
+              "deletions": 3
+            },
+            {
+              "path": "src/rsps_toolkit/formats/item_definition.py",
+              "additions": 3,
+              "deletions": 2
+            },
+            {
+              "path": "src/rsps_toolkit/formats/new_format.py",
+              "additions": 2,
+              "deletions": 2
+            },
+            {
+              "path": "tasks/old/remove-dumper-and-legacy-revisions/todo.md",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "tests/blender/test_appearance_clip.py",
+              "additions": 3,
+              "deletions": 2
+            },
+            {
+              "path": "tests/blender/test_upgrade_materials.py",
+              "additions": 1,
+              "deletions": 0
+            },
+            {
+              "path": "tests/fixtures/appearance/README.md",
+              "additions": 2,
+              "deletions": 1
+            },
+            {
+              "path": "tests/unit/test_enum_definition.py",
+              "additions": 7,
+              "deletions": 0
+            },
+            {
+              "path": "tests/unit/test_item_definition.py",
+              "additions": 6,
+              "deletions": 0
+            },
+            {
+              "path": "tests/unit/test_osrs149_codec.py",
+              "additions": 19,
+              "deletions": 10
+            }
+          ]
+        },
+        "commits": {
+          "totalCount": 1,
+          "nodes": [
+            {
+              "commit": {
+                "messageHeadline": "docs: settle the open review findings of PRs 1, 2, 6, 7 and 28"
+              }
+            }
+          ]
+        },
+        "lastCommit": {
+          "nodes": [
+            {
+              "commit": {
+                "statusCheckRollup": null
+              }
+            }
+          ]
+        },
+        "reviews": {
+          "nodes": []
+        }
+      }
+    }
+  }
+}

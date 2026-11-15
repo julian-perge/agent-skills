@@ -5,6 +5,9 @@ from dataclasses import dataclass
 SPEC_LINE = re.compile(r"^[\s*_>-]*spec\b[^\n]*?(spec/[\w./-]+?\.md)", re.IGNORECASE | re.MULTILINE)
 SPEC_PATH = re.compile(r"spec/[\w./-]+?\.md")
 SPEC_NUMBER = re.compile(r"spec/(\d+)-")
+CLOSES = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b", re.IGNORECASE)
+BRANCH_NUMBER = re.compile(r"^[\w.-]+/(\d+)-")
+STANDARD_FILES = ("CODING_STANDARDS.md", "AGENTS.md", "CLAUDE.md")
 
 
 @dataclass(frozen=True)
@@ -101,3 +104,59 @@ def spec_for(issue: Issue, spec_files: frozenset[str]) -> SpecMatch:
     if len(candidates) == 1:
         return SpecMatch(candidates[0], "file name", guess=True)
     return SpecMatch(None, "none", guess=False, candidates=candidates)
+
+
+@dataclass(frozen=True)
+class FileChange:
+    path: str
+    additions: int
+    deletions: int
+
+
+@dataclass(frozen=True)
+class Review:
+    author: str
+    state: str
+    date: str
+
+
+@dataclass(frozen=True)
+class PullRequest:
+    number: int
+    title: str
+    state: str = "OPEN"
+    draft: bool = False
+    url: str = ""
+    body: str = ""
+    base: str = ""
+    head: str = ""
+    closing: tuple[Issue, ...] = ()
+    files: tuple[FileChange, ...] = ()
+    file_total: int = 0
+    commits: tuple[str, ...] = ()
+    commit_total: int = 0
+    checks: str = "none"
+    reviews: tuple[Review, ...] = ()
+
+
+@dataclass(frozen=True)
+class TaskMatch:
+    number: int | None
+    source: str
+    guess: bool = False
+
+
+def pr_task(closing: Sequence[int], body: str, head: str) -> TaskMatch:
+    if closing:
+        return TaskMatch(closing[0], "closing reference")
+    closes = CLOSES.search(body)
+    if closes:
+        return TaskMatch(int(closes[1]), "body")
+    branch = BRANCH_NUMBER.match(head)
+    if branch:
+        return TaskMatch(int(branch[1]), "branch name", guess=True)
+    return TaskMatch(None, "none")
+
+
+def standard_file(root_files: frozenset[str]) -> str | None:
+    return next((name for name in STANDARD_FILES if name in root_files), None)

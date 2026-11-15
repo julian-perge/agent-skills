@@ -131,7 +131,7 @@ scripts/agent_skills/tests/fixtures/      trimmed real gh responses and expected
 4. For an open PR in blender, `agent-skills pr <n>` prints a review line that `/agent-skills:review` accepts with no edit.
 5. `claim` on a closed issue, on an issue assigned to someone else and on a blocked issue exits 1, gives the reason, and records no write.
 6. In `~/code/agent-skills`, which has an `upstream` remote, every recorded `gh` call names `julian-perge/agent-skills`.
-7. `issue` and `pr` make one `gh` call each. `frontier` makes one. `next` makes one call per page of issues, plus one call per Plan candidate.
+7. `issue` makes one `gh` call. `pr` makes one, plus one when the task is not a closing reference. `frontier` makes one. `next` makes one call per page of issues, plus one call per Plan candidate.
 8. `agent-skills --help` works through `~/.local/bin/agent-skills` and as a bare command in a Claude Code session (plugin `bin/`).
 
 ## Out of scope (deferred)

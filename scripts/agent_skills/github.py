@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from agent_skills import CliError
-from agent_skills.tracker import Comment, Issue, Link, SubIssue
+from agent_skills.tracker import Comment, FileChange, Issue, Link, PullRequest, Review, SubIssue
 
 REMOTE = re.compile(r"[/:](?P<owner>[\w.-]+)/(?P<name>[\w.-]+?)(?:\.git)?/?$")
 
@@ -47,6 +47,37 @@ ISSUE_QUERY = f"""query($owner: String!, $name: String!, $number: Int!) {{
     }}
   }}
 }}"""
+
+TASK_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) { number title body parent { number title body } }
+  }
+}"""
+
+PR_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      number title state isDraft url body baseRefName headRefName
+      closingIssuesReferences(first: 5) {
+        nodes { number title body parent { number title body } }
+      }
+      files(first: 100) {
+        totalCount
+        nodes { path additions deletions }
+      }
+      commits(last: 20) {
+        totalCount
+        nodes { commit { messageHeadline } }
+      }
+      lastCommit: commits(last: 1) {
+        nodes { commit { statusCheckRollup { state } } }
+      }
+      reviews(last: 5) {
+        nodes { author { login } state submittedAt }
+      }
+    }
+  }
+}"""
 
 
 @dataclass(frozen=True)
@@ -104,6 +135,43 @@ def parse_issue(node: dict[str, Any]) -> Issue:
     )
 
 
+def parse_closing_issue(node: dict[str, Any]) -> Issue:
+    parent = node["parent"] or {}
+    return Issue(
+        number=node["number"],
+        title=node["title"],
+        body=text(node["body"]),
+        parent_number=parent.get("number"),
+        parent_title=parent.get("title", ""),
+        parent_body=text(parent.get("body")),
+    )
+
+
+def parse_pull_request(node: dict[str, Any]) -> PullRequest:
+    last = node["lastCommit"]["nodes"]
+    rollup = last[0]["commit"]["statusCheckRollup"] if last else None
+    return PullRequest(
+        number=node["number"],
+        title=node["title"],
+        state=node["state"],
+        draft=node["isDraft"],
+        url=node["url"],
+        body=text(node["body"]),
+        base=node["baseRefName"],
+        head=node["headRefName"],
+        closing=tuple(parse_closing_issue(issue) for issue in node["closingIssuesReferences"]["nodes"]),
+        files=tuple(FileChange(f["path"], f["additions"], f["deletions"]) for f in node["files"]["nodes"]),
+        file_total=node["files"]["totalCount"],
+        commits=tuple(c["commit"]["messageHeadline"] for c in node["commits"]["nodes"]),
+        commit_total=node["commits"]["totalCount"],
+        checks=rollup["state"] if rollup else "none",
+        reviews=tuple(
+            Review((r["author"] or {}).get("login", "ghost"), r["state"], (r["submittedAt"] or "")[:10])
+            for r in node["reviews"]["nodes"]
+        ),
+    )
+
+
 def parse_remote(url: str) -> str:
     match = REMOTE.search(url.strip()) if "://" in url or "@" in url else None
     if match is None:
@@ -141,6 +209,12 @@ class GitHub:
 
     def issue(self, number: int) -> Issue:
         return parse_issue(self.graphql(ISSUE_QUERY, number=number)["repository"]["issue"])
+
+    def pull_request(self, number: int) -> PullRequest:
+        return parse_pull_request(self.graphql(PR_QUERY, number=number)["repository"]["pullRequest"])
+
+    def task_issue(self, number: int) -> Issue:
+        return parse_closing_issue(self.graphql(TASK_QUERY, number=number)["repository"]["issue"])
 
     def toplevel(self) -> str | None:
         result = self._run(["git", "rev-parse", "--show-toplevel"])

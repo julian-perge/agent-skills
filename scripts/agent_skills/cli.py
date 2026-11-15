@@ -23,14 +23,34 @@ def issue_number(value: str) -> int:
     return int(digits)
 
 
-def spec_files(gh: GitHub) -> frozenset[str]:
-    root = Path(gh.toplevel() or ".")
+def spec_files(root: Path) -> frozenset[str]:
     return frozenset(f"spec/{path.name}" for path in (root / "spec").glob("*.md"))
+
+
+def checkout_root(gh: GitHub) -> Path:
+    return Path(gh.toplevel() or ".")
 
 
 def issue_verb(gh: GitHub, args: argparse.Namespace) -> str:
     issue = gh.issue(args.number)
-    return render.issue_report(issue, tracker.spec_for(issue, spec_files(gh)), args.full)
+    return render.issue_report(issue, tracker.spec_for(issue, spec_files(checkout_root(gh))), args.full)
+
+
+def pr_parts(gh: GitHub, number: int) -> tuple[tracker.PullRequest, tracker.TaskMatch, str, tracker.SpecMatch, str | None]:
+    pr = gh.pull_request(number)
+    root = checkout_root(gh)
+    task = tracker.pr_task(tuple(issue.number for issue in pr.closing), pr.body, pr.head)
+    issue = next((issue for issue in pr.closing if issue.number == task.number), None)
+    if issue is None and task.number is not None:
+        issue = gh.task_issue(task.number)
+    spec = tracker.spec_for(issue, spec_files(root)) if issue else tracker.SpecMatch(None, "none", guess=False)
+    standard = tracker.standard_file(frozenset(name for name in tracker.STANDARD_FILES if (root / name).is_file()))
+    return pr, task, issue.title if issue else "", spec, standard
+
+
+def pr_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    pr, task, title, spec, standard = pr_parts(gh, args.number)
+    return render.pr_report(pr, task, title, spec, standard, args.full)
 
 
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
@@ -50,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
     issue.add_argument("number", type=issue_number, metavar="N")
     issue.add_argument("--full", action="store_true", help="print the whole body, every comment read and every sub-issue read")
     issue.set_defaults(handler=issue_verb)
+
+    pr = verbs.add_parser("pr", help="one pull request with its task, spec, standard, files and the review line")
+    pr.add_argument("number", type=issue_number, metavar="N")
+    pr.add_argument("--full", action="store_true", help="print the whole body")
+    pr.set_defaults(handler=pr_verb)
 
     frontier = verbs.add_parser("frontier", help="the open sub-issues of P and the next one to build")
     frontier.add_argument("number", type=issue_number, metavar="P")

@@ -125,7 +125,7 @@ Plugin check: claude plugin validate .
 - [ ] The unit tests pass locally and in CI on a pushed branch.
 - [ ] Manual `issue` and `frontier` runs in urchin and blender look right to the user.
 
-- [ ] **Task 10: `pr`**
+- [x] **Task 10: `pr`**
   - Description: Add the PR query, the task lookup (closing references, then `Closes #n`, then the branch number as a guess), the standard file, the output and the review line.
   - Acceptance:
     - Each task source and "no task" are covered by tests.

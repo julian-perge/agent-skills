@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from agent_skills.tracker import Frontier, Issue, SpecMatch, SubIssue
+from agent_skills.tracker import Frontier, Issue, PullRequest, SpecMatch, SubIssue, TaskMatch
 
 BODY_LIMIT = 2000
 COMMENT_LIMIT = 600
@@ -84,3 +84,46 @@ def issue_report(issue: Issue, spec: SpecMatch, full: bool) -> str:
         for comment in comments:
             lines += [f"### @{comment.author}, {comment.date}", "", cut(comment.body.strip(), None if full else COMMENT_LIMIT), ""]
     return "\n".join(lines).rstrip("\n") + "\n"
+
+
+def review_line(pr: int, task: TaskMatch, spec: SpecMatch, standard: str | None) -> str:
+    parts = [f"issue #{task.number}" if task.number is not None else "", f"PR #{pr}"]
+    parts += [f"spec {spec.path}" if spec.path else "", f"standard {standard}" if standard else ""]
+    return "/agent-skills:review " + ", ".join(part for part in parts if part)
+
+
+def task_line(task: TaskMatch, title: str) -> str:
+    if task.number is None:
+        return "none"
+    named = f"#{task.number} {title}".rstrip()
+    return f"{named} (from {task.source}) (guess)" if task.guess else f"{named} (from {task.source})"
+
+
+def pr_report(pr: PullRequest, task: TaskMatch, task_title: str, spec: SpecMatch, standard: str | None, full: bool) -> str:
+    reviews = ", ".join(f"@{r.author} {r.state} {r.date}" for r in pr.reviews) or "none"
+    lines = [
+        f"# PR #{pr.number} {pr.title} [{pr.state}]",
+        f"- URL: {pr.url}",
+        f"- Base: {pr.base}",
+        f"- Head: {pr.head}",
+        f"- Draft: {'yes' if pr.draft else 'no'}",
+        f"- Checks: {pr.checks}",
+        f"- Reviews: {reviews}",
+        f"- Task: {task_line(task, task_title)}",
+        f"- Spec: {spec_line(spec)}",
+        f"- Standard: {standard or 'none'}",
+        "",
+        f"## Files ({pr.file_total}, +{sum(f.additions for f in pr.files)} -{sum(f.deletions for f in pr.files)})",
+        "",
+    ]
+    if pr.files:
+        lines += ["| File | + | - |", "| --- | --- | --- |"]
+        lines += [f"| {cell(f.path)} | {f.additions} | {f.deletions} |" for f in pr.files]
+        if len(pr.files) < pr.file_total:
+            lines.append(f"[{pr.file_total - len(pr.files)} more files not read]")
+        lines.append("")
+    lines += [f"## Commits ({len(pr.commits)} of {pr.commit_total}, newest last)", ""]
+    lines += [f"- {headline}" for headline in pr.commits]
+    lines += ["", "## Body", "", cut(pr.body.strip(), None if full else BODY_LIMIT) or "(empty)", ""]
+    lines += [f"Check out: gh pr checkout {pr.number}", f"Review: {review_line(pr.number, task, spec, standard)}"]
+    return "\n".join(lines) + "\n"
