@@ -72,7 +72,7 @@ Plugin check: claude plugin validate .
   - Files: `CLAUDE.md`, `AGENTS.md`.
   - Scope: XS.
 
-- [ ] **Task 6: Delete the dotfiles copies**
+- [x] **Task 6: Delete the dotfiles copies**
   - Description: Delete the two skill folders and their three symlinks from dotfiles. Update the README and the workflow runbook to the new command names and path.
   - Acceptance:
     - The leftover-refs `rg` from `spec/helpers-install.md` finds no hit in a live file.
