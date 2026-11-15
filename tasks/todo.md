@@ -89,7 +89,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 2: tracker-cli (spec/helpers-tracker-cli.md)
 
-- [ ] **Task 7: CLI skeleton and CI step**
+- [x] **Task 7: CLI skeleton and CI step**
   - Description: Add the launcher, the argparse dispatch with exit codes 0, 1 and 2, the runner in `github.py` (owner and repo parsed from `origin`, `--repo` added to every `gh` call, GraphQL helper) and the fake runner for tests. Add the unit-test step to CI.
   - Acceptance:
     - `bin/agent-skills --help` works through a symlink.
