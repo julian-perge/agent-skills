@@ -99,7 +99,7 @@ Plugin check: claude plugin validate .
   - Files: `bin/agent-skills`, `scripts/agent_skills/__init__.py`, `scripts/agent_skills/cli.py`, `scripts/agent_skills/github.py`, `scripts/agent_skills/tests/test_github.py`, `.github/workflows/test-plugin-install.yml`.
   - Scope: M.
 
-- [ ] **Task 8: `frontier`**
+- [x] **Task 8: `frontier`**
   - Description: Add the frontier rule, the table output and the verb.
   - Acceptance:
     - The lowest open sub-issue with no open blocker and no assignee is the frontier.

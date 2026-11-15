@@ -5,8 +5,26 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from agent_skills import CliError
+from agent_skills.tracker import SubIssue
 
 REMOTE = re.compile(r"[/:](?P<owner>[\w.-]+)/(?P<name>[\w.-]+?)(?:\.git)?/?$")
+
+SUB_ISSUE_FIELDS = """
+        number title state
+        assignees(first: 5) { nodes { login } }
+        issueDependenciesSummary { blockedBy }"""
+
+FRONTIER_QUERY = f"""query($owner: String!, $name: String!, $number: Int!) {{
+  repository(owner: $owner, name: $name) {{
+    issue(number: $number) {{
+      number title
+      subIssues(first: 100) {{
+        nodes {{{SUB_ISSUE_FIELDS}
+        }}
+      }}
+    }}
+  }}
+}}"""
 
 
 @dataclass(frozen=True)
@@ -22,6 +40,16 @@ Runner = Callable[[list[str]], Result]
 def run_process(argv: list[str]) -> Result:
     done = subprocess.run(argv, capture_output=True, text=True)
     return Result(done.returncode, done.stdout, done.stderr)
+
+
+def parse_sub_issue(node: dict[str, Any]) -> SubIssue:
+    return SubIssue(
+        number=node["number"],
+        title=node["title"],
+        state=node["state"],
+        assignees=tuple(a["login"] for a in node["assignees"]["nodes"]),
+        open_blockers=node["issueDependenciesSummary"]["blockedBy"],
+    )
 
 
 def parse_remote(url: str) -> str:
@@ -54,6 +82,10 @@ class GitHub:
             if value is not None:
                 argv += ["-F" if isinstance(value, int) else "-f", f"{key}={value}"]
         return json.loads(self._gh(argv))["data"]
+
+    def sub_issues(self, number: int) -> tuple[str, list[SubIssue]]:
+        issue = self.graphql(FRONTIER_QUERY, number=number)["repository"]["issue"]
+        return issue["title"], [parse_sub_issue(node) for node in issue["subIssues"]["nodes"]]
 
     def _gh(self, argv: list[str]) -> str:
         result = self._run(argv)

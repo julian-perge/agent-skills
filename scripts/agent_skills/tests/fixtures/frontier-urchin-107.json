@@ -1,0 +1,103 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 107,
+        "title": "UI overhaul: faithful screens on native Godot containers",
+        "subIssues": {
+          "nodes": [
+            {
+              "number": 203,
+              "title": "Make the viewport the original's 800x575 Stage",
+              "state": "CLOSED",
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 204,
+              "title": "Re-pad the four cutscene clips to 800x575",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 209,
+              "title": "Generalize the compare tool from the victory prototype",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 215,
+              "title": "Open the game on the title and add the shared menu pieces",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 232,
+              "title": "Score the Inventory window against the SWF",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 5
+              }
+            },
+            {
+              "number": 161,
+              "title": "Extract the Screen and Window chrome a StyleBoxFlat can't draw",
+              "state": "CLOSED",
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 273,
+              "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
+              "state": "OPEN",
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
