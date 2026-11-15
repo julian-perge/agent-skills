@@ -20,7 +20,7 @@ agent-skills [--repo OWNER/REPO] <verb> [args]
 
 ### `issue N [--full]`
 
-A single GraphQL query reads: number, title, state, url, body, labels, assignees, `parent { number title body }`, `subIssues(first: 50)` with the state, assignee count and blocker count of each, `blockedBy(first: 20)`, `closedByPullRequestsReferences(first: 5, includeClosedPrs: true)`, and `comments(last: 20)` with `totalCount`. Each of these fields was checked against julian-perge/urchin#161 on 2026-11-15.
+A single GraphQL query reads: number, title, state, url, body, labels, assignees, `parent { number title body }`, `subIssuesSummary { total completed }` for the counts, `subIssues(first: 100)` (GitHub's cap per parent) with the state, assignee count and blocker count of each, `blockedBy(first: 20)`, `closedByPullRequestsReferences(first: 5, includeClosedPrs: true)`, and `comments(last: 20)` with `totalCount`. Each of these fields was checked against julian-perge/urchin#161 on 2026-11-15.
 
 ```
 # #49 Region scenery [OPEN]
@@ -42,7 +42,7 @@ A single GraphQL query reads: number, title, state, url, body, labels, assignees
 ```
 
 - **Spec lookup:** the three rules of `next`. Rule 1: a `Spec` line or a `spec/...md` path in the issue body. Rule 2: the same in the parent body. Rule 3: exactly one file `spec/<issue>-*.md` or `spec/<parent>-*.md`, marked `(guess)`. When rule 3 finds several files, the line lists the candidates and names no spec.
-- **Limits without `--full`:** the body is cut at 2,000 characters. Only the newest 3 comments show, each cut at 600 characters. The sub-issue table has at most 30 rows. Each cut ends with `[cut: <n> more characters, run with --full]`.
+- **Limits without `--full`:** the body is cut at 2,000 characters. Only the newest 3 comments show, each cut at 600 characters. The sub-issue table has at most 10 rows, open sub-issues first. Each cut ends with `[cut: <n> more characters, run with --full]`, and the table's cut says `<n> more rows`.
 
 ### `pr N [--full]`
 
@@ -72,7 +72,7 @@ For `/agent-skills:build auto`: `claim <source> --no-assign` makes the one branc
 
 ### `frontier P`
 
-A table of the open sub-issues of `P` with assignee and open blockers. The last line is `Frontier: #<n>`, the lowest open number with no open blocker and no assignee. When there is no such issue, the last line is `Frontier: none (<reason>)`. Exit 0 in both cases.
+A table of the open sub-issues of `P` with assignee and open blockers. The last line is `Frontier: #<n>`, the lowest open number with the `ready-for-agent` label, no open blocker and no assignee. When there is no such issue, the last line is `Frontier: none (<reason>)`. Exit 0 in both cases.
 
 ### `next`
 
@@ -92,7 +92,7 @@ Prints one paste line with no Markdown, for the end of a stage:
 | Call | Prints | Exit 1 when |
 | --- | --- | --- |
 | `next-cmd review <pr>` | the review line of `pr` | never. The parts with no value are left out, and stderr names them |
-| `next-cmd build <parent>` | `/agent-skills:build #<frontier>` | there is no frontier |
+| `next-cmd build <parent>` | `/agent-skills:build #<frontier>`, with the frontier rule of `frontier` | there is no frontier: no open sub-issue has `ready-for-agent`, no open blocker and no assignee |
 | `next-cmd plan <issue>` | `/agent-skills:plan #<issue>, spec <spec>` | the issue has no spec |
 | `next-cmd spec <issue>` | `/agent-skills:spec #<issue>` | never |
 
@@ -131,7 +131,7 @@ scripts/agent_skills/tests/fixtures/      trimmed real gh responses and expected
 4. For an open PR in blender, `agent-skills pr <n>` prints a review line that `/agent-skills:review` accepts with no edit.
 5. `claim` on a closed issue, on an issue assigned to someone else and on a blocked issue exits 1, gives the reason, and records no write.
 6. In `~/code/agent-skills`, which has an `upstream` remote, every recorded `gh` call names `julian-perge/agent-skills`.
-7. `issue` and `pr` make one `gh` call each. `frontier` makes one. `next` makes one call per page of issues, plus one call per Plan candidate.
+7. `issue` makes one `gh` call. `pr` makes one, plus one when the task is not a closing reference. `frontier` makes one. `next` makes one call per page of issues, plus one call per Plan candidate.
 8. `agent-skills --help` works through `~/.local/bin/agent-skills` and as a bare command in a Claude Code session (plugin `bin/`).
 
 ## Out of scope (deferred)

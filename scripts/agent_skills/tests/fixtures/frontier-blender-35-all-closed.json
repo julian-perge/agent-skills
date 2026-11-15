@@ -1,0 +1,80 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 35,
+        "title": "Import a map chunk (terrain and scenery) into Blender",
+        "subIssues": {
+          "nodes": [
+            {
+              "number": 36,
+              "title": "The placements of region 48_50 are read from the encrypted landscape",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 37,
+              "title": "The terrain of region 48_50 and its 8 neighbours is read from the cache",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 38,
+              "title": "The underlay, overlay and loc definitions of region 48_50 are decoded",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

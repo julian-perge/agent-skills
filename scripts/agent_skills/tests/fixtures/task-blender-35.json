@@ -1,0 +1,12 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 35,
+        "title": "Import a map chunk (terrain and scenery) into Blender",
+        "body": "As an engineer, I want to import a chunk of the game map (e.g. Draynor Village) into Blender, with its terrain and the scenery on it, so that a player built with the add-on can stand in a real area instead of an empty scene.\n\nRight now the add-on only handles models. `formats/js5.py` says encrypted groups (map landscapes) are not supported, and `docs/osrs-cache-workflow.md` notes that 268 landscapes in snapshot 430 have no exported key.\n\nThe first use for this is a 3D scene on my profile page, exported from Blender as glTF. I think the import should land here first, and the export side can be adjusted for the page after.\n\nNot settled yet:\n\n- Which cache archives hold the terrain and the landscape (scenery placement) of a region, and which keys the landscapes need.\n- How much to import at once: one region, a rectangle of tiles, or a named area.\n- Whether scenery objects (trees, walls, buildings) come in with the terrain, or in a later step.\n- How the tile colors, overlays and textures become Blender materials.\n- Whether the result needs to export to glTF with the same look.\n",
+        "parent": null
+      }
+    }
+  }
+}

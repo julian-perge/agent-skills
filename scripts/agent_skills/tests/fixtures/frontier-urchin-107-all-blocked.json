@@ -1,0 +1,106 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 107,
+        "title": "UI overhaul: faithful screens on native Godot containers",
+        "subIssues": {
+          "nodes": [
+            {
+              "number": 203,
+              "title": "Make the viewport the original's 800x575 Stage",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 215,
+              "title": "Open the game on the title and add the shared menu pieces",
+              "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 216,
+              "title": "Rebuild the choice Screen and leave out PvP Arena",
+              "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 1
+              }
+            },
+            {
+              "number": 273,
+              "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
+              "state": "OPEN",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "enhancement"
+                  },
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

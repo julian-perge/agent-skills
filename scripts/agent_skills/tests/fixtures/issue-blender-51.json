@@ -1,0 +1,54 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 51,
+        "title": "Compare the viewport render of region 48_50 with the live-client picture",
+        "state": "OPEN",
+        "url": "https://github.com/julian-perge/blender-addon-rs317-667mqo-makeup/issues/51",
+        "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (success criterion 4, and the done check of ADR 0022)\n\n## What to do\n\nThis task needs the owner's eyes. It has no branch and no pull request, and nothing is committed (no .blend, no render).\n\n1. Import region `48_50` with File > Import > RS Region (from cache).\n2. Render the viewport.\n3. Compare the render with the live-client picture of Draynor by eye.\n4. Comment the result on issue 35.\n\n## Acceptance criteria\n\n- [ ] The owner has compared the viewport render with the live-client picture of Draynor.\n- [ ] The result comment on issue 35 says pass or fail.\n- [ ] A fail names each difference that the owner sees, with the rule that probably causes it. Rules with no second reader and the unchecked revision 149 are the likely causes (spec, guess 1).\n\n## Verification\n\nThe comment on issue 35.\n",
+        "labels": {
+          "nodes": [
+            {
+              "name": "ready-for-human"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": []
+        },
+        "parent": {
+          "number": 35,
+          "title": "Import a map chunk (terrain and scenery) into Blender",
+          "body": "As an engineer, I want to import a chunk of the game map (e.g. Draynor Village) into Blender, with its terrain and the scenery on it, so that a player built with the add-on can stand in a real area instead of an empty scene.\n\nRight now the add-on only handles models. `formats/js5.py` says encrypted groups (map landscapes) are not supported, and `docs/osrs-cache-workflow.md` notes that 268 landscapes in snapshot 430 have no exported key.\n\nThe first use for this is a 3D scene on my profile page, exported from Blender as glTF. I think the import should land here first, and the export side can be adjusted for the page after.\n\nNot settled yet:\n\n- Which cache archives hold the terrain and the landscape (scenery placement) of a region, and which keys the landscapes need.\n- How much to import at once: one region, a rectangle of tiles, or a named area.\n- Whether scenery objects (trees, walls, buildings) come in with the terrain, or in a later step.\n- How the tile colors, overlays and textures become Blender materials.\n- Whether the result needs to export to glTF with the same look.\n"
+        },
+        "subIssuesSummary": {
+          "total": 0,
+          "completed": 0
+        },
+        "subIssues": {
+          "nodes": []
+        },
+        "blockedBy": {
+          "nodes": [
+            {
+              "number": 50,
+              "state": "CLOSED"
+            },
+            {
+              "number": 48,
+              "state": "CLOSED"
+            }
+          ]
+        },
+        "closedByPullRequestsReferences": {
+          "nodes": []
+        },
+        "comments": {
+          "totalCount": 0,
+          "nodes": []
+        }
+      }
+    }
+  }
+}

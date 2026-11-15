@@ -1,0 +1,39 @@
+{
+  "data": {
+    "viewer": {
+      "login": "julian-perge"
+    },
+    "repository": {
+      "issue": {
+        "number": 273,
+        "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
+        "state": "OPEN",
+        "labels": {
+          "nodes": [
+            {
+              "name": "enhancement"
+            },
+            {
+              "name": "ready-for-agent"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": [
+            {
+              "login": "julian-perge"
+            }
+          ]
+        },
+        "blockedBy": {
+          "nodes": [
+            {
+              "number": 271,
+              "state": "CLOSED"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

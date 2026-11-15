@@ -1,0 +1,127 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "number": 278,
+        "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
+        "state": "OPEN",
+        "isDraft": false,
+        "url": "https://github.com/julian-perge/urchin/pull/278",
+        "body": "Closes #273\n\nBuilt by the large worker (MiMo-V2.6-Pro) as run 2 of 6 in #274, after two timeouts and one rework note each.\n\n- The `leveled` comment in `victory_exp_row.gd` now says nothing reads it today and that `battle_scene.gd` uses `levels_gained`. No open task changes that, so it names none.\n- `button_record` takes the button id and raises a `ValueError` naming the button and the character when an up-state record is not a shape.\n- `test_panel_recipe.gd` no longer types the shadow values. `test_screen_rects.gd` already compares the material with the SWF.\n- `func run()` in `post_run.gd` is now `-> void`. `GutHookScript.run()` has no return type, so \"match\" could also mean untyped.\n\nVerification: `just pytest` 420 passed, `just gut` 784 of 784. With the `word_wrap` arm removed from `text_record`, the new pytest case fails.\n",
+        "baseRefName": "main",
+        "headRefName": "fix/273-comment-doc-gaps",
+        "closingIssuesReferences": {
+          "nodes": [
+            {
+              "number": 273,
+              "title": "Fix the comments, docs and small test gaps from the #107 re-reviews",
+              "body": "## Parent\n\n#107\n\nSpec: `spec/107-ui-foundation.md`, `spec/107-abilities.md`, `spec/107-victory.md`. The #187 and #198 items have no spec.\n\nThe re-reviews of #187, #198, #206, #208, #210, #229, #236 and #239 found these comment, doc and small test problems. Each one is still on `main` at `d711450e`. This issue changes `screen_rects.py` and `test_screen_rects.gd`, so it waits for the rect test issue to merge.\n\n## What to build\n\n**Comments and docs that say something false or incomplete**\n- #198: `test/integration/test_battle_scene.gd:3659` says \"A Shock lands on its Dispatch frame\". The new test proves it lands 1 frame later. Write that a Shock shows 1 frame after its Dispatch on both runs, so the frames still compare.\n- #198: `scripts/battle/battle_scene.gd:703` cites conductor lines 450-468. The sound plays at line 449. Cite 449-468.\n- #198: `DECODED_ALGORITHMS.md:87` says the conductor creates each bolt with `attachMovie` at line 430. Line 430 calls `krinBoltMake`, which attaches the bolt at `frame_42/DoAction_4.as:140`.\n- #187: `test/post_run.gd:5-11` states the audio-thread race as fact. Add that the cause comes from reading `audio_server.cpp` and from 5 of 10 runs leaking without the hook against 0 of 10 with it, and that no verbose log named the objects.\n- #187: `post_run.gd:5-6` names only the hub and the main menu. `play_menu_music()` is also called from `battle_scene.gd:501,920`, `game.gd:25` and `hotbar.gd:66`. Write \"tests that start menu music (the menu, the hub or the end of a battle)\". Change \"In 2026-11-11 tests\" to \"In tests on 2026-11-11\".\n- #236: ADR 0007 does not list the plus button's hover and pressed fills (`lightened(0.25)` and `darkened(0.25)`, `scripts/ui/menu/abilities_window.gd:110`). The SWF's button 3068 swaps shape 3065 for the white shape 3066 instead. Add both to the ADR's plus-button item.\n- #236: `dev/tests/test_screen_rects.py:301` says shape 3065 is a black plate under the gradient 3064. 3065 is at depth 2, over 3064, and it is the black glyph and its outline. `abilities_window.gd:103` calls shapes 3064 to 3067 \"a gradient plate\": only 3064 is.\n- #239: `scripts/ui/menu/victory_exp_row.gd:22-23` says the player's row sets `playerLeveled`. Nothing reads `.leveled`. `battle_scene.gd:892` uses `levels_gained`. Say what happens today and which task changes it.\n- #210: the header comment of `screen_rects.py` says an art piece's depth means the two extractors cannot name different placements. For stage-measured art, the code only checks that the depth exists. The rect and the PNG come from `window_chrome.json` by name.\n- #229: `dev/urchin_dev/convert/menu_math.py:90` says \"four statements\". There are five (lines 104, 105, 106, 109 and 155 of the script).\n\n**Small code and test fixes**\n- #198: the new Shock test types `1` at `test_battle_scene.gd:2565,2592`. Use `SHOCK_LANDS_AFTER_DISPATCH`.\n- #187: `func run()` in `post_run.gd:19` has no return type. Match `GutHookScript.run()`.\n- #208: delete the unused `COLOR_TOLERANCE` in `test_screen_rects.gd:11`.\n- #206: drop the typed shadow asserts (5.0, 5.0, 45.0) in `test/unit/test_panel_recipe.gd:64-66`. `test_screen_rects.gd:79-85` already compares the material with the SWF.\n- #236: no test covers the `word_wrap` arm of the line-pitch condition (`screen_rects.py:363`). A mutation that deleted it passed. Add `field(font_height=240, leading=40, word_wrap=True)` with `multiline=False`, and expect a pitch of 14.0.\n- #236: `button_record` fails with a bare `KeyError` when an up-state record is not a shape (`screen_rects.py:461,479`). Raise a `ValueError` that names the button and the character.\n\n## Acceptance criteria\n- [ ] Every comment above is true and complete, by the three tests in CODING_STANDARDS.md.\n- [ ] ADR 0007 lists the plus button's hover and pressed fills.\n- [ ] The word_wrap mutation fails `dev/tests/test_screen_rects.py`.\n- [ ] A button with a sprite in its up state fails with a `ValueError` that names it.\n- [ ] `just gut` and `just pytest` pass.\n\n## Verification\n`just gut` and `just pytest`.\n",
+              "parent": {
+                "number": 107,
+                "title": "UI overhaul: faithful screens on native Godot containers",
+                "body": "## Destination\n\nA UI spec at `spec/107-ui-overhaul.md` that gives every screen and window a decided target layout and names the SWF pieces it's built from, plus ready-for-agent issues to build it. The map is done once nothing is left to decide, and the building happens in those issues.\n\n## Notes\n\n- **Look:** faithful to the original by default, with an ADR for any departure a player could notice, "
+              }
+            }
+          ]
+        },
+        "files": {
+          "totalCount": 12,
+          "nodes": [
+            {
+              "path": "DECODED_ALGORITHMS.md",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "dev/tests/test_screen_rects.py",
+              "additions": 27,
+              "deletions": 6
+            },
+            {
+              "path": "dev/urchin_dev/convert/menu_math.py",
+              "additions": 2,
+              "deletions": 1
+            },
+            {
+              "path": "dev/urchin_dev/swf/extract/screen_rects.py",
+              "additions": 16,
+              "deletions": 7
+            },
+            {
+              "path": "docs/adr/0007-keep-the-abilities-window-departures.md",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "scripts/battle/battle_scene.gd",
+              "additions": 1,
+              "deletions": 1
+            },
+            {
+              "path": "scripts/ui/menu/abilities_window.gd",
+              "additions": 4,
+              "deletions": 2
+            },
+            {
+              "path": "scripts/ui/menu/victory_exp_row.gd",
+              "additions": 3,
+              "deletions": 2
+            },
+            {
+              "path": "test/integration/test_battle_scene.gd",
+              "additions": 5,
+              "deletions": 6
+            },
+            {
+              "path": "test/post_run.gd",
+              "additions": 11,
+              "deletions": 8
+            },
+            {
+              "path": "test/unit/test_panel_recipe.gd",
+              "additions": 1,
+              "deletions": 4
+            },
+            {
+              "path": "test/unit/test_screen_rects.gd",
+              "additions": 0,
+              "deletions": 1
+            }
+          ]
+        },
+        "commits": {
+          "totalCount": 3,
+          "nodes": [
+            {
+              "commit": {
+                "messageHeadline": "docs: correct the false and incomplete comments the re-reviews flagge…"
+              }
+            },
+            {
+              "commit": {
+                "messageHeadline": "refactor: button_record takes the button id (#273)"
+              }
+            },
+            {
+              "commit": {
+                "messageHeadline": "fix: the small code and test gaps the re-reviews flagged (#273)"
+              }
+            }
+          ]
+        },
+        "lastCommit": {
+          "nodes": [
+            {
+              "commit": {
+                "statusCheckRollup": null
+              }
+            }
+          ]
+        },
+        "reviews": {
+          "nodes": []
+        }
+      }
+    }
+  }
+}

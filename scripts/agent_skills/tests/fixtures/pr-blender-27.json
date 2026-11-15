@@ -1,0 +1,56 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "number": 27,
+        "title": "Fix the runbook gaps that the acceptance run found",
+        "state": "MERGED",
+        "isDraft": false,
+        "url": "https://github.com/julian-perge/blender-addon-rs317-667mqo-makeup/pull/27",
+        "body": "The acceptance run of #22 passed, but it found gaps in the runbook and in `flourish.py`. See the result comment: https://github.com/julian-perge/blender-addon-rs317-667mqo-makeup/issues/12#issuecomment-6819995490\n\n- Added a knee bend to `flourish.py`. A `dip` below `KNEES_BEND_BELOW` (-5) bends the knees and keeps the ankles in place, since a crouch pushed the feet through the ground.\n  - The flourish uses `dip` of -2 to -4, so its keys do not change. Confirmed in a new scene: the edited script and the old one give the same 63 curves.\n- Added the head, the knees and the ankles to the report of `build()`.\n- Updated the runbook with the lean rule for directions, the sizes to read from the first report, the left hand on the hilt, and what to do when the Your motion track already holds a strip.\n- Added how to wear a weapon after Create Player, and a camera and sun setup for a new file. A run from an empty scene showed that both were missing.\n\nRefs #22. It stays open until a clean session repeats the run.\n",
+        "baseRefName": "main",
+        "headRefName": "docs/22-runbook-acceptance-fixes",
+        "closingIssuesReferences": {
+          "nodes": []
+        },
+        "files": {
+          "totalCount": 2,
+          "nodes": [
+            {
+              "path": "docs/hand-made-motion.md",
+              "additions": 41,
+              "deletions": 8
+            },
+            {
+              "path": "docs/research/sword-flourish-test/flourish.py",
+              "additions": 53,
+              "deletions": 6
+            }
+          ]
+        },
+        "commits": {
+          "totalCount": 1,
+          "nodes": [
+            {
+              "commit": {
+                "messageHeadline": "docs: fix the runbook gaps that the acceptance run found (#22)"
+              }
+            }
+          ]
+        },
+        "lastCommit": {
+          "nodes": [
+            {
+              "commit": {
+                "statusCheckRollup": null
+              }
+            }
+          ]
+        },
+        "reviews": {
+          "nodes": []
+        }
+      }
+    }
+  }
+}

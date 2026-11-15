@@ -1,0 +1,63 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "subIssues": {
+          "nodes": [
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (parts 1 and 5)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 4)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 3)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 2, decoding)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 7, tile triangles)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 7, tile colours and terrain light)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 6: impostor, model, recolours and retextures)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 6: order, object transform, height)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 6: contoured placement; guess 2)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 6: loc shadows)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 2, Blender images)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 7, and part 9 except the report)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 8)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 6, Blender objects and meshes)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (part 7, terrain light with loc shadows, and the report of part 9)"
+            },
+            {
+              "body": "Parent: #35\nSpec: `spec/35-draynor-region-import.md` (success criterion 4, and the done check of ADR 0022)"
+            },
+            {
+              "body": "Part of #35"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

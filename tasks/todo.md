@@ -89,7 +89,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 2: tracker-cli (spec/helpers-tracker-cli.md)
 
-- [ ] **Task 7: CLI skeleton and CI step**
+- [x] **Task 7: CLI skeleton and CI step**
   - Description: Add the launcher, the argparse dispatch with exit codes 0, 1 and 2, the runner in `github.py` (owner and repo parsed from `origin`, `--repo` added to every `gh` call, GraphQL helper) and the fake runner for tests. Add the unit-test step to CI.
   - Acceptance:
     - `bin/agent-skills --help` works through a symlink.
@@ -99,7 +99,7 @@ Plugin check: claude plugin validate .
   - Files: `bin/agent-skills`, `scripts/agent_skills/__init__.py`, `scripts/agent_skills/cli.py`, `scripts/agent_skills/github.py`, `scripts/agent_skills/tests/test_github.py`, `.github/workflows/test-plugin-install.yml`.
   - Scope: M.
 
-- [ ] **Task 8: `frontier`**
+- [x] **Task 8: `frontier`**
   - Description: Add the frontier rule, the table output and the verb.
   - Acceptance:
     - The lowest open sub-issue with no open blocker and no assignee is the frontier.
@@ -109,7 +109,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `render.py`, `cli.py`, `tests/test_frontier.py`, `tests/fixtures/frontier-*.json`.
   - Scope: S.
 
-- [ ] **Task 9: `issue`**
+- [x] **Task 9: `issue`**
   - Description: Add the issue query, the three spec-lookup rules, the cut limits, `--full` and the brief output.
   - Acceptance:
     - Each spec rule, several candidates, and no spec are covered by tests.
@@ -125,7 +125,7 @@ Plugin check: claude plugin validate .
 - [ ] The unit tests pass locally and in CI on a pushed branch.
 - [ ] Manual `issue` and `frontier` runs in urchin and blender look right to the user.
 
-- [ ] **Task 10: `pr`**
+- [x] **Task 10: `pr`**
   - Description: Add the PR query, the task lookup (closing references, then `Closes #n`, then the branch number as a guess), the standard file, the output and the review line.
   - Acceptance:
     - Each task source and "no task" are covered by tests.
@@ -136,7 +136,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `render.py`, `github.py`, `tests/test_pr.py`, `tests/fixtures/pr-*.json`.
   - Scope: M.
 
-- [ ] **Task 11: `next-cmd`**
+- [x] **Task 11: `next-cmd`**
   - Description: Add the four stages from the spec table, each printing one line, with exit 1 in the listed cases.
   - Acceptance:
     - Each stage prints the expected line from fixtures.
@@ -146,17 +146,17 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/cli.py`, `render.py`, `tests/test_next_cmd.py`.
   - Scope: S.
 
-- [ ] **Task 12: `claim`**
+- [x] **Task 12: `claim`**
   - Description: Add the preconditions, the type and slug rules, the assign step, the branch step from `origin/<default>`, and the `--no-branch` and `--no-assign` flags.
   - Acceptance:
     - A closed issue, an issue assigned to someone else, a blocked issue, a dirty tree and an existing branch each exit 1 and record no write.
     - The success path records exactly the assign call and the two git calls.
-  - Verify: the unit tests pass. One manual claim runs on a throwaway issue in a test branch, and the user approves the issue first.
+  - Verify: the unit tests pass. The user skipped the manual claim on 2026-11-15, so the fake-runner tests are the proof.
   - Dependencies: 9.
   - Files: `scripts/agent_skills/tracker.py`, `github.py`, `cli.py`, `tests/test_claim.py`.
   - Scope: M.
 
-- [ ] **Task 13: `next` rules**
+- [x] **Task 13: `next` rules**
   - Description: Port the group rules (Review, Build, Plan, Spec, Idea), the priority order, the frontier mark and the guess list into pure functions.
   - Acceptance: one test per row of the group table in the old SKILL.md, plus the priority order when an issue fits several groups.
   - Verify: the unit tests pass.
@@ -164,7 +164,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `tests/test_next_groups.py`.
   - Scope: S.
 
-- [ ] **Task 14: `next` fetch and report**
+- [x] **Task 14: `next` fetch and report**
   - Description: Add the paged issue query, the open-PR list, the sub-issue bodies for Plan candidates, the preflight and the report.
   - Acceptance:
     - The golden output matches for a recorded blender tracker state.

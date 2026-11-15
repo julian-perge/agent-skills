@@ -1,0 +1,257 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 12,
+        "title": "Hand-made motion for players in Blender scenes",
+        "state": "CLOSED",
+        "url": "https://github.com/julian-perge/blender-addon-rs317-667mqo-makeup/issues/12",
+        "body": "As a user, I want to pose a player in a way the client does not have, e.g. someone holding a sword and performing a different action with it, in the same Blender scenes that play the native OSRS animations.\n\nRight now a presentation copy only plays baked game clips. `spec/old/game-animation.md` left this out on purpose (\"Poseable rig editing comes later\").\n\nThe pose stays in Blender: a `.blend` and rendered stills or video. Nothing goes back to the game, so presentation copies keep refusing `.dat` export, and Preserve Source is not involved (see #8).\n\nThis still needs the Idea and Design stages. Not sure yet how a pose should be driven, e.g. by the vertex skin labels and frame map transforms the client uses, or by a Blender armature.\n\n**AC:**\n\n- A player in a Blender scene can hold a pose that no animation sequence in the cache contains, and the scene renders with it.\n- The source models and their export data stay unchanged.\n",
+        "labels": {
+          "nodes": [
+            {
+              "name": "needs-triage"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": []
+        },
+        "parent": null,
+        "subIssuesSummary": {
+          "total": 8,
+          "completed": 8
+        },
+        "subIssues": {
+          "nodes": [
+            {
+              "number": 14,
+              "title": "Build the test scene for the sword flourish test",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 15,
+              "title": "Contact sheets and the review video work on the baked clips",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 16,
+              "title": "Key the sword flourish and get the owner's verdict",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-human"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 17,
+              "title": "Record the result of the sword flourish test",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 19,
+              "title": "The contact sheet operator renders the active player into one PNG",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 20,
+              "title": "The reference script of the pose solver goes in docs/research",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": []
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 21,
+              "title": "The hand-made motion runbook",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-agent"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            },
+            {
+              "number": 22,
+              "title": "The acceptance run of the hand-made motion runbook",
+              "state": "CLOSED",
+              "labels": {
+                "nodes": [
+                  {
+                    "name": "ready-for-human"
+                  }
+                ]
+              },
+              "assignees": {
+                "nodes": [
+                  {
+                    "login": "julian-perge"
+                  }
+                ]
+              },
+              "issueDependenciesSummary": {
+                "blockedBy": 0
+              }
+            }
+          ]
+        },
+        "blockedBy": {
+          "nodes": []
+        },
+        "closedByPullRequestsReferences": {
+          "nodes": []
+        },
+        "comments": {
+          "totalCount": 6,
+          "nodes": [
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-12T07:09:17Z",
+              "body": "# Idea: Claude-made player motion\n\n## Problem statement\n\nHow might we let a user with little Blender experience get a hand-made, game-faithful player motion by describing it to Claude, in the same scene as baked game clips?\n\nThe issue text is partly out of date. A player from Create Player already has a rig of 15 named joints from frame map 0, and the bone bake keeps a \"Your motion\" NLA track for the user's own keys over the baked clips. Only the bundle presentation copies are bake-only. The gap is not a posing feature. The user wants Claude to make the motion.\n\n## Recommended direction\n\nStep 1 is a test with no toolkit code. Claude drives the existing player rig through the Blender MCP, keys a sword flourish of 1 to 2 seconds on the \"Your motion\" track, and checks its work on rendered contact sheets. The user judges the render.\n\nStep 2 happens only if step 1 looks right. The motion becomes a text file of client frame transforms, addressed by joint name. A third clip source beside the clip folder and the cache (`ClipSource` in `animation/clip.py`) feeds it to the existing bakes. The result is then what the client would draw, and Update Player bakes it again from its record.\n\nStep 1 proves that the agent loop works. It does not prove the file format, because bone keys do not convert one to one into client transforms.\n\n## Key assumptions to validate\n\n- [ ] Claude can make a sword flourish that looks right with 15 forward-kinematics joints and still-image feedback. Test: step 1.\n- [ ] A worn sword stays in the hand under hand-made keys. Test: step 1.\n- [ ] 15 joints are enough for the flourish (one joint per hand, no fingers). Test: step 1.\n- [ ] An authored clip source is small: a frame encoder, or a clip source seam that takes decoded frames. Test: read `animation/clip.py` and `animation/frames.py` in the Design stage. This is a guess until then.\n\n## MVP scope\n\nIn: players from Create Player. One runbook. One contact sheet command. One sword flourish, rendered. After that, the motion script and its clip source.\n\n## Not doing (and why)\n\n- Rigs for NPC models such as gnomes and ents: they need joints from other frame maps. A separate issue.\n- Bundle presentation copies: they have no rig, and players cover the need.\n- Export to a cache: the issue keeps motion inside Blender.\n- IK, a pose library or new panel controls: Claude sets the keys, not the user.\n- Mixing existing clips per joint: not chosen in this round.\n- Smooth weights or extra bones: the motion must be game-faithful (rigid label groups, the 15 joints).\n\n## Open questions for Design\n\n- Does the script name joints only, or also raw transforms and labels?\n- Does an authored motion bake as shape keys, bones or both?\n- Does the script live in the .blend or in a file beside it?\n- Is the contact sheet a toolkit operator or a script outside the add-on?\n"
+            },
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-12T07:18:11Z",
+              "body": "# Design: step 1, the sword flourish test\n\nThis design covers step 1 of the idea comment only. Step 2 (the motion text file and its clip source) gets its own Design stage after the test passes.\n\n## Settled\n\n- **Outcome:** Claude keys a sword flourish of 1 to 2 seconds on an existing player's rig through the Blender MCP. The keys go on the \"Your motion\" track, over the baked stand clip of the worn sword. The flourish starts and ends at the stand pose.\n- **User:** Any user of the extension who has Claude and the Blender MCP. The owner is the first user and the judge.\n- **Success:** Beside a baked attack clip of the same player, the flourish could be a real OSRS clip. Poses are stepped and held for whole client ticks. Body parts stay rigid. The sword stays fixed in the hand. Nothing detaches or passes through the body.\n- **Order:** The test comes first, with a scratch contact sheet script and no toolkit code. Claude corrects its own work on contact sheets before each render it shows.\n- **Stop rule:** The owner reviews at most three renders. If the third fails, the test fails, this issue records which assumption broke (15 joints, still-image feedback, sword in hand), and step 2 does not start.\n- **After a pass:** The contact sheet becomes a toolkit operator that ships in the extension. The runbook goes in the repo's docs. The test shows what both need.\n\n## Out of scope\n\n- The motion text file and its clip source (step 2).\n- Rigs for NPC models, bundle presentation copies and export to a cache.\n- IK, a pose library and new panel controls for posing.\n- Mixing a hand-made motion per joint over a moving clip such as walk.\n- Smooth weights or extra bones.\n\n## Left open\n\n- The contact sheet layout. The test decides it.\n- The step 2 questions from the idea comment: what the script names, how an authored motion bakes, and where the script lives.\n\n## Finding for step 2\n\n`ClipSource` in `animation/clip.py` returns raw bytes for the sequence, the frames and the frame maps. An authored clip source needs a frame encoder, or a new seam in `pose_vertices` that takes decoded frames. Neither exists today.\n"
+            },
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-12T07:23:34Z",
+              "body": "Spec for step 1 (the sword flourish test): `spec/12-sword-flourish-test.md`. Approved on 2026-11-12."
+            },
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-12T08:10:24Z",
+              "body": "## Result of the sword flourish test: pass, on review 1 of 3\n\nSpec: `spec/12-sword-flourish-test.md`. The test ran on 2026-11-12 in issues 14 (scene), 15 (feedback tools) and 16 (flourish and verdict).\n\n**Verdict:** pass. The owner saw one review video with its contact sheet and said \"pass\". No review failed, so none of the three assumptions broke (still-image feedback, sword in hand, 15 joints). The contact sheet operator with the runbook, and step 2, can each get a spec.\n\n**The flourish:** 90 frames at 50 fps (1.8 seconds), 21 poses, each held for 2 to 14 frames. The sword comes in front, twirls on the left side with a turn of the body, twirls on the right side, and lands horizontal behind the neck. The first and the last pose are the stand pose. Issue 16 has the full description and the scene checks, which all passed.\n\n## The contact sheet script\n\n`docs/research/sword-flourish-test/feedback.py` (pull request 18). It holds `contact_sheet` and `review_video`, runs inside Blender, and holds no local path.\n\n## The contact sheet layout that worked\n\n- One PNG of one player. One column per frame, one row per view, and the frame number in each cell. The other player is hidden.\n- Each row has one orthographic camera that holds the player on every frame of the sheet, so a change between two cells is always a pose change.\n- Cells of 320 x 480.\n- For Claude's own check: three views (front, the side or the back, top) and about 7 poses on one sheet. A sheet with more poses was harder to read. The frame of each cell is the first frame of a pose, because the poses are held.\n- For the owner: one sheet of all 21 poses with the front and the right side (the sword side).\n- The top view and the back view were necessary. The front view hides depth, so it does not show a sword that passes through the legs or lies behind the neck.\n\n## What the runbook must tell Claude\n\n1. Every joint has the same rest frame: local X is the player's left, local Y is up, local Z is forward. The player faces -Y. All bones use quaternions.\n2. Give each pose as directions (upper arm, forearm, blade, edge of the blade, turn of the root and the spine) and solve the joint rotations from them in a script. Do not set joint angles by hand.\n3. Make the action and its strip on the Your motion track with the data API (a slot, a layer, a keyframe strip and a channelbag for the slot). Push Down and the panel are not necessary. Give the strip the blend type Replace and no extrapolation.\n4. Key rotations on the 15 joints, and locations on `root` only. The stand clip keeps the joint locations and the label bones. Take the first and the last pose from the stand clip's own values on those frames.\n5. Set constant interpolation on every key, and put every key on a whole frame.\n6. After each round of keys, read the world positions of the wrist, the hilt and the tip for each pose, and read a contact sheet. The numbers find where the sword passes through the body. The sheet confirms it.\n7. Run the scene checks before each review: every F-curve is on a joint, every key is constant, the first and the last pose equal the stand pose, the RS clips strips are unchanged, and the player reads as unedited.\n8. Set the scene range for each render. A bake sets it back to the range of the baked clip.\n\n## What the test showed for step 2\n\n- A hand-made motion is a short list of poses. Each pose is a hold time in whole frames (client ticks), one rotation for each of the 15 joints, and a location for `root`. The flourish needed 21 poses, 60 rotation curves and 3 location curves. It needed no scale key and no key on a label bone.\n- The pose description that worked is directions in the frame of the torso, not joint angles. The motion text file can hold either form. This is a design choice for the spec of step 2.\n- The test did not change the keys into client transforms. Which joint keys have no single client transform is not measured. That question stays open for the spec of step 2.\n- The pose script (`flourish.py`) stays in the scratch folder. The spec names only the contact sheet script for the repo.\n\n## Limits\n\n- The right hand cannot reach past the left hip with one joint per arm part. The twirl on the left side is in front of the left hip.\n- The feet turn in place when the body turns. No steps are keyed.\n- The owner judged one flourish of one player with one sword. Other motions are not tested.\n- Blender was 5.3.0, not 5.2.\n\n## Tooling problems\n\n1. The cache folder preference of the Blender profile pointed at a folder that no longer exists. It was set for the session only. A papercut records it.\n2. The bake of the attack clip set the scene range back to 1 to 40. Each render sets its own range.\n3. The review video failed once with \"width not divisible by 2\". The render border lost one pixel on an exact pixel edge (the cause is a guess). The script now adds a small part of a pixel to each border value. A papercut records it.\n4. The Blender MCP gave an error when a script returned a list as its result. The renders of that call were already made. A result must be a dict.\n"
+            },
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-12T08:24:26Z",
+              "body": "Spec for the contact sheet operator and the runbook: `spec/12-contact-sheet-and-runbook.md`. Approved on 2026-11-12. The decisions are in ADR 0019."
+            },
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-12T09:34:30Z",
+              "body": "Result of the acceptance run of the runbook (#22): passed on the first review.\n\n**Motion asked for:** Ground stab. The player lifts the sword high with the point down, crouches and drives the point into the ground in front of the feet, bows the head over it, then rises back to the stand pose.\n\n**Verdict:** pass, 1 review of 3. The motion is 10 poses over 60 frames (1.2 seconds), beside the baked sword slash of the comparison player. The session made 2 rounds of keys and 1 contact sheet of its own (`front,right,top`, 8 poses) before the video. The scene checks passed, and the player still reads as unedited.\n\n**How the run differed from the issue:**\n- The session also read `spec/12-contact-sheet-and-runbook.md` and issue 22, not only the runbook. It did not read the scratch folder of the test.\n- Blender had the scene of the test open, so both players, both bakes and the camera already existed. Part 2 of the runbook (the scene) was not exercised. The session saved the scene as a new .blend first, so the file of the test is unchanged.\n- Blender 5.3.0.\n\n**Where the runbook or `flourish.py` was wrong or silent:**\n- The solver has no leg part, and a crouch needs one. The runbook names this case but gives no method. The session added a knee bend to its copy: when `dip` is below 0, the thigh and the shin turn so the ankle stays where the stand pose has it. The flourish used `dip` of -2 to -4 with straight legs, which only works for small values.\n- Directions are in the frame of the torso, and the runbook does not say what that means when the spine leans. With a lean of 30 degrees, `blade: D` put the point back between the feet in the first round. Straight down in the world is `mix(D=cos(lean), F=sin(lean))`.\n- The runbook gives no sizes. The session had to measure that the player is ~194 units tall, the ground is near z 0, the sword is ~126 units long, and `dip` is in those units.\n- `build()` reports the wrist, the hilt and the tip only. The session added the head, the knee and the ankles to the report to check the crouch.\n- `build()` deletes only the strip of its own `ACTION`. The runbook does not say what to do when the Your motion track already holds another strip on the same frames (here, the flourish).\n- The runbook says the motion goes over \"a clip that holds one pose, such as stand\". The stand clip of this weapon, HUMAN_READY (808), moves its joints by up to ~1.7 units over 254 frames. It caused no problem, because the script reads the first and the last pose from the clip on those frames.\n- Nothing helps to put the left hand on the hilt. The session placed it with the wrist numbers.\n\n**Tooling problems:**\n- The Blender MCP could not connect until the owner started Blender, as the issue says.\n- A shell hook refused a bare `python3` call for a helper that swaps the pose list. One `build()` ran on the old pose list before the session saw it.\n- The cache folder preference of the add-on was empty in this Blender. No bake was needed, so it had no effect.\n\nTiming with EEVEE: 8.5 seconds for a sheet of 24 cells, 25.6 seconds for the review video of 60 frames. No .blend, render or contact sheet is committed.\n"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
