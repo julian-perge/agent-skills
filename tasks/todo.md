@@ -12,7 +12,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 1: install (spec/helpers-install.md)
 
-- [ ] **Task 1: Fork plugin source and the `next` command**
+- [x] **Task 1: Fork plugin source and the `next` command**
   - Description: Point the marketplace's plugin entry at the checkout. Add `/agent-skills:next`, whose body is today's `agent-skills-next` rules, with the setup command renamed.
   - Acceptance:
     - `.claude-plugin/marketplace.json` has the plugin `source` `"./"`, and the marketplace name stays `addy-agent-skills`.
