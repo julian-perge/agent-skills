@@ -34,7 +34,7 @@ Save the spec to `spec/<slug>.md`. For commands, structure and code style, link 
 
 One branch per spec, `<type>/<slug>`, with one commit per task. `/agent-skills:build auto` runs every unchecked task after one approval.
 
-Run the verify command from `AGENTS.md` (`Every task`) before each commit. Open the pull request, print the review command and stop. The user merges.
+Run the verify command from `AGENTS.md` (`Every task`) with `agent-skills run --` before each commit, and read its log instead of running it again. Open the pull request, print the review command and stop. The user merges.
 
 The review command is the session's last line:
 

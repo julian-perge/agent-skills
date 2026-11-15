@@ -34,8 +34,8 @@ Build the gap table. One row per artifact, one state per row:
 |---|---|
 | Agent file `## Workflow` block | missing, current, stale (an `## Agent skills` block still exists) |
 | Agent file `## Every task` verify line | missing, current |
-| `docs/agents/workflow.md` | missing, current, stale (names old stage skills, says specs live in issues, or has no rule that a stage ends by printing the next command with real values), foreign (owner-written, different shape) |
-| `docs/agents/issue-tracker.md` | missing, current, stale (still has the triage, "When a skill says" or wayfinding sections) |
+| `docs/agents/workflow.md` | missing, current, stale (names old stage skills, says specs live in issues, or has no rule that a stage ends by printing the next command with real values, or GitHub mode has no `## Helpers` section), foreign (owner-written, different shape) |
+| `docs/agents/issue-tracker.md` | missing, current, stale (still has the triage, "When a skill says" or wayfinding sections, reads issues with raw `gh` where the seed names an `agent-skills` verb, or has a frontier query without the `ready-for-agent` condition) |
 | `docs/agents/triage-labels.md`, `docs/agents/domain.md` | absent, present (to fold and delete) |
 | `tasks/` in `.gitignore` | missing, current |
 | The five labels on the tracker | missing (name them), current |
@@ -72,8 +72,8 @@ Rules for every edit: edit the existing file; update a block in place; keep owne
   Files mode: the first bullet becomes "Tasks are tracked in `tasks/todo.md`, and `tasks/` is committed." and the spec path is `spec/<slug>.md`.
 
   When the agent file has no verify line, add a `## Every task` section above `## Workflow` with one line naming the verify command. The verify command lives only in the agent file.
-- **`docs/agents/workflow.md`**: seed from `${CLAUDE_PLUGIN_ROOT}/references/workflow/workflow-github.md` or `${CLAUDE_PLUGIN_ROOT}/references/workflow/workflow-files.md`. Replace the template defaults (branch names, PR title form, one PR per task or per spec) with the convention evidence. Change nothing else in a seeded file. For a **stale** or **foreign** file, rewrite these parts to the template's and keep the owner text, each rule under the stage it belongs to: the "The user types each stage" paragraph, the stage table, the task body line under Plan, the review command under Build, and the Review section.
-- **`docs/agents/issue-tracker.md`** (GitHub mode): when missing, seed from `${CLAUDE_PLUGIN_ROOT}/references/workflow/issue-tracker-github.md`. When stale, delete the sections "Pull requests as a triage surface", "When a skill says ..." and "Wayfinding operations", and keep their blocking, frontier and claim bullets under a `## Sub-issues and blocking` heading, with "map" reworded to "parent issue". Keep owner text. Leave the wayfinding section in place when the user chose to keep open wayfinder issues.
+- **`docs/agents/workflow.md`**: seed from `${CLAUDE_PLUGIN_ROOT}/references/workflow/workflow-github.md` or `${CLAUDE_PLUGIN_ROOT}/references/workflow/workflow-files.md`. Replace the template defaults (branch names, PR title form, one PR per task or per spec) with the convention evidence. Change nothing else in a seeded file. For a **stale** or **foreign** file, rewrite these parts to the template's and keep the owner text, each rule under the stage it belongs to: the "The user types each stage" paragraph, the `## Helpers` section (GitHub mode), the stage table, the task body line under Plan, the frontier, claim and verify lines and the review command under Build, and the Review section.
+- **`docs/agents/issue-tracker.md`** (GitHub mode): when missing, seed from `${CLAUDE_PLUGIN_ROOT}/references/workflow/issue-tracker-github.md`. When stale, delete the sections "Pull requests as a triage surface", "When a skill says ..." and "Wayfinding operations", and keep their blocking, frontier and claim bullets under a `## Sub-issues and blocking` heading, with "map" reworded to "parent issue". Rewrite the Conventions bullets and the frontier and claim bullets from the seed, so reads use the `agent-skills` verbs and the frontier needs `ready-for-agent`. Keep owner text. Leave the wayfinding section in place when the user chose to keep open wayfinder issues.
 - **`docs/agents/triage-labels.md` and `docs/agents/domain.md`**: move their owner text into `workflow.md` (label overrides under Labels, domain rules under Design), then delete both files. Keep `triage-labels.md` when the user chose to keep open wayfinder issues.
 - **`.gitignore`** (GitHub mode): add `tasks/`.
 - **Labels** (GitHub mode): `gh label create` for each missing one of `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
@@ -81,12 +81,13 @@ Rules for every edit: edit the existing file; update a block in place; keep owne
 
 ### 6. Verify
 
-Done when all four hold. Run them; do not assume.
+Done when all five hold. Run them; do not assume.
 
 1. The old-workflow `rg` from step 2 returns no hit in live docs, except the files the user chose to keep for open wayfinder issues.
 2. Every path named in the agent file's `## Workflow` block and linked from `workflow.md` exists, except `GLOSSARY.md`, `docs/adr/` and `spec/`, which appear when first used.
 3. `git status --short` lists only the files this command meant to change.
 4. GitHub mode: `gh repo view --json nameWithOwner` names the user's own repo, and every label exists.
+5. `command -v agent-skills` prints a path, so the verbs that `workflow.md` names can run.
 
 ### 7. Done
 
