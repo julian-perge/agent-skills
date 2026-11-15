@@ -12,7 +12,7 @@ Plugin check: claude plugin validate .
 
 ## Phase 1: the verb
 
-- [ ] **Task 1: Split workflow.md into the sections of one stage**
+- [x] **Task 1: Split workflow.md into the sections of one stage**
   - Description: Add `scripts/agent_skills/brief.py` with the stage table and a pure function that returns the sections of one stage in file order, as the spec's section map says.
   - Acceptance:
     - For each of the seven stages, the fixture gives the headings that the map names, in file order, with each section's text byte for byte.
