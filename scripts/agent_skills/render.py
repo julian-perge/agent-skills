@@ -7,6 +7,7 @@ COMMENT_LIMIT = 600
 COMMENTS_SHOWN = 3
 BRIEF_BODY_LIMIT: int | None = None
 BRIEF_COMMENTS_SHOWN = 1
+BRIEF_COMMENT_LIMIT: int | None = None
 ROWS_SHOWN = 10
 NEXT_ROWS_SHOWN = 5
 
@@ -54,7 +55,7 @@ def blocker_line(issue: Issue) -> str:
     return f"{open_ones} (closed: {closed})" if closed else open_ones
 
 
-def issue_report(issue: Issue, spec: SpecMatch, full: bool, body_limit: int | None = BODY_LIMIT, comments_shown: int = COMMENTS_SHOWN) -> str:
+def issue_report(issue: Issue, spec: SpecMatch, full: bool, body_limit: int | None = BODY_LIMIT, comments_shown: int = COMMENTS_SHOWN, comment_limit: int | None = COMMENT_LIMIT) -> str:
     parent = f"#{issue.parent_number} {issue.parent_title}" if issue.parent_number else "none"
     pulls = ", ".join(f"#{pr.number} {pr.state}" for pr in issue.pull_requests) or "none"
     subs = issue.sub_issues
@@ -85,7 +86,7 @@ def issue_report(issue: Issue, spec: SpecMatch, full: bool, body_limit: int | No
     else:
         lines += [f"## Comments ({len(comments)} of {issue.comment_total}, newest last)", ""]
         for comment in comments:
-            lines += [f"### @{comment.author}, {comment.date}", "", cut(comment.body.strip(), None if full else COMMENT_LIMIT), ""]
+            lines += [f"### @{comment.author}, {comment.date}", "", cut(comment.body.strip(), None if full else comment_limit), ""]
     return "\n".join(lines).rstrip("\n") + "\n"
 
 

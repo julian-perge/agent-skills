@@ -1,5 +1,6 @@
 STAGES = ("idea", "design", "spec", "plan", "build", "bug", "review")
 COMMAND_NAMES = {"idea-refine": "idea", "interview-me": "design", "test": "bug"}
+RULES_NOTE = "These are all the rules of docs/agents/workflow.md that this stage needs. Do not read that file."
 
 # A heading that is not in this table goes to every stage, so that owner text is never dropped.
 SECTION_STAGES = {

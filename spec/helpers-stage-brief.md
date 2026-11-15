@@ -1,6 +1,6 @@
 # Spec: stage-brief, V1
 
-Module of [helpers-map.md](helpers-map.md), slice 2. It inherits the tech stack, commands, code style and boundaries there. Status: approved by the user on 2026-11-15. The user changed the output at checkpoint A on 2026-11-15: one rules heading, no first intro paragraph, no `Earlier layout`, the whole issue body and one comment.
+Module of [helpers-map.md](helpers-map.md), slice 2. It inherits the tech stack, commands, code style and boundaries there. Status: approved by the user on 2026-11-15. The user changed the output at checkpoint A on 2026-11-15: one rules heading, no first intro paragraph, no `Earlier layout`, the whole issue body and one comment. After the first 3 urchin builds of the trial on 2026-11-15, the user approved two more changes: the one comment is no longer cut, and the header says not to read `workflow.md`.
 
 ## Objective
 
@@ -24,6 +24,8 @@ agent-skills [--repo OWNER/REPO] brief <stage> [<n>] [--full]
 ```
 # Rules for build, from docs/agents/workflow.md
 
+These are all the rules of docs/agents/workflow.md that this stage needs. Do not read that file.
+
 <the intro, without its title line and its first paragraph>
 ## Helpers
 ...
@@ -37,7 +39,7 @@ agent-skills [--repo OWNER/REPO] brief <stage> [<n>] [--full]
 
 The sections keep their order in the file and their text byte for byte. The intro loses only its `# ` title line and its first paragraph, which tells the agent to read the whole file. An intro with nothing left is skipped.
 
-The issue part prints the whole body, because a build needs its acceptance criteria and verification, and only the newest comment, cut at 600 characters. With `--full`, it equals `agent-skills issue <n> --full`. For `review`, the last part is the output of `agent-skills pr <n>`, with its own cuts. The `gh` calls are the calls of `issue` or `pr`, and `brief` adds none.
+The issue part prints the whole body, because a build needs its acceptance criteria and verification, and only the newest comment, also whole. In urchin the newest comment is often the long "Agent Brief", and a cut made every trial build run `agent-skills issue <n> --full`. With `--full`, it equals `agent-skills issue <n> --full`. For `review`, the last part is the output of `agent-skills pr <n>`, with its own cuts. The `gh` calls are the calls of `issue` or `pr`, and `brief` adds none.
 
 ### Section map
 
@@ -64,7 +66,7 @@ In the fork:
 1. `scripts/agent_skills/brief.py` and the `brief` verb in `cli.py`, with tests in `scripts/agent_skills/tests/test_brief.py`. The tests use a copy of blender's `workflow.md` as a fixture.
 2. `.claude/commands/build.md`, `review.md`, `plan.md`, `spec.md` and `test.md`: start with `agent-skills brief <stage> <n>` in place of `agent-skills issue <n>` or `agent-skills pr <pr>`. Each says to read the whole output, with no `head` or `tail`. The `.gemini` and `commands/` bodies change their pointer text only.
 3. `references/workflow/workflow-github.md`: the intro says that `agent-skills brief` prints the parts a stage needs. The Helpers table gets a `brief` row.
-4. `.claude/commands/setup-workflow.md`: the agent file's `## Workflow` block says "Start each `/agent-skills` stage with `agent-skills brief <stage> <n>`. Read all of `docs/agents/workflow.md` before other work in this repo." in place of "Read `docs/agents/workflow.md` before any `/agent-skills` command." The gap table marks the old line **stale**.
+4. `.claude/commands/setup-workflow.md`: the agent file's `## Workflow` block says "Start each `/agent-skills` stage with `agent-skills brief <stage> <n>`. It prints every rule of `docs/agents/workflow.md` that the stage needs, so do not read that file in a stage. Before other work in this repo, read all of `docs/agents/workflow.md`." in place of "Read `docs/agents/workflow.md` before any `/agent-skills` command." The gap table marks the old line **stale**.
 5. `~/tmp/2026-11-15-agent-cli-audit/targets.py`: a read of a `spec/` file counts as a source read.
 
 In urchin and in blender, one PR each, after the user approves: the same `## Workflow` line in `AGENTS.md`, and the intro and the Helpers row in `docs/agents/workflow.md`.

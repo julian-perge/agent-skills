@@ -4,7 +4,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
-from agent_skills import brief, cli
+from agent_skills import brief, cli, render
 from fakes import FakeRunner, fixture_json, fixture_text
 
 BLENDER = "julian-perge/blender-addon-rs317-667mqo-makeup"
@@ -144,7 +144,8 @@ class BriefVerbTest(unittest.TestCase):
         return code, out.getvalue(), err.getvalue(), runner
 
     def rules(self, stage: str) -> str:
-        return f"# Rules for {stage}, from docs/agents/workflow.md\n\n" + "".join(brief.stage_sections(self.workflow, stage))
+        note = "These are all the rules of docs/agents/workflow.md that this stage needs. Do not read that file."
+        return f"# Rules for {stage}, from docs/agents/workflow.md\n\n{note}\n\n" + "".join(brief.stage_sections(self.workflow, stage))
 
     def test_build_prints_the_rules_then_the_issue_from_its_second_line(self) -> None:
         code, out, _, _ = self.run_cli(["brief", "build", "35"], "issue-blender-35.json")
@@ -162,6 +163,14 @@ class BriefVerbTest(unittest.TestCase):
         self.assertNotIn("[cut: ", body)
         self.assertIn("## Comments (1 of 3, newest last)", out)
         self.assertEqual(out.count("\n### @"), 1)
+
+    def test_the_one_comment_is_not_cut(self) -> None:
+        _, out, _, _ = self.run_cli(["brief", "build", "107"], "issue-urchin-107.json")
+        _, full, _, _ = self.run_cli(["issue", "107", "--full"], "issue-urchin-107.json")
+        newest = "\n### @" + full.rsplit("\n### @", 1)[1]
+        self.assertGreater(len(newest), render.COMMENT_LIMIT)
+        self.assertTrue(out.endswith(newest))
+        self.assertNotIn("[cut: ", newest)
 
     def test_review_prints_the_rules_then_the_pr_from_its_second_line(self) -> None:
         code, out, _, _ = self.run_cli(["brief", "review", "66"], "pr-blender-66.json")
