@@ -136,7 +136,7 @@ Plugin check: claude plugin validate .
   - Files: `scripts/agent_skills/tracker.py`, `render.py`, `github.py`, `tests/test_pr.py`, `tests/fixtures/pr-*.json`.
   - Scope: M.
 
-- [ ] **Task 11: `next-cmd`**
+- [x] **Task 11: `next-cmd`**
   - Description: Add the four stages from the spec table, each printing one line, with exit 1 in the listed cases.
   - Acceptance:
     - Each stage prints the expected line from fixtures.

@@ -127,3 +127,29 @@ def pr_report(pr: PullRequest, task: TaskMatch, task_title: str, spec: SpecMatch
     lines += ["", "## Body", "", cut(pr.body.strip(), None if full else BODY_LIMIT) or "(empty)", ""]
     lines += [f"Check out: gh pr checkout {pr.number}", f"Review: {review_line(pr.number, task, spec, standard)}"]
     return "\n".join(lines) + "\n"
+
+
+def review_notes(task: TaskMatch, spec: SpecMatch, standard: str | None) -> list[str]:
+    left_out = []
+    if task.number is None:
+        left_out += ["issue (no task found)", "spec (no task found)"]
+    elif spec.path is None:
+        left_out.append(f"spec ({spec_problem(task.number, spec)})")
+    if standard is None:
+        left_out.append("standard (no CODING_STANDARDS.md, AGENTS.md or CLAUDE.md)")
+    notes = [f"Left out of the review line: {', '.join(left_out)}."] if left_out else []
+    if task.guess:
+        notes.append(f"Task #{task.number} is from the {task.source} (guess).")
+    if spec.guess:
+        notes.append(spec_guess_note(spec))
+    return notes
+
+
+def spec_problem(number: int, spec: SpecMatch) -> str:
+    if spec.candidates:
+        return f"#{number} has no spec. Candidates: {', '.join(spec.candidates)}"
+    return f"#{number} has no spec"
+
+
+def spec_guess_note(spec: SpecMatch) -> str:
+    return f"Spec {spec.path} is from the file name (guess)."
