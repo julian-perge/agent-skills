@@ -130,7 +130,7 @@ Runner = Callable[[list[str]], Result]
 
 
 def run_process(argv: list[str]) -> Result:
-    done = subprocess.run(argv, capture_output=True, text=True)
+    done = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return Result(done.returncode, done.stdout, done.stderr)
 
 
