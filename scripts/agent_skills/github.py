@@ -28,13 +28,20 @@ FRONTIER_QUERY = f"""query($owner: String!, $name: String!, $number: Int!) {{
   }}
 }}"""
 
+BODY_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { issue(number: $number) { body } }
+}"""
+
 ISSUE_QUERY = f"""query($owner: String!, $name: String!, $number: Int!) {{
   repository(owner: $owner, name: $name) {{
     issue(number: $number) {{
       number title state url body
       labels(first: 20) {{ nodes {{ name }} }}
       assignees(first: 10) {{ nodes {{ login }} }}
-      parent {{ number title body }}
+      parent {{
+        number title body
+        comments(last: 20) {{ nodes {{ author {{ login }} createdAt body }} }}
+      }}
       subIssuesSummary {{ total completed }}
       subIssues(first: 100) {{
         nodes {{{SUB_ISSUE_FIELDS}
@@ -168,12 +175,14 @@ def parse_issue(node: dict[str, Any]) -> Issue:
         sub_issue_completed=node["subIssuesSummary"]["completed"],
         blockers=tuple(Link(b["number"], b["state"]) for b in node["blockedBy"]["nodes"]),
         pull_requests=tuple(Link(pr["number"], pr["state"]) for pr in node["closedByPullRequestsReferences"]["nodes"]),
-        comments=tuple(
-            Comment((c["author"] or {}).get("login", "ghost"), c["createdAt"][:10], text(c["body"]))
-            for c in node["comments"]["nodes"]
-        ),
+        comments=tuple(parse_comment(c) for c in node["comments"]["nodes"]),
         comment_total=node["comments"]["totalCount"],
+        parent_comments=tuple(parse_comment(c) for c in (parent.get("comments") or {}).get("nodes", [])),
     )
+
+
+def parse_comment(node: dict[str, Any]) -> Comment:
+    return Comment((node["author"] or {}).get("login", "ghost"), node["createdAt"][:10], text(node["body"]), node["createdAt"])
 
 
 def parse_closing_issue(node: dict[str, Any]) -> Issue:
@@ -293,6 +302,16 @@ class GitHub:
     def claim_view(self, number: int) -> tuple[Issue, str]:
         data = self.graphql(CLAIM_QUERY, number=number)
         return parse_claim_issue(data["repository"]["issue"]), data["viewer"]["login"]
+
+    def issue_body(self, number: int) -> str:
+        """The body exactly as GitHub stores it, line ends included, so a write changes nothing else."""
+        return self.graphql(BODY_QUERY, number=number)["repository"]["issue"]["body"] or ""
+
+    def edit_body(self, number: int, body: str) -> None:
+        self._gh(["gh", "issue", "edit", str(number), "--repo", self.repo, "--body", body])
+
+    def comment(self, number: int, body: str) -> str:
+        return self._gh(["gh", "issue", "comment", str(number), "--repo", self.repo, "--body", body])
 
     def add_assignee_me(self, number: int) -> None:
         self._gh(["gh", "issue", "edit", str(number), "--repo", self.repo, "--add-assignee", "@me"])

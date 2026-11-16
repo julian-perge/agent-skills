@@ -36,6 +36,13 @@ def branch_kind(value: str) -> str:
     return value
 
 
+def box_list(value: str) -> list[int]:
+    parts = [part.strip() for part in value.split(",")]
+    if not all(part.isdigit() for part in parts):
+        raise argparse.ArgumentTypeError(f"expected box numbers such as 1,3, got {value!r}")
+    return [int(part) for part in parts]
+
+
 def spec_files(root: Path) -> frozenset[str]:
     return frozenset(f"spec/{path.name}" for path in (root / "spec").glob("*.md"))
 
@@ -167,6 +174,35 @@ def next_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return render.next_report(gh.repo, groups, standard, tracker.next_step(groups))
 
 
+def ac_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    body = gh.issue_body(args.number)
+    boxes = tracker.ac_boxes(body)
+    if boxes is None:
+        raise CliError(f"#{args.number} has no Acceptance criteria heading.", REFUSED)
+    if not boxes:
+        raise CliError(f"#{args.number} has no checkbox under its Acceptance criteria heading.", REFUSED)
+    if args.tick is None:
+        return render.ac_report(boxes)
+    wrong = [index for index in args.tick if not 1 <= index <= len(boxes)]
+    if wrong:
+        raise CliError(f"Not ticked: #{args.number} has boxes 1 to {len(boxes)}, not {', '.join(map(str, wrong))}.", REFUSED)
+    ticked = tracker.tick_boxes(body, boxes, args.tick)
+    if ticked == body:
+        return render.ac_report(boxes)
+    if gh.issue_body(args.number) != body:
+        raise CliError(f"Not ticked: the body of #{args.number} changed while this ran. Run the command again.", REFUSED)
+    gh.edit_body(args.number, ticked)
+    return render.ac_report(tracker.ac_boxes(ticked))
+
+
+def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    body = sys.stdin.read().strip()
+    if not body:
+        raise CliError("Nothing posted: the decisions come on stdin, and stdin was empty.", REFUSED)
+    target = f"PR #{args.pr}" if args.pr is not None else f"#{args.number}"
+    return gh.comment(args.number, f"### Decisions from the {args.stage} of {target}\n\n{body}").strip() + "\n"
+
+
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
     title, subs = gh.sub_issues(args.number)
     return render.frontier_report(args.number, title, subs, tracker.frontier(subs))
@@ -214,6 +250,17 @@ def build_parser() -> argparse.ArgumentParser:
     frontier = verbs.add_parser("frontier", help="the open sub-issues of P and the next one to build")
     frontier.add_argument("number", type=issue_number, metavar="P")
     frontier.set_defaults(handler=frontier_verb)
+
+    ac = verbs.add_parser("ac", help="list the acceptance criteria boxes of an issue, or tick some of them")
+    ac.add_argument("number", type=issue_number, metavar="N")
+    ac.add_argument("--tick", type=box_list, metavar="LIST", help="the box numbers to tick, such as 1,3; every other line of the body stays the same")
+    ac.set_defaults(handler=ac_verb)
+
+    decide = verbs.add_parser("decide", help="post the decisions on stdin as one decision comment on an issue, and print its URL")
+    decide.add_argument("number", type=issue_number, metavar="N")
+    decide.add_argument("--from", dest="stage", type=stage_arg, required=True, metavar="STAGE", help=f"one of {', '.join(brief.STAGES)}, or {', '.join(brief.COMMAND_NAMES)}")
+    decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from")
+    decide.set_defaults(handler=decide_verb)
 
     run_parser = run.add_parser(verbs)
     run_parser.set_defaults(handler=None, run_parser=run_parser)

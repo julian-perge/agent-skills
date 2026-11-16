@@ -1,0 +1,101 @@
+{
+  "data": {
+    "repository": {
+      "issue": {
+        "number": 84,
+        "title": "The scratch page draws a stock glTF export of one loc and the 16 square",
+        "state": "CLOSED",
+        "url": "https://github.com/julian-perge/blender-addon-rs317-667mqo-makeup/issues/84",
+        "body": "## Parent\n\n#82\n\n## Spec\n\n`spec/82-gltf-export-findings.md` (Method; Findings table, rows 2 and 3; Success criteria 3)\n\n## What to build\n\nStart the note `docs/research/82-gltf-export.md` and the scratch setup that every later task reuses. Nothing in scratch is committed. The scratch folder is `~/tmp/2026-11-15-82-gltf-export`, and the note calls it `<scratch folder>`.\n\n- **Scratch page.** A bare three.js page with a local copy of the latest stable three.js and its glTF and Draco loaders, with no CDN. `?t=<seconds>` freezes the clip at that time and `?view=<name>` selects a camera. It draws no shadow, and it reports `renderer.info.render.calls` and the frame rate.\n- **Screenshots.** A headless browser on the real GPU (Playwright with Chrome, or the same in another tool) takes the page screenshots. Record the WebGL renderer string. Stop and report if it is a software renderer.\n- **Stock export.** Import region `48_50` of snapshot 430. Export one loc with a textured face first, then the terrain of the 16 square centred on about tile 3080, 3250, both with Blender's stock glTF exporter. Read the glTF JSON after each export.\n- **Row 2.** Read the sampler of a texture that has Closest interpolation.\n- **Row 3.** Read how the terrain's Emission material exports, load it on the page, and compare a screenshot with an unlit Blender render at the same camera. Read both pictures.\n- **Environment.** The note names the Blender version, every exporter setting that is not the default, the three.js release, the machine's GPU and the browser. It records the scratch commands with placeholders for local paths.\n- The note has the findings table with all 14 rows and the size table, with the rows of later tasks left empty.\n\nThe commit holds the note and the spec file, which is not committed yet.\n\n## Acceptance criteria\n\n- [ ] `docs/research/82-gltf-export.md` has rows 2 and 3 filled: survives or not, the glTF JSON extract or the pair of pictures in words, and each cause marked as evidence or as a guess.\n- [ ] The note names the Blender version, the exporter settings that are not the default, the three.js release, the GPU and the browser, and gives the commands to repeat the export and the screenshot.\n- [ ] `<scratch folder>` has a page that takes `?t=` and `?view=`, loads three.js from a local copy and reports draw calls and frame rate.\n- [ ] The commit holds only the note and the spec, and `prek run --all-files` passes.\n\n## Verification\n\n```bash\nprek run --all-files\n```\n\nManual: the commands in the note reproduce the two exports and the row 3 screenshot.\n",
+        "labels": {
+          "nodes": [
+            {
+              "name": "ready-for-agent"
+            }
+          ]
+        },
+        "assignees": {
+          "nodes": [
+            {
+              "login": "julian-perge"
+            }
+          ]
+        },
+        "parent": {
+          "number": 82,
+          "title": "Export a region and a player with a clip to glTF",
+          "body": "As an engineer, I want to export a region and a player with a clip from Blender to glTF, so that a three.js page shows them with the same look as the Blender viewport.\n\nThe first use is the 3D scene on my profile page: region `48_50` from #35 with my player standing in it on an idle clip. The spec of #35 left the glTF export for a later issue, and this is that issue.\n\nRight now nothing in the add-on has been exported to glTF, so I don't know what survives Blender's exporter. I think most of the work is finding that out first, and then fixing what doesn't survive.\n\nNot settled yet:\n\n- Whether the face colours, face alpha and textures of a model survive the export, and what three.js material they end up as.\n- How render priority gets to the page. glTF has no field for it, so stacked faces probably need something else (e.g. a small offset or a draw order on the three.js side).\n- How the scenery materials export. The terrain material is unlit, but the scenery materials use Principled BSDF, so the two would be lit differently on the page. The page wants the flat 2007 look with no shadows first.\n- Whether a Bones-method clip plays in three.js. The first check is idle plus one emote.\n- Whether a clip that changes face alpha can export at all, or whether the first version only takes clips that don't.\n- Whether the export writes shared mesh data once. `48_50` has 185 shared meshes, and the spec of #35 left this question for the export issue.\n- How big the result is. `48_50` is 4096 tiles and 1894 objects, and the page has to stay light, so it probably needs a smaller rectangle of tiles or joined meshes.\n- Whether this is an operator in the add-on, a script that calls Blender's exporter, or only a doc with the export settings.\n",
+          "comments": {
+            "nodes": [
+              {
+                "author": {
+                  "login": "julian-perge"
+                },
+                "createdAt": "2026-11-16T03:27:15Z",
+                "body": "Refined this one. The first result is a findings note, not an exporter.\n\n**Problem:**\n\nHow might we get region `48_50` and a player on an idle clip from Blender into one glTF file that a three.js page"
+              },
+              {
+                "author": {
+                  "login": "julian-perge"
+                },
+                "createdAt": "2026-11-16T04:13:32Z",
+                "body": "### Decisions from the plan of #82\n\n- The player for #87 wears Verac's helm, Fire cape, Verac's brassard, Verac's plateskirt, Barrows gloves, Climbing boots and Verac's flail. Reason: it is the owner's outfit, and the page shows the owner's player."
+              },
+              {
+                "author": {
+                  "login": "julian-perge"
+                },
+                "createdAt": "2026-11-16T03:40:21Z",
+                "body": "Settled the design. The result is still the findings note at `docs/research/82-gltf-export.md`, and this answers the open questions from the last comment.\n\n**Settled:**\n\n- The by-eye checks compare a "
+              },
+              {
+                "author": {
+                  "login": "julian-perge"
+                },
+                "createdAt": "2026-11-16T03:45:38Z",
+                "body": "Wrote the spec at `spec/82-gltf-export-findings.md`. It is not committed yet, and it still needs my approval."
+              },
+              {
+                "author": {
+                  "login": "julian-perge"
+                },
+                "createdAt": "2026-11-16T07:04:10Z",
+                "body": "After looking at the scratch page of #87, I decided the page has to draw the client light baked in, not flat face colours. The flat version looked like RuneScape Classic, way too flat, and lost the OS"
+              }
+            ]
+          }
+        },
+        "subIssuesSummary": {
+          "total": 0,
+          "completed": 0
+        },
+        "subIssues": {
+          "nodes": []
+        },
+        "blockedBy": {
+          "nodes": []
+        },
+        "closedByPullRequestsReferences": {
+          "nodes": [
+            {
+              "number": 97,
+              "state": "MERGED"
+            }
+          ]
+        },
+        "comments": {
+          "totalCount": 1,
+          "nodes": [
+            {
+              "author": {
+                "login": "julian-perge"
+              },
+              "createdAt": "2026-11-16T04:43:51Z",
+              "body": "Decisions from the review of #97, for the later tasks of #82:\n\n- The `test` camera at (1024, 3800, 2172) with a 40 degree field of view stays the test camera. #86 may replace it only if it does not hold the 32 square, and then records the new one in the note.\n- The stock export stays GLB with `use_selection=True`, and every other exporter setting at its default.\n- The scratch page keeps its ambient and directional light on by default, since row 4 needs them. `lights=0` leaves them out.\n\nThe 60 fps cap of headless Chrome is still a guess until #86 checks it.\n"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
