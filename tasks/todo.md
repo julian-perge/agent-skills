@@ -50,7 +50,7 @@ Plugin check: claude plugin validate .
 
 - [x] The unit tests pass locally and in CI on the pushed branch. The macOS jobs were still queued, and the user said to treat them as passing.
 - [x] Spec criterion 2 holds, and `agent-skills ac 84` lists the 4 boxes of #84.
-- [ ] The user looks at the `agent-skills issue 84` output.
+- [x] The user looks at the `agent-skills issue 84` output.
 
 ## Phase 2: the fork's text
 
@@ -74,7 +74,7 @@ Plugin check: claude plugin validate .
   - Files: `references/workflow/workflow-github.md`, `.claude/commands/setup-workflow.md`.
   - Scope: S.
 
-- [ ] **Task 6: Version 0.8.0 and the fork PR**
+- [x] **Task 6: Version 0.8.0 and the fork PR**
   - Description: Bump 0.7.0 to 0.8.0 in every manifest that `scripts/validate-versions.js` lists. Open the fork PR with `--repo julian-perge/agent-skills`.
   - Acceptance:
     - `node scripts/validate-versions.js` passes.
@@ -86,14 +86,14 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint B: the fork is done
 
-- [ ] Spec criteria 1 and 2 hold, and the list form of criterion 3. Its `--tick` part is checked live in task 8.
-- [ ] The user merges the fork PR.
-- [ ] `claude plugin update agent-skills@addy-agent-skills --scope user` and `codex plugin add agent-skills@agent-skills` install 0.8.0, and the installed `review.md` has the new steps.
-- [ ] The user approves opening the urchin and blender PRs.
+- [x] Spec criteria 1 and 2 hold, and the list form of criterion 3. Its `--tick` part is checked live in task 8.
+- [x] The user merges the fork PR.
+- [x] `claude plugin update agent-skills@addy-agent-skills --scope user` and `codex plugin add agent-skills@agent-skills` install 0.8.0, and the installed `review.md` has the new steps.
+- [x] The user approves opening the urchin and blender PRs.
 
 ## Phase 3: other repos, cleanup and the trial
 
-- [ ] **Task 7: urchin and blender take the new workflow text**
+- [x] **Task 7: urchin and blender take the new workflow text**
   - Description: One PR per repo. `docs/agents/workflow.md` gets the Helpers rows and the Plan, Build and Reports text of task 5. Blender's `Commit review` drops its two approval sentences, and its `Reports and output decisions` keeps its own lines.
   - Acceptance:
     - `agent-skills brief build <n>` in each repo prints the new Reports text.
@@ -103,7 +103,7 @@ Plugin check: claude plugin validate .
   - Files: `docs/agents/workflow.md` in urchin and in blender.
   - Scope: S.
 
-- [ ] **Task 8: The cleanup**
+- [x] **Task 8: The cleanup**
   - Description: Do the spec's Cleanup section with the new verbs. Before the first `--tick`, save that issue's body, and compare it after.
   - Acceptance:
     - urchin #282 and #283 are ready for review.
@@ -117,10 +117,10 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint C: before the trial
 
-- [ ] The urchin and blender PRs are merged.
-- [ ] Spec criterion 5 holds.
+- [x] The urchin and blender PRs are merged.
+- [x] Spec criterion 5 holds.
 
-- [ ] **Task 9: The trial**
+- [x] **Task 9: The trial**
   - Description: The user runs 1 build and then its review in urchin, and the same in blender, in new sessions on 0.8.0. A script reads the 4 transcripts and checks spec criterion 4. Write the results into `docs/ideas/agent-skills-helpers.md`, as slices 1 and 2 did.
   - Acceptance: each point of spec criterion 4 holds for each session, or the user accepts the miss.
   - Verify: the script's output, and the issue and PR state in `gh`.
@@ -130,5 +130,5 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint D: slice 3 complete
 
-- [ ] Every success criterion in `spec/helpers-stage-contract.md` holds, or the user accepts the miss.
-- [ ] The spec's status says implemented, and the map says slice 3 is done.
+- [x] Every success criterion in `spec/helpers-stage-contract.md` holds, or the user accepts the miss.
+- [x] The spec's status says implemented, and the map says slice 3 is done.
