@@ -88,6 +88,19 @@ const SECTION_EXEMPT_SKILLS = {
   'using-agent-skills': 'Meta-skill — orchestrates other skills; When-to-Use and Verification are not applicable to a routing document.',
 };
 
+// A skills/cmd-<name>/ directory is the Codex entry point for the Claude Code
+// command .claude/commands/<name>.md, because Codex loads skills but not
+// commands. It only tells Codex to read that command file, so it has none of
+// the sections a skill needs. It also carries the two Claude Code keys below,
+// which hide it in Claude Code, where the command itself already exists.
+// validate-commands.js checks that every command has its entry skill.
+const COMMAND_ENTRY_PREFIX = 'cmd-';
+const COMMAND_ENTRY_FRONTMATTER_KEYS = new Set(['disable-model-invocation', 'user-invocable']);
+
+function isCommandEntrySkill(dirName) {
+  return dirName.startsWith(COMMAND_ENTRY_PREFIX);
+}
+
 // Regex patterns that indicate an explicit cross-skill reference.
 // Only these patterns trigger the dead-reference warning — generic
 // backtick strings in code blocks are intentionally excluded.
@@ -365,6 +378,7 @@ function lintSkillContent(dirName, content, knownSkills) {
   // Only the specification's keys may sit at the top level. Vendor and
   // runtime fields go under `metadata` or in a per-agent adapter file.
   for (const key of topLevelFrontmatterKeys(content)) {
+    if (isCommandEntrySkill(dirName) && COMMAND_ENTRY_FRONTMATTER_KEYS.has(key)) continue;
     if (!SPEC_FRONTMATTER_KEYS.has(key)) {
       errors.push(
         `Frontmatter key '${key}' is not an Agent Skills spec field — top level allows only ` +
@@ -423,7 +437,7 @@ function lintSkillContent(dirName, content, knownSkills) {
   // directory named `constructor` — which passes the kebab-case check — would
   // otherwise resolve to Object.prototype.constructor and be silently exempt
   // from every required-section check.
-  exempt = Object.hasOwn(SECTION_EXEMPT_SKILLS, dirName);
+  exempt = Object.hasOwn(SECTION_EXEMPT_SKILLS, dirName) || isCommandEntrySkill(dirName);
 
   if (!exempt) {
     // Strip fenced code blocks so headings inside examples/templates don't
@@ -634,6 +648,7 @@ module.exports = {
   lintSkillContent,
   lintSkillLayout,
   lintSkill,
+  isCommandEntrySkill,
   lintPersonaContent,
   lintPersona,
 };

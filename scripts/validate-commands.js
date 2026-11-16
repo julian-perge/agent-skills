@@ -135,6 +135,38 @@ function main() {
     }
   }
 
+  // ── Codex entry skills ──────────────────────────────────────────────────────
+  // Codex loads skills but not commands, so each Claude command has a
+  // skills/cmd-<name>/SKILL.md that tells Codex to read the command file
+  // (scripts/lib/skill-lint.js, isCommandEntrySkill).
+  console.log('\nChecking Codex entry skills...');
+
+  const skillsDir = path.join(ROOT, 'skills');
+  const entryStems = fs.existsSync(skillsDir)
+    ? fs.readdirSync(skillsDir).filter(d => d.startsWith('cmd-')).map(d => d.slice('cmd-'.length)).sort()
+    : [];
+
+  for (const stem of claudeStems) {
+    const entry = path.join(skillsDir, `cmd-${stem}`, 'SKILL.md');
+    const commandPath = `.claude/commands/${stem}.md`;
+    if (!fs.existsSync(entry)) {
+      console.log(`  ✗  ${stem} — no Codex entry skill at skills/cmd-${stem}/SKILL.md`);
+      errors++;
+    } else if (!fs.readFileSync(entry, 'utf8').includes(commandPath)) {
+      console.log(`  ✗  cmd-${stem} — does not name ${commandPath}`);
+      errors++;
+    } else {
+      console.log(`  ✓  cmd-${stem}`);
+    }
+  }
+
+  for (const stem of entryStems) {
+    if (!(stem in byTool.claude)) {
+      console.log(`  ✗  cmd-${stem} — no command at .claude/commands/${stem}.md`);
+      errors++;
+    }
+  }
+
   // ── Claude frontmatter validity ─────────────────────────────────────────────
   // Only the .md directory: the TOML dirs are parsed by a real TOML parser
   // already, so a malformed one surfaces as a missing description above.

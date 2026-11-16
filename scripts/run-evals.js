@@ -31,7 +31,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { parseFrontmatter } = require('./lib/skill-lint');
+const { parseFrontmatter, isCommandEntrySkill } = require('./lib/skill-lint');
 const { executionFailure } = require('./lib/execution-status');
 const { stageSkillResources } = require('./lib/skill-resources');
 const { execFileSync } = require('child_process');
@@ -186,6 +186,9 @@ function rankSkills(prompt, corpus) {
 function loadSkills() {
   const skills = [];
   for (const dir of fs.readdirSync(SKILLS_DIR)) {
+    // A command entry skill runs only when a user names it in Codex, so it
+    // takes no part in routing and has no eval cases.
+    if (isCommandEntrySkill(dir)) continue;
     const file = path.join(SKILLS_DIR, dir, 'SKILL.md');
     if (!fs.existsSync(file)) continue;
     const src = fs.readFileSync(file, 'utf8');

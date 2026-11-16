@@ -9,7 +9,7 @@ const fs   = require('node:fs');
 const os   = require('node:os');
 const path = require('node:path');
 
-const { lintSkillContent, lintSkillLayout, topLevelFrontmatterKeys, parseFrontmatter, frontmatterYamlErrors, lintPersonaContent } = require('./skill-lint.js');
+const { lintSkillContent, lintSkillLayout, topLevelFrontmatterKeys, parseFrontmatter, frontmatterYamlErrors, lintPersonaContent, isCommandEntrySkill } = require('./skill-lint.js');
 
 const KNOWN = new Set(['alpha', 'beta']);
 
@@ -101,6 +101,46 @@ test('a skill claiming its own exemption without being allowlisted fails loud', 
   assert.equal(errors.length, 2);
   assert.equal(errors.filter(e => /not in the validator's SECTION_EXEMPT_SKILLS allowlist/.test(e)).length, 1);
   assert.equal(errors.filter(e => /Frontmatter key 'exempt' is not an Agent Skills spec field/.test(e)).length, 1);
+});
+
+// ─── Command entry skills ────────────────────────────────────────────────────
+
+const commandEntrySkill = (dirName, extraKeys) => [
+  '---',
+  `name: ${dirName}`,
+  'description: Runs the agent-skills /build command in Codex. Use when the user types $agent-skills:cmd-build.',
+  ...extraKeys,
+  '---',
+  '',
+  'Read the command file and follow it.',
+  '',
+].join('\n');
+
+test('a command entry skill may hide itself from Claude Code and skip the sections', () => {
+  const content = commandEntrySkill('cmd-build', ['disable-model-invocation: true', 'user-invocable: false']);
+  const { errors, exempt } = lintSkillContent('cmd-build', content, KNOWN);
+  assert.equal(exempt, true);
+  assert.deepEqual(errors, []);
+});
+
+test('a command entry skill still rejects other vendor keys', () => {
+  const content = commandEntrySkill('cmd-build', ['model: opus']);
+  const { errors } = lintSkillContent('cmd-build', content, KNOWN);
+  assert.deepEqual(errors.filter(e => /Frontmatter key 'model'/.test(e)).length, 1);
+});
+
+test('a regular skill may not use the command entry keys', () => {
+  const content = withAllSections(
+    ['---', 'name: alpha', 'description: Designs alphas. Use when building one.', 'user-invocable: false', '---'].join('\n')
+  );
+  const { errors } = lintSkillContent('alpha', content, KNOWN);
+  assert.equal(errors.filter(e => /Frontmatter key 'user-invocable'/.test(e)).length, 1);
+});
+
+test('only a cmd- directory is a command entry skill', () => {
+  assert.equal(isCommandEntrySkill('cmd-build'), true);
+  assert.equal(isCommandEntrySkill('build'), false);
+  assert.equal(isCommandEntrySkill('xcmd-build'), false);
 });
 
 // ─── Guardrails on the rules this change sits beside ─────────────────────────

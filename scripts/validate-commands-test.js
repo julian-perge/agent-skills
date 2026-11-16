@@ -38,6 +38,11 @@ function writeClaudeCommand(root, stem, descriptionLine) {
     path.join('.claude', 'commands', `${stem}.md`),
     `---\n${descriptionLine}\n---\n\n# Command\n`,
   );
+  writeCodexEntry(root, stem);
+}
+
+function writeCodexEntry(root, stem, body = `Read \`.claude/commands/${stem}.md\` and follow it.`) {
+  writeFile(root, path.join('skills', `cmd-${stem}`, 'SKILL.md'), `---\nname: cmd-${stem}\n---\n\n${body}\n`);
 }
 
 function writeTomlCommand(root, directory, stem, descriptionLine) {
@@ -243,4 +248,33 @@ test('a nested description does not supply a missing command description', () =>
   const result = run(root);
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(result.stdout, /missing or malformed description/);
+});
+
+// ─── Codex entry skills ──────────────────────────────────────────────────────
+
+test('fails when a Claude command has no Codex entry skill', () => {
+  const root = makeSandbox();
+  writeMatchingCommands(root, 'review', 'Review a change');
+  fs.rmSync(path.join(root, 'skills', 'cmd-review'), { recursive: true });
+  const result = run(root);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /review — no Codex entry skill at skills\/cmd-review\/SKILL\.md/);
+});
+
+test('fails when a Codex entry skill has no Claude command', () => {
+  const root = makeSandbox();
+  writeMatchingCommands(root, 'review', 'Review a change');
+  writeCodexEntry(root, 'deploy');
+  const result = run(root);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /cmd-deploy — no command at \.claude\/commands\/deploy\.md/);
+});
+
+test('fails when a Codex entry skill reads another command file', () => {
+  const root = makeSandbox();
+  writeMatchingCommands(root, 'review', 'Review a change');
+  writeCodexEntry(root, 'review', 'Read `.claude/commands/build.md` and follow it.');
+  const result = run(root);
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /cmd-review — does not name \.claude\/commands\/review\.md/);
 });
