@@ -1,6 +1,6 @@
 # Spec: stage-contract, V1
 
-Module of [helpers-map.md](helpers-map.md), slice 3. It inherits the tech stack, commands, code style and boundaries there. Source: the confirmed intent in [docs/intent/stage-contract.md](../docs/intent/stage-contract.md). It changes shipped behavior of tracker-cli ([`issue`](helpers-tracker-cli.md#issue-n---full)), stage-brief ([issue part](helpers-stage-brief.md#output)) and stage-wiring (the `build` and `review` commands). Status: approved by the user on 2026-11-16.
+Module of [helpers-map.md](helpers-map.md), slice 3. It inherits the tech stack, commands, code style and boundaries there. Source: the confirmed intent in [docs/intent/stage-contract.md](../docs/intent/stage-contract.md). It changes shipped behavior of tracker-cli ([`issue`](helpers-tracker-cli.md#issue-n---full)), stage-brief ([issue part](helpers-stage-brief.md#output)) and stage-wiring (the `build` and `review` commands). Status: implemented on 2026-11-16 (fork PR #5, urchin #291, blender #106, plugin 0.8.1). The trial results are in [docs/ideas/agent-skills-helpers.md](../docs/ideas/agent-skills-helpers.md#trial-results-slice-3-2026-11-16).
 
 ## Objective
 

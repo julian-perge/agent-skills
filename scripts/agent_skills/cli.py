@@ -200,7 +200,11 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
     if not body:
         raise CliError("Nothing posted: the decisions come on stdin, and stdin was empty.", REFUSED)
     target = f"PR #{args.pr}" if args.pr is not None else f"#{args.number}"
-    return gh.comment(args.number, f"### Decisions from the {args.stage} of {target}\n\n{body}").strip() + "\n"
+    header = f"### Decisions from the {args.stage} of {target}"
+    first, _, rest = body.partition("\n")
+    if first.strip() == header:
+        body = rest.strip()
+    return gh.comment(args.number, f"{header}\n\n{body}").strip() + "\n"
 
 
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:

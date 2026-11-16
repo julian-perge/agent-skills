@@ -19,6 +19,8 @@ Build order: install and tracker-cli (in either order), then run-wrapper, then s
 
 ### Slice 3
 
+Done on 2026-11-16.
+
 | Module id | Responsibility | Depends on | Spec |
 | --- | --- | --- | --- |
 | stage-contract | One contract for build and review: how findings are fixed, asked about and committed, decision comments on issues (the verb `decide`, and a Decisions section in `issue`), AC boxes ticked by the review (the verb `ac`), ready PRs, and the cleanup in urchin and blender. Source: [docs/intent/stage-contract.md](../docs/intent/stage-contract.md). | tracker-cli, stage-brief, stage-wiring | [helpers-stage-contract.md](helpers-stage-contract.md) |

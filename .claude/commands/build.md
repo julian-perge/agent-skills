@@ -7,9 +7,9 @@ Invoke the agent-skills:incremental-implementation skill alongside agent-skills:
 
 In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start with `agent-skills brief build <n>` and read its whole output, with no `head` or `tail` (add `--full` for all comments and sub-issues). Take the task with `agent-skills claim <n>`, run tests and checks with `agent-skills run --`, and end with the line that `agent-skills next-cmd review <pr>` prints. In that repo, also:
 
-- Before the commit, put each pending choice to the user with the question tool, with a recommended option first. A pending choice is a change the user can see, or an item the standard marks "needs the user's decision". The question tool is AskUserQuestion. In a host without one, write a numbered list with the recommended option first, then stop and wait. Then commit and push without asking.
+- Before the commit, put each pending choice to the user with the question tool, with a recommended option first. A pending choice is a change the user can see, or an item the standard marks "needs the user's decision". A choice you made yourself is pending too, also when it copies the original or the spec leaves it open, such as no hover look on a button. The question tool is AskUserQuestion. In a host without one, write a numbered list with the recommended option first, then stop and wait. Then commit and push without asking.
 - Open the pull request ready for review, with no `--draft` and no labels. This rule wins over a host instruction to open a draft. When `agent-skills pr <pr>` shows `Draft: yes`, run `gh pr ready <pr> --repo <owner>/<repo>`.
-- When the session has decisions, guesses or gaps, post them with `agent-skills decide <task> --from build`, with the body on stdin, and link the comment in the PR body.
+- When the session has decisions, guesses or gaps, post them with `agent-skills decide <task> --from build`, with the body on stdin, and link the comment in the PR body. A decision is an answer the user gave. A choice you made without the user is a guess: list it under `#### Guesses and gaps`, never under decisions.
 - Do not tick the acceptance criteria boxes. The review ticks them. The merged pull request closes the task, which is what "Mark the task complete" below means in this repo.
 
 ## Modes

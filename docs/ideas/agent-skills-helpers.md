@@ -103,6 +103,32 @@ Then the review of PR 278 ran `agent-skills issue 273 --full`, because the revie
 - **0 raw `gh issue view` calls: met** in all six sessions.
 - **0 tail-only test reruns: met** in all six sessions.
 
+## Trial results (slice 3, 2026-11-16)
+
+Five sessions on 0.8.0 in new sessions. `dump.py` in `~/tmp/2026-11-16-session-audit/` turned each transcript into text in `trial/`, and `gh` gave the issue and PR state.
+
+| Session | Stage | Questions (recommended first) | Fixed before the first question | Decision comment | AC ticked | PR draft |
+| --- | --- | --- | --- | --- | --- | --- |
+| `2e4c19f3` blender | review PR 100 (#91) | 1 Nit | none needed (no Required) | #91 | 5 of 5 | no |
+| `5ce45ff5` blender | build #92, PR 108 | 4 | not applicable | #92 | review ticks | no |
+| `020f4865` blender | review PR 108 (#92) | 1 Optional, 2 Nits | none needed (no Required) | #92 | 5 of 5 | no |
+| `ff6bdfd6` urchin | build #217, PR 292 | 0 | not applicable | #217 | review ticks | no |
+| `9d3bf693` urchin | review PR 292 (#217) | 1 Optional, 1 Nit | 1 Required, `699832c1` | #217 | 5 of 5 | no |
+
+Spec criterion 4, point by point:
+
+- **Your messages ask for no commit, push, post, comment, PR body edit or recommendation: met.** Each session has one message from you, the stage command. Every other input is an AskUserQuestion answer.
+- **The review's first question uses AskUserQuestion with a recommended option: met** in all 3 reviews. The blender build also asked its 4 questions this way.
+- **Clear Required fixes are committed and pushed before the first question: met.** The urchin review found a missing test for `SlotPanel.hit_button`. It proved the gap with a mutant, then committed and pushed the test before it asked. The two blender reviews found no Required finding.
+- **A decision comment exists: met** in all 5 sessions. Each review also linked its comment from the PR body. Nobody asked for this.
+- **The met AC boxes are ticked: met.** #91, #92 and #217 each have 5 of 5 ticked, and no other line of the bodies changed.
+- **The PR is not a draft: met.** PRs 108 and 292 opened ready for review with no labels.
+
+Two problems that criterion 4 does not cover:
+
+- **`decide` printed its header twice.** The review of PR 108 started its stdin with `### Decisions from the review of PR #108`, and `decide` added the same line again (issue 92). Evidence: the comment body. Fixed in 0.8.1: `decide` drops a first stdin line that equals its header. The #92 comment was edited to one header.
+- **The urchin build committed a visible choice without a question.** Its decision comment lists "No hover look on the hit buttons" under "Decisions", but you never chose it. It is the agent's own choice. `build.md` says to put such a choice to you first, and the rule did not stop it. It is a guess why: the build saw no choice because the original game has no hover look either. Fixed in 0.8.1: `build.md` says a choice the agent made itself is pending too, even when it copies the original, and goes under guesses, never under decisions.
+
 ## Not Doing (and Why)
 
 - **An MCP server:** each tool schema loads into every session, and the GitHub MCP already exists. A script costs nothing until an agent calls it.

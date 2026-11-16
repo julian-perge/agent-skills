@@ -29,6 +29,11 @@ class DecideVerbTest(unittest.TestCase):
         self.assertEqual(self.posted(runner), "### Decisions from the review of PR #287\n\n- Start!, not PLAY.")
         self.assertEqual(out, URL + "\n")
 
+    def test_a_body_that_starts_with_the_same_header_posts_it_once(self) -> None:
+        stdin = "### Decisions from the review of PR #287\n\n- Start!, not PLAY.\n"
+        _, _, _, runner = self.run_cli(["decide", "215", "--from", "review", "--pr", "287"], stdin)
+        self.assertEqual(self.posted(runner), "### Decisions from the review of PR #287\n\n- Start!, not PLAY.")
+
     def test_without_a_pr_the_first_line_names_the_issue(self) -> None:
         _, _, _, runner = self.run_cli(["decide", "82", "--from", "plan"], "- the outfit\n")
         self.assertTrue(self.posted(runner).startswith("### Decisions from the plan of #82\n\n"))
