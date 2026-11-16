@@ -32,4 +32,16 @@ After install, invoke a skill in Codex chat with `@` (e.g. `@spec-driven-develop
 - `.agents/plugins/marketplace.json` — marketplace entry declaring the repo root (`./`) as the plugin source.
 - `skills/<name>/SKILL.md` — unchanged. Codex and Claude Code share the same `name` + `description` frontmatter format, so one file serves both platforms.
 
-Slash commands in `.claude/commands/` and personas in `agents/` stay Claude Code-specific. The `SessionStart` script under `hooks/` is a standalone helper for hosts without native skill routing and is not wired by either plugin. On Codex, invoke the underlying skill directly instead of the slash command (e.g. `@spec-driven-development` instead of `/spec`).
+Personas in `agents/` stay Claude Code-specific. The `SessionStart` script under `hooks/` is a standalone helper for hosts without native skill routing and is not wired by either plugin.
+
+## Commands
+
+Codex loads skills but not the slash commands in `.claude/commands/`. So each command has an entry skill, `skills/cmd-<name>/`, that tells Codex to read the command file and follow it. Type the entry skill where you would type the slash command in Claude Code:
+
+| Claude Code | Codex |
+|---|---|
+| `/agent-skills:build #226` | `$agent-skills:cmd-build #226` |
+| `/agent-skills:review issue #219, PR #290` | `$agent-skills:cmd-review issue #219, PR #290` |
+| `/agent-skills:<name> <arguments>` | `$agent-skills:cmd-<name> <arguments>` |
+
+Codex never picks an entry skill by itself, because its `agents/openai.yaml` turns off implicit invocation. Claude Code does not list the entry skills, because their frontmatter sets `disable-model-invocation` and `user-invocable`. When you add a command, add its entry skill too: `node scripts/validate-commands.js` fails without it.
