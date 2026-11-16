@@ -48,13 +48,13 @@ Plugin check: claude plugin validate .
 
 ### Checkpoint A: the helpers work
 
-- [ ] The unit tests pass locally and in CI on the pushed branch.
+- [x] The unit tests pass locally and in CI on the pushed branch. The macOS jobs were still queued, and the user said to treat them as passing.
 - [x] Spec criterion 2 holds, and `agent-skills ac 84` lists the 4 boxes of #84.
 - [ ] The user looks at the `agent-skills issue 84` output.
 
 ## Phase 2: the fork's text
 
-- [ ] **Task 4: The review and build contract**
+- [x] **Task 4: The review and build contract**
   - Description: Write the spec's 8 review steps into the tracker paragraph of `.claude/commands/review.md`, and the 4 build rules into `.claude/commands/build.md`, with the spec's terms (clear fix, choice, question tool).
   - Acceptance:
     - Each step and rule of the spec's "Command text" section is in the file, in the spec's order.
@@ -64,7 +64,7 @@ Plugin check: claude plugin validate .
   - Files: `.claude/commands/review.md`, `.claude/commands/build.md`.
   - Scope: S.
 
-- [ ] **Task 5: The workflow seed and the setup template**
+- [x] **Task 5: The workflow seed and the setup template**
   - Description: In `references/workflow/workflow-github.md`, add the `decide` and `ac` Helpers rows and the new Plan, Build and Reports text from the spec. In `.claude/commands/setup-workflow.md`, mark the old Reports and Plan lines **stale** in the gap table.
   - Acceptance:
     - The seed's text equals the spec's quotes.
