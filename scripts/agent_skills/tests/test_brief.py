@@ -182,6 +182,12 @@ class BriefVerbTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(out, self.rules("review") + "# Task #49\n" + task + "# PR #66\n" + pr.split("\n", 1)[1])
 
+    def test_review_prints_the_decisions_of_the_task_before_the_pr(self) -> None:
+        code, out, _, _ = self.run_cli(["brief", "review", "66"], "pr-blender-66.json", "issue-blender-84.json")
+        self.assertEqual(code, 0)
+        self.assertIn("## Decisions (2)\n", out)
+        self.assertLess(out.index("## Decisions"), out.index("# PR #66\n"))
+
     def test_review_with_no_task_prints_only_the_pr(self) -> None:
         data = json.loads(fixture_json("pr-blender-66.json"))
         node = data["data"]["repository"]["pullRequest"]

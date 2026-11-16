@@ -1,44 +1,50 @@
-# Implementation Plan: agent-skills helpers, slice 2 (stage-brief)
+# Implementation Plan: agent-skills helpers, slice 3 (stage-contract)
 
-Source spec: spec/helpers-stage-brief.md (map: spec/helpers-map.md)
+Source spec: spec/helpers-stage-contract.md (map: spec/helpers-map.md). Status: approved by the user on 2026-11-16.
 
-Tasks are in [tasks/todo.md](todo.md). The task list below is an ordered index only, so the two files cannot drift apart. Slice 1's plan and tasks are in `tasks/done/slice-1/`.
+Tasks are in [tasks/todo.md](todo.md). The task list below is an ordered index only, so the two files cannot drift apart. The plans of slices 1 and 2 are in `tasks/done/`.
 
 ## Overview
 
-Slice 2 adds one verb, `agent-skills brief <stage> [<n>]`. It prints the `workflow.md` sections that one stage needs, then the issue or PR brief. Then the stage commands, the workflow seed, the setup template, urchin and blender start each stage with it. The last task runs the trial again.
+Slice 3 gives build and review one contract in every repo with the GitHub tracker workflow. The helpers get two write verbs, `decide` and `ac`, and `issue` gets a Decisions section that `brief` passes on. The `build` and `review` commands and the workflow seed get the contract text. Then urchin and blender take the new `workflow.md` text, the cleanup runs, and a trial of 4 sessions checks the result.
 
 ## Architecture decisions
 
-- **The section split is a pure function in `brief.py`.** It takes the text of `workflow.md` and a stage, and returns the sections in file order. It runs no process, so its tests need no fake `gh`.
-- **`brief` reuses `issue_verb` and `pr_verb`.** It adds no `gh` call and no second renderer. The brief part is their output from its second line, under a new `# Issue #<n>` or `# PR #<n>` heading.
-- **The stage names are a fixed table in `brief.py`.** The command names (`idea-refine`, `interview-me`, `test`) map to the stage names there too.
-- **The `.gemini/commands/` and `commands/` stage bodies stay as they are.** None of them names a verb or `workflow.md` today, so the spec's "pointer text only" rule leaves nothing to change.
-- **Codex copies the plugin.** After the command edits, `codex plugin add agent-skills@agent-skills` refreshes its copy (slice 1, task 2).
+- **A decision comment is found by its first line.** `tracker.is_decision(body)` strips leading `#`, `*` and spaces and checks for `Decisions`, in any case. It is a pure function, so `issue`, `decide` and the tests share one rule.
+- **The parent's comments come in the same query.** `ISSUE_QUERY` reads `parent { ... comments(last: 20) ... }`, so `issue` stays one `gh` call. `parse_issue` reads the field with a default, so the slice 1 and 2 fixtures that do not have it still parse.
+- **The AC rules are pure functions in `tracker.py`:** find the section, number the boxes, tick a list of them. `github.py` only reads the body and writes it back, with `gh issue edit N --repo R --body <text>`.
+- **`ac --tick` reads the body again just before it writes.** If the body changed since the first read, it stops with exit 1 and writes nothing, so a concurrent edit is not lost.
+- **`decide` writes the first line itself.** The command text describes the body (the user's answers, then `#### Guesses and gaps`), and the verb does not check it.
+- **The live check of `--tick` uses the first cleanup issue, not a test issue.** The fork has no test issue, and the cleanup ticks real boxes anyway. The body is saved before and compared after, and the diff must show only the ticked lines. (A deviation from spec criterion 3's "test issue". Say so if you want a scratch issue instead.)
+- **The plugin reinstall runs after the fork PR merges.** Both hosts copy the checkout, so the copy must come from `main`.
+- **`.gemini/commands/` and `commands/` stay as they are,** as the spec says.
 
 ## Task list (index)
 
-Phase 1, the verb: 1, 2, checkpoint A.
-Phase 2, the fork's text: 3, 4, checkpoint B.
-Phase 3, other repos and the trial: 5, checkpoint C, 6, checkpoint D.
+Phase 1, the helpers: 1, 2, 3, checkpoint A.
+Phase 2, the fork's text: 4, 5, 6, checkpoint B.
+Phase 3, other repos, cleanup and the trial: 7, 8, checkpoint C, 9, checkpoint D.
 
-Task 1 comes first because the section map is the one design risk: the heading rules must fit urchin's and blender's files as they are.
+Task 1 comes first because it changes the shared `issue` query and its fixtures, which tasks 2 and 3 build on.
 
 ## Parallel work
 
-- Task 3 and task 4 touch different files, and both need only the verb name from task 2.
-- Task 5 needs tasks 2 to 4, because the repo text names the verb.
-- Task 6 needs task 5 merged.
+- Tasks 1, 2 and 3 all touch `cli.py`, `github.py` and `tracker.py`, so they run in order.
+- Tasks 4 and 5 touch different files and need only the verb names, so they can run beside phase 1.
+- Tasks 7 and 8 need the fork PR merged. They touch different repos and files, so they can run side by side.
+- Task 9 needs task 7 merged and the 0.8.0 install.
 
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| A repo's `workflow.md` uses a heading that the map reads in the wrong way, such as `## Build and test` | Med | The match is by the first word. Task 1 tests the urchin and blender files as they are on `origin/main`. |
-| Agents still read all of `workflow.md`, because the agent file keeps the old line until the repo PRs merge | High | Task 6 starts only after task 5 is merged. |
-| Agents still pipe `brief` or `pr` output to `head` | Med | The command files say to read the whole output. The trial counts this. |
-| The trial needs 5 new sessions that the user starts | Low | Task 6 says which sessions and gives the commands. |
+| A host instruction to open a draft PR wins over the command text | Med | The build text says it wins and adds a `gh pr ready` step. The trial checks the PR state. A hook stays deferred. |
+| Codex and OpenCode have no AskUserQuestion | Med | The question tool term names a numbered list with the recommended option first as the fallback. Codex and OpenCode do not run the fork's commands today. |
+| `--tick` loses an edit that someone else made at the same time | Low | The read just before the write, which stops on a change. |
+| An agent reads "Required, clear fix" too widely and commits a choice without asking | Med | The term lists all three tests. The trial checks each commit made before the first question. |
+| A trial needs ready tasks in both repos | Low | Task 9 picks them with `agent-skills next` when it starts. |
+| Open sessions still run 0.7.0 | Low | Task 7 restarts nothing. Task 9 starts new sessions only. |
 
 ## Open questions
 
-None.
+- The live check of `--tick` (see the architecture decisions).

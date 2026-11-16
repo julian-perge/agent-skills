@@ -1,4 +1,5 @@
 import io
+import json
 import re
 import tempfile
 import unittest
@@ -6,7 +7,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from agent_skills import cli
-from agent_skills.render import cut
+from agent_skills.render import COMMENT_LIMIT, cut
+from agent_skills.tracker import is_decision
 from fakes import FakeRunner, fixture_json, fixture_text, names_repo, with_origin
 
 URCHIN_SPECS = [f"107-{name}.md" for name in "abilities capability-map hub inventory store title-slots ui-foundation victory window-shell".split()]
@@ -22,6 +24,18 @@ class CutTest(unittest.TestCase):
 
     def test_no_limit_keeps_everything(self) -> None:
         self.assertEqual(cut("abcdef", None), "abcdef")
+
+
+class IsDecisionTest(unittest.TestCase):
+    def test_a_first_line_that_starts_with_decisions(self) -> None:
+        for body in ("### Decisions from the review of PR #97\n\n- a", "**Decisions**\n- a", "decisions: keep it", "Decisions from the review of #97, for the later tasks of #82:"):
+            with self.subTest(body=body):
+                self.assertTrue(is_decision(body))
+
+    def test_other_first_lines(self) -> None:
+        for body in ("The decisions below", "", "Decisionsmaking", "Refined this one.\nDecisions: none"):
+            with self.subTest(body=body):
+                self.assertFalse(is_decision(body))
 
 
 class IssueVerbTest(unittest.TestCase):
@@ -90,6 +104,47 @@ class IssueVerbTest(unittest.TestCase):
         self.assertIn("- Spec: spec/35-draynor-region-import.md (from issue body)\n", out)
         self.assertIn("- Open blockers: none (closed: #50, #48)\n", out)
         self.assertIn("- Parent: #35 Import a map chunk (terrain and scenery) into Blender\n", out)
+
+    def test_blender_84_golden_output_with_decisions_on_the_issue_and_its_parent(self) -> None:
+        argv = ["--repo", "julian-perge/blender-addon-rs317-667mqo-makeup", "issue", "84"]
+        code, out, _ = self.run_issue("issue-blender-84.json", argv, ["82-gltf-export-findings.md"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out, fixture_text("issue-blender-84.md"))
+
+    def test_decisions_print_whole_and_oldest_first_before_the_comments(self) -> None:
+        argv = ["--repo", "julian-perge/blender-addon-rs317-667mqo-makeup", "issue", "84"]
+        _, out, _ = self.run_issue("issue-blender-84.json", argv, ["82-gltf-export-findings.md"])
+        self.assertIn("## Decisions (2)\n", out)
+        self.assertLess(out.index("### #82 @"), out.index("### #84 @"))
+        self.assertLess(out.index("## Body"), out.index("## Decisions"))
+        self.assertLess(out.index("## Decisions"), out.index("## Comments"))
+        self.assertNotIn("[cut: ", out.split("## Decisions", 1)[1].split("## Comments", 1)[0])
+
+    def test_comments_leave_out_the_decisions_and_count_the_rest(self) -> None:
+        data = json.loads(fixture_text("issue-blender-12.json"))
+        data["data"]["repository"]["issue"]["comments"]["nodes"][-2]["body"] = "Decisions from the review of #20:\n\n- keep it"
+        argv = ["--repo", "julian-perge/blender-addon-rs317-667mqo-makeup", "issue", "12"]
+        _, out, _ = self.run_issue_data(data, argv, BLENDER_SPECS)
+        self.assertIn("## Decisions (1)\n", out)
+        self.assertIn("## Comments (3 of 5, newest last)", out)
+        self.assertEqual(out.count("\n### @"), 3)
+        self.assertNotIn("keep it", out.split("## Comments", 1)[1])
+
+    def test_a_long_decision_is_not_cut_without_full(self) -> None:
+        data = json.loads(fixture_text("issue-blender-12.json"))
+        long_body = "### Decisions from the plan of #12\n\n" + "x" * 2 * COMMENT_LIMIT
+        data["data"]["repository"]["issue"]["comments"]["nodes"][0]["body"] = long_body
+        argv = ["--repo", "julian-perge/blender-addon-rs317-667mqo-makeup", "issue", "12"]
+        _, out, _ = self.run_issue_data(data, argv, BLENDER_SPECS)
+        self.assertIn(long_body + "\n", out)
+
+    def test_an_issue_with_no_decision_has_no_decisions_section(self) -> None:
+        _, out, _ = self.run_issue("issue-urchin-107.json", ["--repo", "julian-perge/urchin", "issue", "107"], URCHIN_SPECS)
+        self.assertNotIn("## Decisions", out)
+
+    def run_issue_data(self, data: dict, argv: list[str], specs: list[str]) -> tuple[int, str, FakeRunner]:
+        runner = FakeRunner().on("gh", "api", "graphql", stdout=json.dumps(data))
+        return self.run_issue("issue-blender-12.json", argv, specs, runner)
 
     def test_one_gh_call_that_names_the_origin_repo(self) -> None:
         _, _, runner = self.run_issue("issue-blender-51.json", ["issue", "51"], BLENDER_SPECS, with_origin(FakeRunner()))

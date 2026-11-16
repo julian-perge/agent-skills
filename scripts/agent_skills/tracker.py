@@ -9,6 +9,10 @@ CLOSES = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b",
 BRANCH_NUMBER = re.compile(r"^[\w.-]+/(\d+)-")
 STANDARD_FILES = ("CODING_STANDARDS.md", "AGENTS.md", "CLAUDE.md")
 NOT_FOR_SPEC = frozenset({"ready-for-agent", "ready-for-human", "needs-info", "needs-triage", "wontfix"})
+DECISION_LINE = re.compile(r"[#*\s]*decisions\b", re.IGNORECASE)
+AC_HEADING = re.compile(r"\s*(?:#{1,4}\s+|\*\*\s*)acceptance criteria", re.IGNORECASE)
+AC_SECTION_END = re.compile(r"\s*(?:#{1,6}\s|\*\*)")
+AC_BOX = re.compile(r"\s*[-*] \[([ xX])\] ")
 
 
 @dataclass(frozen=True)
@@ -60,6 +64,44 @@ class Comment:
     author: str
     date: str
     body: str
+    at: str = ""
+
+
+def is_decision(body: str) -> bool:
+    """Whether a comment records decisions, which `agent-skills decide` marks by its first line."""
+    return DECISION_LINE.match(body.split("\n", 1)[0]) is not None
+
+
+@dataclass(frozen=True)
+class Box:
+    line: int
+    ticked: bool
+    text: str
+
+
+def ac_boxes(body: str) -> tuple[Box, ...] | None:
+    """The checkboxes under the first Acceptance criteria heading, or None when the body has no such heading."""
+    lines = body.splitlines(keepends=True)
+    start = next((i for i, line in enumerate(lines) if AC_HEADING.match(line)), None)
+    if start is None:
+        return None
+    boxes = []
+    for i in range(start + 1, len(lines)):
+        if AC_SECTION_END.match(lines[i]):
+            break
+        match = AC_BOX.match(lines[i])
+        if match:
+            boxes.append(Box(i, match.group(1) != " ", lines[i][match.end():].rstrip("\r\n")))
+    return tuple(boxes)
+
+
+def tick_boxes(body: str, boxes: Sequence[Box], indexes: Sequence[int]) -> str:
+    lines = body.splitlines(keepends=True)
+    for index in indexes:
+        line = lines[boxes[index - 1].line]
+        mark = AC_BOX.match(line).start(1)
+        lines[boxes[index - 1].line] = line[:mark] + ("x" if line[mark] == " " else line[mark]) + line[mark + 1:]
+    return "".join(lines)
 
 
 @dataclass(frozen=True)
@@ -81,6 +123,7 @@ class Issue:
     pull_requests: tuple[Link, ...] = ()
     comments: tuple[Comment, ...] = ()
     comment_total: int = 0
+    parent_comments: tuple[Comment, ...] = ()
 
 
 @dataclass(frozen=True)

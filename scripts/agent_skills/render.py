@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from agent_skills.tracker import Frontier, Groups, Issue, IssueRow, PullRequest, ReviewRow, SpecMatch, SubIssue, TaskMatch
+from agent_skills.tracker import Box, Frontier, Groups, Issue, IssueRow, PullRequest, ReviewRow, SpecMatch, SubIssue, TaskMatch, is_decision
 
 BODY_LIMIT = 2000
 COMMENT_LIMIT = 600
@@ -80,11 +80,21 @@ def issue_report(issue: Issue, spec: SpecMatch, full: bool, body_limit: int | No
             lines.append(f"[cut: {len(rows) - len(shown)} more rows, run with --full]")
         lines.append("")
     lines += ["## Body", "", cut(issue.body.strip(), None if full else body_limit) or "(empty)", ""]
-    comments = issue.comments if full else issue.comments[-comments_shown:]
+    decisions = sorted(
+        [(issue.parent_number, c) for c in issue.parent_comments if is_decision(c.body)] + [(issue.number, c) for c in issue.comments if is_decision(c.body)],
+        key=lambda pair: pair[1].at or pair[1].date,
+    )
+    if decisions:
+        lines += [f"## Decisions ({len(decisions)})", ""]
+        for number, comment in decisions:
+            lines += [f"### #{number} @{comment.author}, {comment.date}", "", comment.body.strip(), ""]
+    others = [c for c in issue.comments if not is_decision(c.body)]
+    other_total = issue.comment_total - (len(issue.comments) - len(others))
+    comments = others if full else others[-comments_shown:]
     if not comments:
         lines.append("## Comments (none)")
     else:
-        lines += [f"## Comments ({len(comments)} of {issue.comment_total}, newest last)", ""]
+        lines += [f"## Comments ({len(comments)} of {other_total}, newest last)", ""]
         for comment in comments:
             lines += [f"### @{comment.author}, {comment.date}", "", cut(comment.body.strip(), None if full else comment_limit), ""]
     return "\n".join(lines).rstrip("\n") + "\n"
@@ -157,6 +167,12 @@ def spec_problem(number: int, spec: SpecMatch) -> str:
 
 def spec_guess_note(spec: SpecMatch) -> str:
     return f"Spec {spec.path} is from the file name (guess)."
+
+
+def ac_report(boxes: Sequence[Box]) -> str:
+    lines = [f"{index}. [{'x' if box.ticked else ' '}] {box.text}" for index, box in enumerate(boxes, 1)]
+    lines.append(f"Ticked: {sum(box.ticked for box in boxes)} of {len(boxes)}")
+    return "\n".join(lines) + "\n"
 
 
 def claim_report(number: int, assigned: str, branch: str | None, default: str, commit: str) -> str:
