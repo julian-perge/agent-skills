@@ -1,6 +1,6 @@
-# Tasks: agent-skills helpers, slice 2 (stage-brief)
+# Tasks: agent-skills helpers, slice 3 (stage-contract)
 
-Source spec: spec/helpers-stage-brief.md. Plan: [tasks/plan.md](plan.md).
+Source spec: spec/helpers-stage-contract.md. Plan: [tasks/plan.md](plan.md).
 
 Shared commands (from the map):
 
@@ -10,95 +10,125 @@ Fork checks:  node scripts/validate-skills.js && node scripts/validate-commands.
 Plugin check: claude plugin validate .
 ```
 
-## Phase 1: the verb
+## Phase 1: the helpers
 
-- [x] **Task 1: Split workflow.md into the sections of one stage**
-  - Description: Add `scripts/agent_skills/brief.py` with the stage table and a pure function that returns the sections of one stage in file order, as the spec's section map says.
+- [x] **Task 1: `issue` prints the decision comments of the issue and its parent**
+  - Description: Add `tracker.is_decision`, the parent's comments in `ISSUE_QUERY` and `parse_issue`, and a `## Decisions (<k>)` section in `render.issue_report`, after `## Body`. `## Comments` leaves the decision comments out and counts the rest. `brief` passes the section on with no change of its own.
   - Acceptance:
-    - For each of the seven stages, the fixture gives the headings that the map names, in file order, with each section's text byte for byte.
-    - A heading that the map does not know appears in every stage. A known heading that is missing is skipped.
-    - The command names `idea-refine`, `interview-me` and `test` give the same result as `idea`, `design` and `bug`.
-  - Verify: the unit tests. Fixtures: blender's and urchin's `docs/agents/workflow.md` from `origin/main` on 2026-11-15.
+    - A golden test from a trimmed real response of blender #84, with one decision comment added to its parent #82, prints both decision comments whole, oldest first, under `### #<issue> @<author>, <date>`. The `Comments` heading counts only the other comments.
+    - With no decision comment, the output of the existing `issue` and `brief` fixtures does not change, byte for byte.
+    - `is_decision` is true for `### Decisions from ...`, `**Decisions**` and `decisions:`, and false for "The decisions below" and an empty body.
+    - The review brief prints the task's Decisions section before the PR part.
+  - Verify: the unit tests, then `agent-skills issue 84` in blender (spec criterion 2).
   - Dependencies: none.
-  - Files: `scripts/agent_skills/brief.py`, `scripts/agent_skills/tests/test_brief.py`, `scripts/agent_skills/tests/fixtures/workflow-blender.md`, `scripts/agent_skills/tests/fixtures/workflow-urchin.md`.
-  - Scope: S.
+  - Files: `scripts/agent_skills/tracker.py`, `scripts/agent_skills/github.py`, `scripts/agent_skills/render.py`, `scripts/agent_skills/tests/test_issue.py`, `scripts/agent_skills/tests/test_brief.py`, with new fixtures `issue-blender-84.json` and `issue-blender-84.md`.
+  - Scope: M.
 
-- [x] **Task 2: The `brief` verb**
-  - Description: Add `brief <stage> [<n>] [--full]` to `cli.py`. It reads `docs/agents/workflow.md` at the checkout root, prints the rules from task 1, then the output of `issue_verb` or `pr_verb` from its second line under a new heading.
+- [x] **Task 2: The `ac` verb**
+  - Description: Add `ac N [--tick LIST]`. Pure functions in `tracker.py` find the AC section, number its boxes and tick a list of them. `github.py` reads the body and writes it with `gh issue edit N --repo R --body <text>`, after a second read that must equal the first.
   - Acceptance:
-    - `review` uses `pr`. Every other stage uses `issue`. A leading `#` on the number is accepted.
-    - With no number, the verb prints the rules only and records no `gh` call.
-    - A repo with no `workflow.md` gives exit 2 and names `/agent-skills:setup-workflow`.
-    - The recorded `gh` calls equal those of `issue` or `pr` for the same number.
-  - Verify: the unit tests, then spec criteria 2 to 4 by hand in blender (`agent-skills brief build 74`, `agent-skills brief review 79`, `agent-skills brief build`).
-  - Change at checkpoint A (2026-11-15): the user asked for one rules heading, no first intro paragraph, no `Earlier layout`, the whole issue body and one comment. The spec has the new output.
+    - The list form prints `<i>. [ ] <text>` or `<i>. [x] <text>` for each box, then `Ticked: <t> of <k>`, from one `gh` call.
+    - Ticking 2 boxes of the urchin #215 fixture changes only those 2 lines, byte for byte, and records exactly one write call. A ticked box stays ticked.
+    - No AC section, no box, an index out of range, or a body that changed between the two reads: exit 1 with the reason, and no write call.
+  - Verify: the unit tests, then `agent-skills ac 84` in blender lists 4 boxes.
+  - Dependencies: 1 (the shared files).
+  - Files: `scripts/agent_skills/tracker.py`, `scripts/agent_skills/github.py`, `scripts/agent_skills/cli.py`, `scripts/agent_skills/tests/test_ac.py`, with new fixtures from the bodies of urchin #215 and blender #84.
+  - Scope: M.
+
+- [x] **Task 3: The `decide` verb**
+  - Description: Add `decide N --from STAGE [--pr P]`. It reads the body from stdin, writes the first line `### Decisions from the <stage> of #<N>` (or `of PR #<P>`), posts with `gh issue comment N --repo R --body <text>` and prints the URL that `gh` returns.
+  - Acceptance:
+    - Both first-line forms, and `is_decision` is true for each.
+    - The recorded call has `--repo` and the body on stdin. The output is the URL alone.
+    - Empty stdin, or a stage that `brief` does not know: exit 1, and no call.
+  - Verify: the unit tests.
   - Dependencies: 1.
-  - Files: `scripts/agent_skills/cli.py`, `scripts/agent_skills/tests/test_brief.py`.
+  - Files: `scripts/agent_skills/cli.py`, `scripts/agent_skills/github.py`, `scripts/agent_skills/tests/test_decide.py`.
   - Scope: S.
 
-### Checkpoint A: the verb works
+### Checkpoint A: the helpers work
 
-- [x] The unit tests pass locally and in CI on the pushed branch.
-- [x] Spec criteria 2 to 4 hold in blender.
-- [x] The user looks at the `brief build 74` output before the stage files name the verb.
+- [ ] The unit tests pass locally and in CI on the pushed branch.
+- [x] Spec criterion 2 holds, and `agent-skills ac 84` lists the 4 boxes of #84.
+- [ ] The user looks at the `agent-skills issue 84` output.
 
 ## Phase 2: the fork's text
 
-- [x] **Task 3: The stage commands start with `brief`**
-  - Description: In `build.md`, `review.md`, `plan.md` and `spec.md`, replace the first `agent-skills issue <n>` or `agent-skills pr <pr>` with `agent-skills brief <stage> <n>`. Add the same line to `test.md`. Each line says to read the whole output, with no `head` or `tail`, and to add `--full` for the whole issue body.
+- [ ] **Task 4: The review and build contract**
+  - Description: Write the spec's 8 review steps into the tracker paragraph of `.claude/commands/review.md`, and the 4 build rules into `.claude/commands/build.md`, with the spec's terms (clear fix, choice, question tool).
   - Acceptance:
-    - Each of the five files names `agent-skills brief` with its own stage.
-    - No other line of those files changes.
-  - Verify: the fork checks, the plugin check, and `codex plugin add agent-skills@agent-skills`.
-  - Dependencies: 2.
-  - Files: `.claude/commands/build.md`, `review.md`, `plan.md`, `spec.md`, `test.md`.
+    - Each step and rule of the spec's "Command text" section is in the file, in the spec's order.
+    - The upstream text outside the tracker paragraphs does not change.
+  - Verify: the fork checks, and the user reads the two diffs.
+  - Dependencies: the verb names of tasks 2 and 3 only.
+  - Files: `.claude/commands/review.md`, `.claude/commands/build.md`.
   - Scope: S.
 
-- [x] **Task 4: The seed and the setup template name `brief`**
-  - Description: Change the intro of `references/workflow/workflow-github.md` and add a `brief` row to its Helpers table. Change the `## Workflow` block in `setup-workflow.md` to the new line from the spec, and mark the old line **stale** in the gap table.
+- [ ] **Task 5: The workflow seed and the setup template**
+  - Description: In `references/workflow/workflow-github.md`, add the `decide` and `ac` Helpers rows and the new Plan, Build and Reports text from the spec. In `.claude/commands/setup-workflow.md`, mark the old Reports and Plan lines **stale** in the gap table.
   - Acceptance:
-    - The seed's intro says that `agent-skills brief` prints the parts a stage needs, and the Helpers table has the `brief` row.
-    - The setup template's block has the line "Start each `/agent-skills` stage with `agent-skills brief <stage> <n>`. Read all of `docs/agents/workflow.md` before other work in this repo."
-    - The gap table names the old line "Read `docs/agents/workflow.md` before any `/agent-skills` command." as stale.
-  - Verify: the fork checks.
-  - Dependencies: 2.
+    - The seed's text equals the spec's quotes.
+    - `agent-skills brief build` run on the seed prints the new Reports section.
+  - Verify: the fork checks, and the `brief` tests still pass.
+  - Dependencies: the verb names only.
   - Files: `references/workflow/workflow-github.md`, `.claude/commands/setup-workflow.md`.
   - Scope: S.
 
+- [ ] **Task 6: Version 0.8.0 and the fork PR**
+  - Description: Bump 0.7.0 to 0.8.0 in every manifest that `scripts/validate-versions.js` lists. Open the fork PR with `--repo julian-perge/agent-skills`.
+  - Acceptance:
+    - `node scripts/validate-versions.js` passes.
+    - The PR is open, ready for review, and its CI passes.
+  - Verify: the fork checks, the plugin check and the PR's checks.
+  - Dependencies: 1 to 5.
+  - Files: `plugin.json`, `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`.
+  - Scope: XS.
+
 ### Checkpoint B: the fork is done
 
-- [x] Spec criterion 1 holds.
-- [x] The user approves opening the urchin and blender PRs.
+- [ ] Spec criteria 1 and 2 hold, and the list form of criterion 3. Its `--tick` part is checked live in task 8.
+- [ ] The user merges the fork PR.
+- [ ] `claude plugin update agent-skills@addy-agent-skills --scope user` and `codex plugin add agent-skills@agent-skills` install 0.8.0, and the installed `review.md` has the new steps.
+- [ ] The user approves opening the urchin and blender PRs.
 
-## Phase 3: other repos and the trial
+## Phase 3: other repos, cleanup and the trial
 
-- [x] **Task 5: urchin and blender start each stage with `brief`**
-  - Description: Open one PR in each repo. Each changes the `## Workflow` line of `AGENTS.md` to the setup template's new line, and changes the intro and the Helpers table of `docs/agents/workflow.md` to the seed's. Owner text stays.
+- [ ] **Task 7: urchin and blender take the new workflow text**
+  - Description: One PR per repo. `docs/agents/workflow.md` gets the Helpers rows and the Plan, Build and Reports text of task 5. Blender's `Commit review` drops its two approval sentences, and its `Reports and output decisions` keeps its own lines.
   - Acceptance:
-    - Each `AGENTS.md` names `agent-skills brief` and no longer says to read `workflow.md` before any command.
-    - Each `workflow.md` has the `brief` row, and its other sections are unchanged.
-    - Each change is in a PR, and the user merges it.
-  - Verify: the PR diff in each repo.
-  - Dependencies: 3, 4, checkpoint B.
-  - Files: urchin and blender `AGENTS.md` and `docs/agents/workflow.md`.
+    - `agent-skills brief build <n>` in each repo prints the new Reports text.
+    - In blender, the brief no longer says "Ask for approval of the exact reviewed commit".
+  - Verify: the brief output in each repo, and each PR's checks.
+  - Dependencies: checkpoint B.
+  - Files: `docs/agents/workflow.md` in urchin and in blender.
   - Scope: S.
+
+- [ ] **Task 8: The cleanup**
+  - Description: Do the spec's Cleanup section with the new verbs. Before the first `--tick`, save that issue's body, and compare it after.
+  - Acceptance:
+    - urchin #282 and #283 are ready for review.
+    - Each of the 9 issues has its met boxes ticked, and a plain comment names each box that is not met, with the reason.
+    - The #204 and #215 decision comments and the #273 open-question comment are posted.
+    - The first ticked body differs from the saved body only on the ticked lines (spec criterion 3, live).
+  - Verify: `agent-skills ac <n>` for each of the 9 issues, and `agent-skills issue 204` and `agent-skills issue 215` print a Decisions section.
+  - Dependencies: checkpoint B.
+  - Files: none in a repo. GitHub writes only.
+  - Scope: M.
 
 ### Checkpoint C: before the trial
 
-- [x] Spec criterion 5 holds. urchin#280 and blender#80 merged on 2026-11-15.
+- [ ] The urchin and blender PRs are merged.
+- [ ] Spec criterion 5 holds.
 
-- [x] **Task 6: Run the trial again**
-  - Description: Count a read of a `spec/` file as a source read in `~/tmp/2026-11-15-agent-cli-audit/targets.py`, and count calls that read all of `docs/agents/workflow.md`. After the user runs 3 build sessions and 2 review sessions in urchin (blender had no task ready to build), run `targets.py` over them and write the numbers into the idea doc.
-  - Acceptance:
-    - At most 1 Bash call before the first read of `src/`, `tests/` or `spec/`, or a `git diff`.
-    - 0 calls that read all of `docs/agents/workflow.md`.
-    - 0 raw `gh issue view` calls, and 0 tail-only test reruns.
-    - A miss is recorded with its numbers, not hidden.
-  - Verify: the numbers and the session ids are in `docs/ideas/agent-skills-helpers.md`.
-  - Dependencies: 5.
-  - Files: `docs/ideas/agent-skills-helpers.md`. Outside the repo: `targets.py`.
-  - Scope: XS.
+- [ ] **Task 9: The trial**
+  - Description: The user runs 1 build and then its review in urchin, and the same in blender, in new sessions on 0.8.0. A script reads the 4 transcripts and checks spec criterion 4. Write the results into `docs/ideas/agent-skills-helpers.md`, as slices 1 and 2 did.
+  - Acceptance: each point of spec criterion 4 holds for each session, or the user accepts the miss.
+  - Verify: the script's output, and the issue and PR state in `gh`.
+  - Dependencies: checkpoint C.
+  - Files: `docs/ideas/agent-skills-helpers.md`, and the script in `~/tmp/2026-11-16-session-audit/`.
+  - Scope: M.
 
-### Checkpoint D: slice 2 complete
+### Checkpoint D: slice 3 complete
 
-- [x] Every success criterion in `spec/helpers-stage-brief.md` holds, or the user accepts the miss. The user accepted the miss of criterion 6 on 2026-11-15: build #204 used 3 Bash calls before its first source read, and `claim` makes 2 the floor for a build.
+- [ ] Every success criterion in `spec/helpers-stage-contract.md` holds, or the user accepts the miss.
+- [ ] The spec's status says implemented, and the map says slice 3 is done.

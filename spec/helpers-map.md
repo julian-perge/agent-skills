@@ -17,6 +17,12 @@ Build order: install and tracker-cli (in either order), then run-wrapper, then s
 | --- | --- | --- | --- |
 | stage-brief | The verb `brief`: the `workflow.md` sections that one stage needs, then the issue or PR brief, in one call. The stage commands, the setup template, urchin and blender start each stage with it. | tracker-cli, stage-wiring | [helpers-stage-brief.md](helpers-stage-brief.md) |
 
+### Slice 3
+
+| Module id | Responsibility | Depends on | Spec |
+| --- | --- | --- | --- |
+| stage-contract | One contract for build and review: how findings are fixed, asked about and committed, decision comments on issues (the verb `decide`, and a Decisions section in `issue`), AC boxes ticked by the review (the verb `ac`), ready PRs, and the cleanup in urchin and blender. Source: [docs/intent/stage-contract.md](../docs/intent/stage-contract.md). | tracker-cli, stage-brief, stage-wiring | [helpers-stage-contract.md](helpers-stage-contract.md) |
+
 ## Interfaces at the boundaries
 
 - **install provides paths.** The fork is at `~/code/agent-skills` on every machine. `agent-skills` is on the PATH of Claude Code (plugin `bin/`), Codex and OpenCode (`~/.local/bin/agent-skills`).
