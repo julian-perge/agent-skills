@@ -97,6 +97,20 @@ git clone https://github.com/addyosmani/agent-skills.git
 claude --plugin-dir /path/to/agent-skills
 ```
 
+**This fork, enabled per repo:**
+
+The plugin is off in `~/.claude/settings.json` and on only in the repos that use the workflow. The `addy-agent-skills` marketplace stays registered there under `extraKnownMarketplaces`, as a directory source that points at this checkout. To set up a new repo, start one session with the plugin on:
+
+```bash
+claude --settings '{"enabledPlugins": {"agent-skills@addy-agent-skills": true}}'
+```
+
+Then run `/agent-skills:setup-workflow`. It writes the same enable line into the repo's `.claude/settings.local.json` and makes sure git ignores that file, so later sessions in the repo load the plugin. A repo that is already set up needs only that file:
+
+```json
+{ "enabledPlugins": { "agent-skills@addy-agent-skills": true } }
+```
+
 </details>
 
 <details>
