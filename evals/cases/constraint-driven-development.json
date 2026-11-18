@@ -29,8 +29,7 @@
         "owner": "code-review-and-quality"
       },
       {
-        "prompt": "Add a deploy stage to our pipeline with a manual approval gate",
-        "owner": "ci-cd-and-automation"
+        "prompt": "Add a deploy stage to our pipeline with a manual approval gate"
       },
       {
         "prompt": "Write a failing test for this bug before we fix it",

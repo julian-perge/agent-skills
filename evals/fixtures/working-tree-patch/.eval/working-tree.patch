@@ -1,6 +1,6 @@
-diff --git a/git-workflow-and-versioning/app.js b/git-workflow-and-versioning/app.js
---- a/git-workflow-and-versioning/app.js
-+++ b/git-workflow-and-versioning/app.js
+diff --git a/working-tree-patch/app.js b/working-tree-patch/app.js
+--- a/working-tree-patch/app.js
++++ b/working-tree-patch/app.js
 @@ -1,7 +1,15 @@
  'use strict';
 

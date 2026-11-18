@@ -118,7 +118,6 @@ Map the user's intent to the matching skill automatically:
 - Bug / failure / unexpected behavior → `debugging-and-error-recovery`
 - Code review → `code-review-and-quality`
 - Refactoring / simplification → `code-simplification`
-- API or interface design → `api-and-interface-design`
 - UI work → `frontend-ui-engineering`
 
 ## Execution Model

@@ -33,8 +33,7 @@
         "owner": "code-simplification"
       },
       {
-        "prompt": "Set up the release tagging workflow",
-        "owner": "git-workflow-and-versioning"
+        "prompt": "Set up the release tagging workflow"
       }
     ]
   },

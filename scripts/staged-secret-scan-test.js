@@ -3,9 +3,8 @@
 'use strict';
 
 // Contract test for the staged-secret scans documented in
-// references/security-checklist.md,
-// skills/security-and-hardening/references/hardening-patterns.md, and
-// skills/git-workflow-and-versioning/SKILL.md (issue #717). The earlier form
+// references/security-checklist.md and
+// skills/security-and-hardening/references/hardening-patterns.md (issue #717). The earlier form
 // piped the staged diff through a printing grep, so a staged credential's raw
 // value was echoed into terminal output and any agent tool log. Each
 // documented command is extracted verbatim and run against fixture repos: the
@@ -23,7 +22,6 @@ const ROOT = path.join(__dirname, '..');
 const DOCS = [
   'references/security-checklist.md',
   'skills/security-and-hardening/references/hardening-patterns.md',
-  'skills/git-workflow-and-versioning/SKILL.md',
 ];
 const SENTINEL = 'FAKE_SENTINEL_FOR_TEST_ONLY_4b8d2f1a';
 // Only a --name-only pickaxe scan can satisfy the contract: any form that

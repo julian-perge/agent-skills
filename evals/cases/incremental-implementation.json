@@ -17,8 +17,7 @@
     ],
     "negative": [
       {
-        "prompt": "What alerts should we page on for the new service?",
-        "owner": "observability-and-instrumentation"
+        "prompt": "What alerts should we page on for the new service?"
       },
       {
         "prompt": "Interview me to figure out the real requirements",

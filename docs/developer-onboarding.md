@@ -81,7 +81,6 @@ node scripts/run-evals.js --behavioral <skill-name> --dry-run
 # Hook regression tests, required if you touch anything under hooks/ or
 # skills/using-agent-skills/SKILL.md (the session-start script embeds that file)
 bash hooks/session-start-test.sh
-bash hooks/sdd-cache-test.sh
 bash hooks/simplify-ignore-test.sh
 ```
 
@@ -119,7 +118,7 @@ One point worth internalizing rather than looking up: when writing trigger promp
 - [ ] Tier 2 green the way CI runs it: `node scripts/run-evals.js --min-rank1 95`
 - [ ] Command parity and artifact paths green if you touched any command directory: `node scripts/validate-commands.js` and `node scripts/validate-artifact-paths.js`
 - [ ] Unit tests green if you touched `scripts/`: `node --test scripts/*-test.js scripts/lib/*-test.js`
-- [ ] Hook tests green if you touched `hooks/` or `using-agent-skills`: `bash hooks/session-start-test.sh`, `bash hooks/sdd-cache-test.sh`, `bash hooks/simplify-ignore-test.sh`
+- [ ] Hook tests green if you touched `hooks/` or `using-agent-skills`: `bash hooks/session-start-test.sh`, `bash hooks/simplify-ignore-test.sh`
 - [ ] New skill → eval case file present with the minimum trigger/behavioral counts
 - [ ] New skill → gap justified in the PR description; catalog and open PRs checked
 - [ ] No duplicated content; cross-references used instead

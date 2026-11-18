@@ -25,12 +25,10 @@
     ],
     "negative": [
       {
-        "prompt": "Draft the deprecation notice for the v1 API",
-        "owner": "deprecation-and-migration"
+        "prompt": "Draft the deprecation notice for the v1 API"
       },
       {
-        "prompt": "Design the public interface for the billing module",
-        "owner": "api-and-interface-design"
+        "prompt": "Design the public interface for the billing module"
       }
     ]
   },
