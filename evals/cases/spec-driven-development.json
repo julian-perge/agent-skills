@@ -33,8 +33,7 @@
     ],
     "negative": [
       {
-        "prompt": "Trace this request across our services",
-        "owner": "observability-and-instrumentation"
+        "prompt": "Trace this request across our services"
       },
       {
         "prompt": "Simplify this clever one-liner into readable code",

@@ -89,7 +89,6 @@ Don't load all skills at once — it wastes context. Load skills relevant to the
 
 - Working on UI? Load `frontend-ui-engineering`
 - Debugging? Load `debugging-and-error-recovery`
-- Setting up CI? Load `ci-cd-and-automation`
 
 ## Skill Anatomy
 
@@ -155,7 +154,6 @@ The `references/` directory contains supplementary checklists:
 | `security-checklist.md` | security-and-hardening |
 | `accessibility-checklist.md` | frontend-ui-engineering |
 | `definition-of-done.md` | all skills / every change |
-| `observability-checklist.md` | observability-and-instrumentation |
 | `orchestration-patterns.md` | doubt-driven-development |
 
 Load a reference when you need detailed patterns beyond what the skill covers.
@@ -191,7 +189,7 @@ The same artifacts are the handoff between sessions. For a small task, run the w
 
 `/build auto` can run the whole approved plan in one session. It does not require or perform a fresh process per task. Its per-task status updates, verification results, and commits make each completed task a restartable boundary, so a capable external harness may exit and resume there without depending on chat history.
 
-A shell-level "Ralph loop" is harness behavior, not a separate skill workflow. If you use one, restart only after the current task has reached a recorded boundary; on re-entry, read the durable artifacts and repository state before selecting the next pending task. A process exit is not evidence that a task passed, and a restart must not bypass an approval gate. See the `context-engineering` skill's **Restartable Session Boundaries** section for the handoff checklist.
+A shell-level "Ralph loop" is harness behavior, not a separate skill workflow. If you use one, restart only after the current task has reached a recorded boundary; on re-entry, read the durable artifacts and repository state before selecting the next pending task. A process exit is not evidence that a task passed, and a restart must not bypass an approval gate.
 
 This doesn't need the `/spec` and `/plan` wrappers — plain requests work in any agent, including a `npx skills add` install that only has the skills:
 

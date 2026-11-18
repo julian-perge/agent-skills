@@ -146,7 +146,7 @@ Project skills in `.cursor/skills/` take precedence for **this** repo’s workfl
 1. **Discover** — `using-agent-skills` maps task phase → skill name.
 2. **Read** — full process in `.cursor/skills/<name>/SKILL.md`.
 3. **Deep dive** — `reference.md`, `references/*.md`, or linked checklists when the skill says so.
-4. **Combine** — e.g. `incremental-implementation` + `api-and-interface-design` for an API slice.
+4. **Combine** — e.g. `incremental-implementation` + `frontend-ui-engineering` for a UI slice.
 
 Explicit user phrases (“follow TDD”, “use code-review-and-quality”) still help if the agent drifts.
 
@@ -156,12 +156,12 @@ Explicit user phrases (“follow TDD”, “use code-review-and-quality”) stil
 |----------|--------|
 | Clarifying requirements | `interview-me`, `idea-refine`, `spec-driven-development` |
 | Planning tasks | `planning-and-task-breakdown` |
-| Implementing | `incremental-implementation`, `frontend-ui-engineering`, `api-and-interface-design` |
+| Implementing | `incremental-implementation`, `frontend-ui-engineering` |
 | Testing | `test-driven-development`, `browser-testing-with-devtools` |
 | Debugging | `debugging-and-error-recovery` |
 | Reviewing | `code-review-and-quality`, `code-simplification` |
 | Security / performance | `security-and-hardening`, `performance-optimization` |
-| Git / CI / ship | `git-workflow-and-versioning`, `ci-cd-and-automation`, `shipping-and-launch` |
+| Ship | `shipping-and-launch` |
 
 Full tree: `skills/using-agent-skills/SKILL.md` in the repo.
 

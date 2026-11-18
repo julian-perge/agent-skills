@@ -13,7 +13,7 @@ This is a prompt-driven command. Explore, build a **gap table**, confirm, write,
 
 ### 1. Preflight
 
-Stop and tell the user when `agent-skills` is not enabled (`enabledPlugins` in `~/.claude/settings.json` or the repo's `.claude/settings*.json`).
+Check where `agent-skills` is enabled: in the repo's `.claude/settings.local.json`, in the repo's `.claude/settings.json`, or in neither. The repo needs its own enable line, because the plugin can be off in `~/.claude/settings.json` and on only for this session (`claude --settings '{"enabledPlugins": {"agent-skills@addy-agent-skills": true}}'`). The gap table tracks it.
 
 ### 2. Explore
 
@@ -38,6 +38,7 @@ Build the gap table. One row per artifact, one state per row:
 | `docs/agents/issue-tracker.md` | missing, current, stale (still has the triage, "When a skill says" or wayfinding sections, reads issues with raw `gh` where the seed names an `agent-skills` verb, or has a frontier query without the `ready-for-agent` condition) |
 | `docs/agents/triage-labels.md`, `docs/agents/domain.md` | absent, present (to fold and delete) |
 | `tasks/` in `.gitignore` | missing, current |
+| `agent-skills` enabled in `.claude/settings.local.json`, and that file git-ignored | missing, current |
 | The five labels on the tracker | missing (name them), current |
 | Open wayfinder issues | none, found (list them) |
 
@@ -76,18 +77,20 @@ Rules for every edit: edit the existing file; update a block in place; keep owne
 - **`docs/agents/issue-tracker.md`** (GitHub mode): when missing, seed from `${CLAUDE_PLUGIN_ROOT}/references/workflow/issue-tracker-github.md`. When stale, delete the sections "Pull requests as a triage surface", "When a skill says ..." and "Wayfinding operations", and keep their blocking, frontier and claim bullets under a `## Sub-issues and blocking` heading, with "map" reworded to "parent issue". Rewrite the Conventions bullets and the frontier and claim bullets from the seed, so reads use the `agent-skills` verbs and the frontier needs `ready-for-agent`. Keep owner text. Leave the wayfinding section in place when the user chose to keep open wayfinder issues.
 - **`docs/agents/triage-labels.md` and `docs/agents/domain.md`**: move their owner text into `workflow.md` (label overrides under Labels, domain rules under Design), then delete both files. Keep `triage-labels.md` when the user chose to keep open wayfinder issues.
 - **`.gitignore`** (GitHub mode): add `tasks/`.
+- **`.claude/settings.local.json`**: merge `"enabledPlugins": {"agent-skills@addy-agent-skills": true}` into it, or create it with only that key. When `git check-ignore -q .claude/settings.local.json` fails, add `/.claude/settings.local.json` to `.gitignore`, below any rule that includes `.claude/` again, because the last matching rule wins.
 - **Labels** (GitHub mode): `gh label create` for each missing one of `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
 - **Old workflow in live docs**: swap each old stage skill for its stage in the template's table. Leave history (`docs/research/`, `docs/superpowers/`, `.superpowers/`, `.recall/`, closed tickets) alone.
 
 ### 6. Verify
 
-Done when all five hold. Run them; do not assume.
+Done when all six hold. Run them; do not assume.
 
 1. The old-workflow `rg` from step 2 returns no hit in live docs, except the files the user chose to keep for open wayfinder issues.
 2. Every path named in the agent file's `## Workflow` block and linked from `workflow.md` exists, except `GLOSSARY.md`, `docs/adr/` and `spec/`, which appear when first used.
 3. `git status --short` lists only the files this command meant to change.
 4. GitHub mode: `gh repo view --json nameWithOwner` names the user's own repo, and every label exists.
 5. `command -v agent-skills` prints a path, so the verbs that `workflow.md` names can run.
+6. `jq '.enabledPlugins["agent-skills@addy-agent-skills"]' .claude/settings.local.json` prints `true`, and `git check-ignore -q .claude/settings.local.json` succeeds.
 
 ### 7. Done
 

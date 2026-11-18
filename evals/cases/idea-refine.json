@@ -17,8 +17,7 @@
     ],
     "negative": [
       {
-        "prompt": "Fix the failing CI pipeline",
-        "owner": "ci-cd-and-automation"
+        "prompt": "Fix the failing CI pipeline"
       },
       {
         "prompt": "Audit the upload endpoint for vulnerabilities",

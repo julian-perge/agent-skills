@@ -39,7 +39,7 @@ In Claude Code these install as plugin commands. Where a built-in command has th
 
 Want fewer manual steps once the spec exists? **`/build auto`** generates the plan and implements every task in a single approved pass — you approve the plan once, then it runs autonomously. It removes the human stepping *between* tasks, not the verification: every task is still test-driven and committed individually, and it pauses on failures or risky steps.
 
-Skills also activate automatically based on what you're doing — designing an API triggers `api-and-interface-design`, building UI triggers `frontend-ui-engineering`, and so on.
+Skills also activate automatically based on what you're doing — building UI triggers `frontend-ui-engineering`, and so on.
 
 ---
 
@@ -48,7 +48,7 @@ Skills also activate automatically based on what you're doing — designing an A
 **Fastest path — any agent, one command.** The open [skills CLI](https://github.com/vercel-labs/skills) installs into 70+ agents (Claude Code, Cursor, Codex, Copilot, Cline, and more):
 
 ```bash
-npx skills add addyosmani/agent-skills            # install all 25 skills
+npx skills add addyosmani/agent-skills            # install all 18 skills
 npx skills add addyosmani/agent-skills --list     # browse before installing
 ```
 
@@ -95,6 +95,20 @@ Prefer a native integration? Pick your tool below.
 ```bash
 git clone https://github.com/addyosmani/agent-skills.git
 claude --plugin-dir /path/to/agent-skills
+```
+
+**This fork, enabled per repo:**
+
+The plugin is off in `~/.claude/settings.json` and on only in the repos that use the workflow. The `addy-agent-skills` marketplace stays registered there under `extraKnownMarketplaces`, as a directory source that points at this checkout. To set up a new repo, start one session with the plugin on:
+
+```bash
+claude --settings '{"enabledPlugins": {"agent-skills@addy-agent-skills": true}}'
+```
+
+Then run `/agent-skills:setup-workflow`. It writes the same enable line into the repo's `.claude/settings.local.json` and makes sure git ignores that file, so later sessions in the repo load the plugin. A repo that is already set up needs only that file:
+
+```json
+{ "enabledPlugins": { "agent-skills@addy-agent-skills": true } }
 ```
 
 </details>
@@ -221,9 +235,9 @@ Already installed? How you roll the pack out depends on your codebase. The **[Ad
 
 ---
 
-## All 25 Skills
+## All 18 Skills
 
-The commands above are entry points. The pack includes 25 skills total — 24 lifecycle skills plus the `using-agent-skills` meta-skill. Each skill is a structured workflow with steps, verification gates, and anti-rationalization tables. You can also reference any skill directly.
+The commands above are entry points. The pack includes 18 skills total — 17 lifecycle skills plus the `using-agent-skills` meta-skill. Each skill is a structured workflow with steps, verification gates, and anti-rationalization tables. You can also reference any skill directly.
 
 ### Meta - Discover which skill applies
 
@@ -252,11 +266,8 @@ The commands above are entry points. The pack includes 25 skills total — 24 li
 |-------|-------------|----------|
 | [incremental-implementation](skills/incremental-implementation/SKILL.md) | Thin vertical slices - implement, test, verify, commit. Feature flags, safe defaults, rollback-friendly changes | Any change touching more than one file |
 | [test-driven-development](skills/test-driven-development/SKILL.md) | Red-Green-Refactor, test pyramid (80/15/5), test sizes, DAMP over DRY, Beyonce Rule, browser testing | Implementing logic, fixing bugs, or changing behavior |
-| [context-engineering](skills/context-engineering/SKILL.md) | Feed agents the right information at the right time - rules files, context packing, MCP integrations | Starting a session, switching tasks, or when output quality drops |
-| [source-driven-development](skills/source-driven-development/SKILL.md) | Ground every framework decision in official documentation - verify, cite sources, flag what's unverified | You want authoritative, source-cited code for any framework or library |
 | [doubt-driven-development](skills/doubt-driven-development/SKILL.md) | Adversarial fresh-context review of every non-trivial decision in-flight - CLAIM → EXTRACT → DOUBT → RECONCILE → STOP, with optional user-authorized cross-model escalation | Stakes are high (production, security, irreversible), working in unfamiliar code, or a confident output is cheaper to verify now than to debug later |
 | [frontend-ui-engineering](skills/frontend-ui-engineering/SKILL.md) | Component architecture, design systems, state management, responsive design, WCAG 2.1 AA accessibility | Building or modifying user-facing interfaces |
-| [api-and-interface-design](skills/api-and-interface-design/SKILL.md) | Contract-first design, Hyrum's Law, One-Version Rule, error semantics, boundary validation | Designing APIs, module boundaries, or public interfaces |
 
 ### Verify - Prove it works
 
@@ -278,11 +289,7 @@ The commands above are entry points. The pack includes 25 skills total — 24 li
 
 | Skill | What It Does | Use When |
 |-------|-------------|----------|
-| [git-workflow-and-versioning](skills/git-workflow-and-versioning/SKILL.md) | Trunk-based development, atomic commits, change sizing (~100 lines), the commit-as-save-point pattern | Making any code change (always) |
-| [ci-cd-and-automation](skills/ci-cd-and-automation/SKILL.md) | Shift Left, Faster is Safer, feature flags, quality gate pipelines, failure feedback loops | Setting up or modifying build and deploy pipelines |
-| [deprecation-and-migration](skills/deprecation-and-migration/SKILL.md) | Code-as-liability mindset, compulsory vs advisory deprecation, migration patterns, zombie code removal | Removing old systems, migrating users, or sunsetting features |
 | [documentation-and-adrs](skills/documentation-and-adrs/SKILL.md) | Architecture Decision Records, API docs, inline documentation standards - document the *why* | Making architectural decisions, changing APIs, or shipping features |
-| [observability-and-instrumentation](skills/observability-and-instrumentation/SKILL.md) | Structured logging, RED metrics, OpenTelemetry tracing, symptom-based alerting - instrument as you build | Adding telemetry, or shipping anything that runs in production |
 | [shipping-and-launch](skills/shipping-and-launch/SKILL.md) | Pre-launch checklists, feature flag lifecycle, staged rollouts, rollback procedures, monitoring setup | Preparing to deploy to production |
 
 ---
@@ -355,7 +362,7 @@ The portable core stays in shared directories. Host-specific paths are native di
 
 | Layer / consumer | Repository paths | Purpose |
 |---|---|---|
-| Shared workflow core | `skills/` (25 skills) | Portable `SKILL.md` workflows used by every integration |
+| Shared workflow core | `skills/` (18 skills) | Portable `SKILL.md` workflows used by every integration |
 | Shared review material | `agents/` (4 personas), `references/` (7 checklists) | Specialist reviewers and pack-level checklists carried by whole-repo installs |
 | Claude Code adapter | `.claude/commands/` (9 commands), `.claude-plugin/`, `hooks/` | Slash-command wrappers, marketplace metadata, and lifecycle hooks |
 | Gemini CLI adapter | `.gemini/commands/` (9 commands) | Gemini-native TOML command wrappers |

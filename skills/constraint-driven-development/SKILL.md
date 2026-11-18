@@ -30,7 +30,7 @@ Apply this skill when:
 
 - The project already has a `CONSTRAINTS.md` and the user isn't changing it — read it and follow it instead
 - One-off scripts, spikes, throwaway prototypes
-- The user wants a code review right now (`code-review-and-quality`) or a CI pipeline built (`ci-cd-and-automation`)
+- The user wants a code review right now (`code-review-and-quality`)
 - Pre-product-market-fit code with a two-week expected lifetime — the floor below is still worth it, the rest isn't
 
 ## Loading Constraints
@@ -313,7 +313,6 @@ The skill was applied correctly when:
 
 - `interview-me` — the one-question-at-a-time discipline this skill's intake borrows
 - `code-review-and-quality` — how to review; this skill decides what the review enforces
-- `ci-cd-and-automation` — building the pipeline these constraints run in
 - `test-driven-development` — the suite that coverage and mutation constraints measure
 - `security-and-hardening` — what the security dimension should contain
 - `performance-optimization` — where the performance numbers come from
