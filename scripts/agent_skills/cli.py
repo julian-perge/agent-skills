@@ -120,9 +120,10 @@ def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:
 
 def claim_verb(gh: GitHub, args: argparse.Namespace) -> str:
     issue, me = gh.claim_view(args.number)
-    refusal = tracker.claim_refusal(issue, me)
+    on_branch = tracker.task_refs(gh.subjects_since(gh.default_branch())) if args.auto else None
+    refusal = tracker.claim_refusal(issue, me, on_branch)
     branch, default = None, ""
-    if refusal is None and not args.no_branch:
+    if refusal is None and not args.no_branch and not args.auto:
         branch = tracker.branch_name(issue, args.type)
         if gh.tree_has_changes():
             refusal = "the working tree has changes. Commit or stash them, or pass --no-branch."
@@ -249,6 +250,7 @@ def build_parser() -> argparse.ArgumentParser:
     claim.add_argument("--type", type=branch_kind, metavar="TYPE", help="branch type (default: fix for a bug label, else feat)")
     claim.add_argument("--no-branch", action="store_true", help="assign only, make no branch")
     claim.add_argument("--no-assign", action="store_true", help="make the branch only, assign no one")
+    claim.add_argument("--auto", action="store_true", help="for /build auto: assign only, and count an open blocker as done when a commit on this branch ends its subject with (#N)")
     claim.set_defaults(handler=claim_verb)
 
     frontier = verbs.add_parser("frontier", help="the open sub-issues of P and the next one to build")

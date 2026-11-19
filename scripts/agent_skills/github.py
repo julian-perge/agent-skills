@@ -329,6 +329,9 @@ class GitHub:
         refs = self._git(["git", "for-each-ref", "--format=%(refname)", f"refs/heads/{branch}", f"refs/remotes/origin/{branch}"])
         return bool(refs.strip())
 
+    def subjects_since(self, default: str) -> list[str]:
+        return self._git(["git", "log", "--format=%s", f"origin/{default}..HEAD"]).splitlines()
+
     def branch_from(self, branch: str, default: str) -> str:
         self._git(["git", "fetch", "origin", default])
         self._git(["git", "switch", "-c", branch, f"origin/{default}"])

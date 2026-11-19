@@ -60,7 +60,7 @@ Review: /agent-skills:review issue #43, PR #60, spec spec/35-draynor-region-impo
 
 The review line leaves out each part that has no value.
 
-### `claim N [--type TYPE] [--no-branch] [--no-assign]`
+### `claim N [--type TYPE] [--no-branch] [--no-assign] [--auto]`
 
 1. **Refuse (exit 1, nothing changed)** when the issue is closed, has an assignee other than `@me`, or has an open blocker. Unless `--no-branch` is given, also refuse when the working tree has changes or the branch already exists.
 2. **Assign:** `gh issue edit N --repo R --add-assignee @me`. Skip this step with `--no-assign`, or when `@me` is already the assignee.
@@ -68,7 +68,7 @@ The review line leaves out each part that has no value.
 4. **Type and slug:** `TYPE` is `--type`, else `fix` when the labels include `bug`, else `feat`. The slug is the title in lowercase, letters and digits only, words joined with `-`, at most 5 words and 40 characters.
 5. **Report:** one line, for example `Claimed #49 for @me. Branch feat/49-region-scenery from origin/main at 1a2b3c4.`
 
-For `/agent-skills:build auto`: `claim <source> --no-assign` makes the one branch, and `claim <task> --no-branch` claims each task.
+For `/agent-skills:build auto`: `claim <source> --no-assign` makes the one branch, and `claim <task> --auto` claims each task. `--auto` makes no branch, and it counts an open blocker as done when a subject of `git log --format=%s origin/<default>..HEAD` ends with `(#<blocker>)`, because every task stays open until the one pull request merges.
 
 ### `frontier P`
 

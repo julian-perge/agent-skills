@@ -7,6 +7,7 @@ SPEC_PATH = re.compile(r"spec/[\w./-]+?\.md")
 SPEC_NUMBER = re.compile(r"spec/(\d+)-")
 CLOSES = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b", re.IGNORECASE)
 BRANCH_NUMBER = re.compile(r"^[\w.-]+/(\d+)-")
+TASK_REF = re.compile(r"\(#(\d+)\)\s*$")
 STANDARD_FILES = ("CODING_STANDARDS.md", "AGENTS.md", "CLAUDE.md")
 NOT_FOR_SPEC = frozenset({"ready-for-agent", "ready-for-human", "needs-info", "needs-triage", "wontfix"})
 DECISION_LINE = re.compile(r"[#*\s]*decisions\b", re.IGNORECASE)
@@ -234,13 +235,20 @@ def branch_name(issue: Issue, override: str | None) -> str:
     return f"{kind}/{issue.number}-{name}" if name else f"{kind}/{issue.number}"
 
 
-def claim_refusal(issue: Issue, me: str) -> str | None:
+def task_refs(subjects: Sequence[str]) -> frozenset[int]:
+    return frozenset(int(match[1]) for subject in subjects if (match := TASK_REF.search(subject)))
+
+
+# In /build auto every task lands on one branch and stays open until its pull request merges, so a blocker counts as done when a commit on that branch ends its subject with (#<blocker>). on_branch is None outside auto mode, where every open blocker refuses the claim.
+def claim_refusal(issue: Issue, me: str, on_branch: frozenset[int] | None = None) -> str | None:
     if issue.state != "OPEN":
         return f"#{issue.number} is closed."
     others = [login for login in issue.assignees if login != me]
     if others:
         return f"#{issue.number} is assigned to {', '.join(f'@{login}' for login in others)}."
-    blockers = [f"#{b.number}" for b in issue.blockers if b.state == "OPEN"]
+    blockers = [f"#{b.number}" for b in issue.blockers if b.state == "OPEN" and b.number not in (on_branch or ())]
+    if blockers and on_branch is not None:
+        return f"#{issue.number} has open blockers with no commit on this branch: {', '.join(blockers)}."
     if blockers:
         return f"#{issue.number} has open blockers: {', '.join(blockers)}."
     return None

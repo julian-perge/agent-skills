@@ -3,7 +3,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
 from agent_skills import cli
-from agent_skills.tracker import Issue, Link, branch_type, claim_refusal, slug
+from agent_skills.tracker import Issue, Link, branch_type, claim_refusal, slug, task_refs
 from fakes import FakeRunner, fixture_json, names_repo
 
 BLENDER = "julian-perge/blender-addon-rs317-667mqo-makeup"
@@ -55,6 +55,23 @@ class ClaimRefusalTest(unittest.TestCase):
 
     def test_assigned_to_me_and_closed_blockers_are_fine(self) -> None:
         self.assertIsNone(claim_refusal(Issue(273, "x", assignees=("julian-perge",), blockers=(Link(271, "CLOSED"),)), "julian-perge"))
+
+    def test_open_blocker_with_a_commit_on_the_branch_is_fine(self) -> None:
+        issue = Issue(215, "x", blockers=(Link(209, "OPEN"),))
+        self.assertIsNone(claim_refusal(issue, "julian-perge", frozenset({209})))
+
+    def test_open_blocker_without_a_commit_on_the_branch_is_refused(self) -> None:
+        issue = Issue(215, "x", blockers=(Link(208, "OPEN"), Link(209, "OPEN")))
+        self.assertEqual(
+            claim_refusal(issue, "julian-perge", frozenset({208})),
+            "#215 has open blockers with no commit on this branch: #209.",
+        )
+
+
+class TaskRefsTest(unittest.TestCase):
+    def test_only_a_reference_at_the_end_of_the_subject_counts(self) -> None:
+        subjects = ["feat: add the panel (#209)", "docs: fix the README (#24) ", "fix: mention #210 in passing", "chore: (#7) in the middle"]
+        self.assertEqual(task_refs(subjects), frozenset({209, 24}))
 
 
 class ClaimVerbTest(unittest.TestCase):
@@ -150,6 +167,26 @@ class ClaimVerbTest(unittest.TestCase):
     def test_existing_branch_is_refused(self) -> None:
         runner = self.with_clean_checkout(self.runner_for("claim-blender-31.json"), BRANCH_31, existing=f"refs/heads/{BRANCH_31}\n")
         self.assert_refused(runner, ["31"], f"the branch {BRANCH_31} already exists.")
+
+    def with_branch_subjects(self, runner: FakeRunner, subjects: str) -> FakeRunner:
+        runner.on("git", "symbolic-ref", "refs/remotes/origin/HEAD", stdout="refs/remotes/origin/main\n")
+        runner.on("git", "log", "--format=%s", "origin/main..HEAD", stdout=subjects)
+        return runner
+
+    def test_auto_claims_a_task_whose_blocker_has_a_commit_on_the_branch(self) -> None:
+        runner = self.with_branch_subjects(self.runner_for("claim-urchin-215-blocked.json"), "feat: add the region scenery (#209)\n")
+        runner.on("gh", "issue", "edit", "215")
+        code, out, _ = self.claim(runner, ["215", "--auto"], "julian-perge/urchin")
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "Claimed #215 for @me.\n")
+        self.assertEqual(
+            [call for call in runner.calls if is_write(call)],
+            [["gh", "issue", "edit", "215", "--repo", "julian-perge/urchin", "--add-assignee", "@me"]],
+        )
+
+    def test_auto_refuses_a_task_whose_blocker_has_no_commit_on_the_branch(self) -> None:
+        runner = self.with_branch_subjects(self.runner_for("claim-urchin-215-blocked.json"), "feat: add something else (#208)\n")
+        self.assert_refused(runner, ["215", "--auto"], "#215 has open blockers with no commit on this branch: #209.", "julian-perge/urchin")
 
     def test_dirty_tree_does_not_matter_with_no_branch(self) -> None:
         runner = self.runner_for("claim-blender-31.json").on("gh", "issue", "edit", "31")
