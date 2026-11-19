@@ -1,5 +1,5 @@
 ---
-description: "Set up this repo for the /agent-skills workflow (idea, interview, spec, plan, build, review), or migrate it there from mattpocock-skills. Safe to re-run."
+description: "Set up this repo for the /agent-skills workflow (idea, interview, spec, plan, build, review), or migrate it there from an older skill plugin. Safe to re-run."
 disable-model-invocation: true
 ---
 
@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 Give a repo the `agent-skills` stages with no other skill plugin in the loop. Tasks are GitHub issues with labels (the tracker mode of `planning-and-task-breakdown`), specs are files under `spec/`, and ADRs stay in `docs/adr/`.
 
-This is a prompt-driven command. Explore, build a **gap table**, confirm, write, verify. The repo may be blank, half set up, or set up for `mattpocock-skills`. Every artifact is classified, so a re-run changes only what is not **current**.
+This is a prompt-driven command. Explore, build a **gap table**, confirm, write, verify. The repo may be blank, half set up, or set up for an older skill plugin. Every artifact is classified, so a re-run changes only what is not **current**.
 
 ## Process
 
@@ -21,11 +21,11 @@ Read the repo. Do not assume.
 
 - **Tracker**: `gh repo view --json nameWithOwner,isFork,hasIssuesEnabled,parent` and `gh label list`. A fork can have issues off. `.scratch/` with spec and ticket files means the repo tracks work in local files today.
 - **Agent file**: which of `CLAUDE.md` and `AGENTS.md` exist, whether `CLAUDE.md` is only `@AGENTS.md`, and whether it holds a `## Workflow` block, an old `## Agent skills` block, or both.
-- **`docs/agents/`**: which of `workflow.md`, `issue-tracker.md`, `triage-labels.md` and `domain.md` exist. Diff each old file against its seed (`fd -u setup-matt-pocock-skills ~/.claude/plugins/cache`) to find the lines the repo's owner wrote. Those lines are **owner text** and must survive.
+- **`docs/agents/`**: which of `workflow.md`, `issue-tracker.md`, `triage-labels.md` and `domain.md` exist. Diff each old file against the seed of the plugin that wrote it to find the lines the repo's owner wrote. Those lines are **owner text** and must survive.
 - **Convention evidence**: the last five merged PR titles and branch names (`gh pr list --state merged --limit 5`, `git branch -r`), `git log --oneline -15`, and any rule in a roadmap or parent issue about branches, PRs or reviews. These beat the defaults in the templates.
 - **Verify command**: `package.json` scripts, `pyproject.toml`, `prek.toml`, `Makefile`, `justfile`, and any "Every task" or "Build" lines in the agent file.
 - **Domain docs**: whether `GLOSSARY.md`, `docs/adr/` and `CODING_STANDARDS.md` exist. Create none of them.
-- **Old workflow in live docs**: `rg -uu -n -e 'mattpocock-skills|/to-spec|/to-tickets|implement-spec|grill-with-docs|/wayfinder|/triage|/domain-modeling|\bcode-review\b' AGENTS.md CLAUDE.md docs/agents` (skip the paths that do not exist). Also search code and scripts for helpers of the old flow, and report them without changing them.
+- **Old workflow in live docs**: `rg -uu -n -e '/to-spec|/to-tickets|implement-spec|grill-with-docs|/wayfinder|/triage|/domain-modeling|\bcode-review\b' AGENTS.md CLAUDE.md docs/agents` (skip the paths that do not exist). Also search code and scripts for helpers of the old flow, and report them without changing them.
 - **Open wayfinder work**: `gh issue list --state open --label wayfinder:map` and any open `wayfinder:*` issue.
 
 Build the gap table. One row per artifact, one state per row:
@@ -49,7 +49,7 @@ First print the gap table with one line of evidence per row. Then one `AskUserQu
 - **Tracker mode**: GitHub issues (recommended when the remote is GitHub), or files (`tasks/todo.md`, the `agent-skills` default). A fork with issues off needs `gh repo edit --enable-issues` for the first answer. A repo that tracks work in `.scratch/` today has no recommended answer: ask.
 - **No agent file**: create `AGENTS.md` plus a `CLAUDE.md` holding `@AGENTS.md` (recommended), or `CLAUDE.md` alone.
 - **No verify command found, or several**: which single command proves a change? Offer the candidates found.
-- **Open wayfinder issues found**: leave them and keep `mattpocock-skills` enabled until they close (recommended), or convert them now. Converting means the user settles each open decision ticket with `/agent-skills:interview-me`, then runs `/agent-skills:spec` with a capability map. This command converts nothing itself.
+- **Open wayfinder issues found**: leave them and keep the older skill plugin enabled until they close (recommended), or convert them now. Converting means the user settles each open decision ticket with `/agent-skills:interview-me`, then runs `/agent-skills:spec` with a capability map. This command converts nothing itself.
 
 ### 4. Draft and confirm
 
@@ -100,5 +100,5 @@ Report one table: each artifact, and **written**, **deleted**, **left** or **dec
 - GitHub mode: tell the user that `/agent-skills:next` lists the PRs to review, the tasks to build and the issues to spec or plan, each with the command to paste.
 - Name the open wayfinder issues, the old-flow helper scripts and any issue text that names an old skill. The user decides each one.
 - Name the two unproven parts, for the user to dry-run on one small feature: `/agent-skills:plan` creating sub-issues, and `/agent-skills:build auto` running tracker tasks.
-- Tell the user the last step, to do by hand after three issues pass through the new flow and no wayfinder issue is open: set `"mattpocock-skills@claude-plugins-official": false` under `enabledPlugins` in the repo's `.claude/settings.json`. Say that it is unverified that a project-level `false` overrides a user-level `true`.
+- Tell the user the last step, to do by hand after three issues pass through the new flow and no wayfinder issue is open: set the older skill plugin to `false` under `enabledPlugins` in the repo's `.claude/settings.json`. Say that it is unverified that a project-level `false` overrides a user-level `true`.
 - Print the survey prompt from `${CLAUDE_PLUGIN_ROOT}/references/workflow/survey-prompt.md`.

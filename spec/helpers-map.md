@@ -83,4 +83,4 @@ Naming: modules and functions in `snake_case`, verbs in `kebab-case`. Type hints
 
 - **Always:** run the unit tests and the fork checks before each commit. Pass `--repo <owner>/<repo>` of `origin` on every `gh` call. Mark every guess in the output with `(guess)`.
 - **Ask first:** a verb or flag that no spec names. A CI change other than the one unit-test step in tracker-cli. Deleting anything outside the repos named in a spec.
-- **Never:** write to GitHub from a test. Add a third-party Python dependency. Merge a PR (the user merges).
+- **Never:** write to GitHub from a test. Add a third-party Python dependency. Merge a PR, except as the workflow's merge rule allows (the user's own message in this session must say that merging without their approval is fine).

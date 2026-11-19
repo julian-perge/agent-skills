@@ -1,4 +1,4 @@
-description = "Set up this repo for the /agent-skills workflow (idea, interview, spec, plan, build, review), or migrate it there from mattpocock-skills. Safe to re-run."
+description = "Set up this repo for the /agent-skills workflow (idea, interview, spec, plan, build, review), or migrate it there from an older skill plugin. Safe to re-run."
 
 prompt = """
 This command needs Claude Code, because it reads its seed files from the plugin root. Run /agent-skills:setup-workflow in Claude Code.
