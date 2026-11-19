@@ -6,7 +6,7 @@ The user types each stage. Run one stage per session. When it ends, print the ne
 
 ## Helpers
 
-`agent-skills` is on the PATH of every agent. When a verb covers a lookup, use the verb and do not write the `gh` call yourself.
+The `agent-skills` CLI is in the `bin/` folder of julian-perge/agent-skills, and every agent needs that folder on its PATH. When a verb covers a lookup, use the verb and do not write the `gh` call yourself.
 
 | Verb | Use |
 | --- | --- |
