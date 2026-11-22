@@ -290,8 +290,9 @@ def land_verb(gh: GitHub, args: argparse.Namespace) -> str:
     workflow = gate_rules(gh, root, pull)
     commands = land.checks(workflow)
     found = land.evidence(workflow, pull.paths, pull.body)
+    commit = gh.head_commit()
     reasons = land.refusals(
-        pull, gh.current_branch(), gh.head_commit(), gh.tree_has_changes(), gh.commits_behind(pull.base), found, commands, sync_blockers(gh, pull, here)
+        pull, gh.current_branch(), commit, gh.tree_has_changes(), gh.commits_behind(pull.base), found, commands, sync_blockers(gh, pull, here, commit)
     )
     if reasons:
         raise CliError(render.land_refusal(pull.number, reasons), REFUSED)
@@ -330,8 +331,11 @@ def confirm_merge(gh: GitHub, pull: land.LandPull) -> None:
         print(f"Note: gh reported a problem after the merge: {failure}", file=sys.stderr)
 
 
-def sync_blockers(gh: GitHub, pull: land.LandPull, here: str) -> list[str]:
-    """The reasons, known before the merge, why `sync` would fail after it. A failure after the merge leaves a merged pull request and a checkout that is not synced."""
+def sync_blockers(gh: GitHub, pull: land.LandPull, here: str, commit: str) -> list[str]:
+    """The reasons, known before the merge, why `sync` would fail after it. A failure after the merge leaves a merged pull request and a checkout that is not synced.
+
+    `commit` is HEAD of the checkout. It is the commit that the merge brings in, because the gate refuses every other HEAD.
+    """
     trees = gh.worktrees()
     main, branch = trees[0]
     in_main = str(Path(main).resolve()) == here
@@ -340,9 +344,9 @@ def sync_blockers(gh: GitHub, pull: land.LandPull, here: str) -> list[str]:
     if in_main and holder:
         reasons.append(f"the base branch {pull.base} is checked out in the worktree {holder}, so this checkout cannot switch to it after the merge.")
     moved = here if in_main else main if branch == pull.base else None
-    ahead = gh.commits_ahead(moved, pull.base) if moved else 0
+    ahead = gh.commits_ahead(moved, pull.base, commit) if moved else 0
     if ahead:
-        reasons.append(f"the local branch {pull.base} has {render.plural(ahead, 'commit')} that origin/{pull.base} lacks, so it cannot be fast-forwarded after the merge.")
+        reasons.append(f"the local branch {pull.base} has {render.plural(ahead, 'commit')} that the merge will not hold, so it cannot be fast-forwarded after the merge.")
     return reasons
 
 

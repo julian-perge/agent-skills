@@ -312,7 +312,13 @@ class LandVerbTest(LandCase):
         git(self.work, "switch", "-q", "main")
         commit(self.work, {"local.txt": "only here\n"}, "wip: not pushed")
         git(self.work, "switch", "-q", BRANCH)
-        self.assert_refused("the local branch main has 1 commit that origin/main lacks, so it cannot be fast-forwarded after the merge.")
+        self.assert_refused("the local branch main has 1 commit that the merge will not hold, so it cannot be fast-forwarded after the merge.")
+
+    def test_a_local_base_branch_that_holds_only_commits_of_the_pull_request_lands(self) -> None:
+        git(self.work, "branch", "-f", "main", BRANCH)
+        code, _, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertEqual(git(self.work, "rev-parse", "HEAD"), git(self.origin, "rev-parse", "main"))
 
     def test_a_base_branch_that_another_worktree_holds_is_refused(self) -> None:
         git(self.work, "worktree", "add", "-q", str(self.folder / "base-tree"), "main")
@@ -392,6 +398,10 @@ class LinkedWorktreeTest(LandCase):
         self.assertEqual((git(self.work, "branch", "--show-current"), git(self.work, "rev-parse", "HEAD")), ("feat/other", before))
         self.assertEqual(git(self.work, "rev-parse", "origin/main"), git(self.origin, "rev-parse", "main"))
         self.assertFalse(self.tree.exists())
+
+    def test_a_main_checkout_with_commits_of_its_own_is_refused(self) -> None:
+        commit(self.work, {"local.txt": "only here\n"}, "wip: not pushed")
+        self.assert_refused("the local branch main has 1 commit that the merge will not hold", branch="main")
 
     def test_a_worktree_whose_head_moved_after_the_merge_stays(self) -> None:
         code, out, _, _ = self.land(self.merging(on_merge=lambda: git(self.tree, "commit", "-q", "--allow-empty", "-m", "fix: one more thing")))

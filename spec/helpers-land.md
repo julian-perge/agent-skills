@@ -67,7 +67,7 @@ Run it on the PR branch. It works in this order:
    - No comment has the first line `Decisions from the review of PR #<PR>`, after any leading `#`, `*` and spaces and with nothing after the number. The comments of the pull request, of each issue it closes (up to 50) and of their parents are read (the last 50 of each).
    - `evidence` would exit 1.
    - The file has no command under `## Checks`.
-   - The sync after the merge would fail: the base branch is checked out in another worktree, or the local base branch has commits that `origin/<base>` lacks.
+   - The sync after the merge would fail: the base branch is checked out in another worktree, or the local base branch has commits that neither `origin/<base>` nor the pull request holds.
 3. **Checks.** Each command under `## Checks` runs through the run wrapper, in the repo root, with no shell, in order. The first one that fails stops the verb with exit 1. After the checks, changed tracked files or a moved `HEAD` also stop it with exit 1.
 4. **Merge:** `gh pr merge PR --repo OWNER/REPO --merge --delete-branch --match-head-commit <head commit>`. A merge commit keeps the commit ids that pull request bodies and decision comments cite, and one commit per task of `/build auto`. `--match-head-commit` makes GitHub refuse when the branch moved after the checks. The exit code of `gh` is not trusted in either direction, so `land` then reads the state of the pull request. `gh` merges first and deletes the remote branch second: when it fails and the pull request is merged all the same, `land` prints a note and goes on. When `gh` ends without an error and the pull request is not merged, as a merge queue can do, `land` exits 2 and leaves the checkout as it was.
 5. **Sync.** It starts with `git fetch --prune origin`, which also drops the remote-tracking ref of the merged branch.
@@ -125,6 +125,7 @@ scripts/agent_skills/tests/fixtures/land-urchin-326.json, land-urchin-328.json  
 - **A timeout for the checks.**
 - **Untracked files that the checks read.** A check can pass because of a file that is not in the pull request. A refusal would stop every checkout that holds scratch files.
 - **A submodule commit that the pull request pins and no remote has.** `land` keeps the worktree that holds it, and does not refuse the merge.
+- **A submodule that was deinit-ed in a linked worktree.** `git submodule foreach` skips it, so an unpushed commit in its git folder goes with the worktree.
 - **Images inside an HTML comment or an indented code fence.** They count as images.
 - **Videos as evidence.** GitHub does not show a video from a repo link.
 - **Cleanup of the `evidence` branch.**

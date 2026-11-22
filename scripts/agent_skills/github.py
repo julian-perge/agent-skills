@@ -450,11 +450,11 @@ class GitHub:
     def has_ref(self, checkout: str, ref: str) -> bool:
         return self._run(["git", "-C", checkout, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]).returncode == 0
 
-    def commits_ahead(self, checkout: str, branch: str) -> int:
-        """How many commits the local branch has that origin/<branch> lacks, or 0 when the checkout has no such local branch."""
+    def commits_ahead(self, checkout: str, branch: str, merged: str) -> int:
+        """How many commits the local branch has that neither origin/<branch> nor the commit `merged` holds, or 0 when the checkout has no such local branch."""
         if not self.has_ref(checkout, f"refs/heads/{branch}"):
             return 0
-        return int(self._git(["git", "-C", checkout, "rev-list", "--count", f"origin/{branch}..refs/heads/{branch}"]).strip())
+        return int(self._git(["git", "-C", checkout, "rev-list", "--count", f"refs/heads/{branch}", "--not", f"origin/{branch}", merged]).strip())
 
     def worktrees(self) -> list[tuple[str, str | None]]:
         return parse_worktrees(self._git(["git", "worktree", "list", "--porcelain"]))
