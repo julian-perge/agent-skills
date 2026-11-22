@@ -32,7 +32,7 @@ In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, the iss
 - **`none`:** `<n>` is one task. `/build <n>` runs it in single-task mode, also with `auto` or `all`.
 - **No number in the arguments:** run `agent-skills next`, and ask the user which issue to build.
 
-A whole plan builds only the sub-issues that have the `ready-for-agent` label. Leave out any other sub-issue and the tasks it blocks, and name them in the summary. When the branch of the source issue exists already, as in a run that goes on after a blocker, switch to it and do not claim the source issue again.
+A whole plan builds only the sub-issues that have the `ready-for-agent` label, which `agent-skills issue <task>` shows. Leave out any other sub-issue and the tasks it blocks, and name them in the summary. The pull request then closes only the tasks it built. It closes the source issue only when no sub-issue stays open. When the branch of the source issue exists already, as in a run that goes on after a blocker, switch to it and do not claim the source issue again.
 
 ## One task (`/build one`)
 

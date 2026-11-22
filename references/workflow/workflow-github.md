@@ -69,13 +69,13 @@ Task body: `Parent`, `Spec` (the spec file's path), `What to build`, `Acceptance
 
 ## Build
 
-`/agent-skills:build <n>` reads the issue. When `<n>` has open sub-issues, it is a source issue, and the build runs every one of them: the whole plan. When it has none, `<n>` is one task. `/agent-skills:build one <n>` runs only the next task of a source issue. `auto` is the old word for the whole plan and still selects it. The plan is the open sub-issues of the source issue.
+`/agent-skills:build <n>` reads the issue. When `<n>` has open sub-issues, it is a source issue, and the build runs them on one branch: the whole plan. When it has none, `<n>` is one task. `/agent-skills:build one <n>` runs only the next task of a source issue. `auto` is the old word for the whole plan and still selects it. The plan is the open sub-issues of the source issue.
 
 For one task: pick it with `agent-skills frontier <source issue>`, and claim it with `agent-skills claim <n>`, which also makes the branch.
 
 One task, one branch, one pull request. Branch: `<type>/<issue>-<slug>`. Reference the task as `(#<issue>)` in the PR title and `Closes #<issue>` in the body. When `agent-skills frontier` shows that the task is the last open sub-issue of its source issue, also put `Closes #<source issue>` in the body, because GitHub does not close a parent when its last sub-issue closes. Bug tasks start with a failing test.
 
-The whole plan runs every task of one spec on one branch, `<type>/<source issue>-<slug>`, with one commit per task. Its pull request closes every task issue and the source issue. `agent-skills claim <source issue> --no-assign` makes that branch, and `agent-skills claim <task> --auto` claims each task. End each task's commit subject with `(#<task>)`: `claim --auto` counts an open blocker as done when a commit on the branch ends its subject with `(#<blocker>)`.
+The whole plan runs every task of one spec on one branch, `<type>/<source issue>-<slug>`, with one commit per task. It builds only the sub-issues that have the `ready-for-agent` label, and leaves out any other one and the tasks it blocks. Its pull request closes every task issue it built, and the source issue only when no sub-issue stays open. `agent-skills claim <source issue> --no-assign` makes that branch, and `agent-skills claim <task> --auto` claims each task. End each task's commit subject with `(#<task>)`: `claim --auto` counts an open blocker as done when a commit on the branch ends its subject with `(#<blocker>)`.
 
 Run the verify command from `AGENTS.md` (`Every task`) with `agent-skills run --` before each commit. Open the pull request ready for review. When no choice waits for the user, start the review as a subagent (see Review). Otherwise print the review command and stop. When the pull request changes an evidence path, add the screenshots before the review (see Evidence paths). Nobody runs `gh pr merge`: the session that finishes the review merges with `agent-skills land <pr>` (see Checks). The review ticks the acceptance criteria boxes, not the build.
 

@@ -106,6 +106,8 @@ def brief_issue(gh: GitHub, number: int, heading: str, full: bool) -> str:
 
 def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:
     number = args.number
+    if args.whole and args.stage != "build":
+        raise CliError("--whole goes with the build stage only.")
     if args.stage == "spec":
         return f"/agent-skills:spec #{number}\n"
     if args.stage == "build":
