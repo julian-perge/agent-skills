@@ -106,6 +106,8 @@ def brief_issue(gh: GitHub, number: int, heading: str, full: bool) -> str:
 
 def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:
     number = args.number
+    if args.whole and args.stage != "build":
+        raise CliError("--whole goes with the build stage only.")
     if args.stage == "spec":
         return f"/agent-skills:spec #{number}\n"
     if args.stage == "build":
@@ -113,7 +115,7 @@ def next_cmd_verb(gh: GitHub, args: argparse.Namespace) -> str:
         result = tracker.frontier(subs)
         if result.number is None:
             raise CliError(f"No frontier for #{number}: {result.reason}.", REFUSED)
-        return f"/agent-skills:build #{result.number}\n"
+        return f"/agent-skills:build #{number if args.whole else result.number}\n"
     if args.stage == "plan":
         spec = tracker.spec_for(gh.task_issue(number), spec_files(checkout_root(gh)))
         if spec.path is None:
@@ -430,6 +432,7 @@ def build_parser() -> argparse.ArgumentParser:
     next_cmd = verbs.add_parser("next-cmd", help="the one paste line that ends a stage")
     next_cmd.add_argument("stage", choices=("review", "build", "plan", "spec"))
     next_cmd.add_argument("number", type=issue_number, metavar="N", help="the PR for review, the parent for build, the issue for plan and spec")
+    next_cmd.add_argument("--whole", action="store_true", help="for build: print the parent, which builds every open sub-issue on one branch, and not the next task")
     next_cmd.set_defaults(handler=next_cmd_verb)
 
     claim = verbs.add_parser("claim", help="assign an issue to @me and make its branch from the default branch")

@@ -54,6 +54,19 @@ class NextCmdTest(unittest.TestCase):
         self.assertEqual(out, "/agent-skills:build #204\n")
         self.assertEqual(len(runner.gh_calls()), 1)
 
+    def test_build_whole_prints_the_parent(self) -> None:
+        code, out, _, _ = self.run_cmd(["--repo", "julian-perge/urchin", "next-cmd", "build", "107", "--whole"], ["frontier-urchin-107.json"])
+        self.assertEqual((code, out), (0, "/agent-skills:build #107\n"))
+
+    def test_build_whole_with_no_frontier_exits_1(self) -> None:
+        code, out, _, _ = self.run_cmd(["--repo", "julian-perge/urchin", "next-cmd", "build", "107", "--whole"], ["frontier-urchin-107-all-blocked.json"])
+        self.assertEqual((code, out), (1, ""))
+
+    def test_whole_with_another_stage_exits_2(self) -> None:
+        code, out, err, runner = self.run_cmd(["next-cmd", "spec", "69", "--whole"], [])
+        self.assertEqual((code, out, err), (2, "", "--whole goes with the build stage only.\n"))
+        self.assertEqual(runner.gh_calls(), [])
+
     def test_build_with_no_ready_for_agent_sub_issue_exits_1(self) -> None:
         code, _, err, _ = self.run_cmd(["--repo", BLENDER, "next-cmd", "build", "35"], ["frontier-blender-35.json"])
         self.assertEqual(code, 1)
