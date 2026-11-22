@@ -11,6 +11,8 @@ from agent_skills import REFUSED, CliError, brief, land, render, run, tracker
 from agent_skills.github import GitHub, Runner, run_process
 
 Handler = Callable[[GitHub, argparse.Namespace], str]
+GATE_FILE = "docs/agents/workflow.md"
+MERGEABLE_READS = 5
 
 
 def repo_arg(value: str) -> str:
@@ -77,7 +79,7 @@ def pr_verb(gh: GitHub, args: argparse.Namespace) -> str:
 
 
 def workflow_text(root: Path) -> str:
-    path = root / "docs" / "agents" / "workflow.md"
+    path = root / GATE_FILE
     if not path.is_file():
         raise CliError("No docs/agents/workflow.md in this repo. Run /agent-skills:setup-workflow first.")
     return path.read_text()
@@ -215,12 +217,30 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return gh.comment(args.number, f"{header}\n\n{body}").strip() + "\n"
 
 
+def gate_rules(gh: GitHub, root: Path, pull: land.LandPull) -> str:
+    """The text of docs/agents/workflow.md that judges a pull request.
+
+    It comes from the base branch, so a pull request cannot weaken its own gate. When the base branch has no such
+    file yet, it comes from the checkout. Each of the two cases that can surprise prints a note to stderr.
+    """
+    gh.fetch(str(root))
+    text = gh.file_at(f"origin/{pull.base}", GATE_FILE)
+    if text is None:
+        text = workflow_text(root)
+        print(f"Note: {pull.base} has no {GATE_FILE} yet, so the gate comes from this checkout.", file=sys.stderr)
+    elif GATE_FILE in pull.paths:
+        print(f"Note: this pull request changes {GATE_FILE}. The gate comes from {pull.base}.", file=sys.stderr)
+    problems = land.workflow_problems(text)
+    if problems:
+        raise CliError("\n".join([f"{GATE_FILE} has list items that cannot be read:", *(f"- {problem}" for problem in problems)]))
+    return text
+
+
 def evidence_verb(gh: GitHub, args: argparse.Namespace) -> str:
-    workflow = workflow_text(checkout_root(gh))
     pull = gh.land_pull(args.number)
     if args.add:
         return add_evidence(gh, pull, args.add)
-    found = land.evidence(workflow, pull.paths, pull.body)
+    found = land.evidence(gate_rules(gh, checkout_root(gh), pull), pull.paths, pull.body)
     if found.missing:
         raise CliError(f"PR #{pull.number} needs evidence: {land.evidence_gap(pull.number, found)}", REFUSED)
     return render.evidence_report(pull.number, found)
@@ -231,13 +251,15 @@ def add_evidence(gh: GitHub, pull: land.LandPull, files: list[Path]) -> str:
     problems = [f"{file} is not a file" for file in files if not file.is_file()]
     problems += [f"{file.name} is not an image ({', '.join(land.IMAGE_SUFFIXES)})" for file in files if file.suffix.lower() not in land.IMAGE_SUFFIXES]
     problems += [f"two files are named {name}" for name in sorted({name for name in names if names.count(name) > 1})]
+    if not problems and gh.origin_repo().lower() != gh.repo.lower():
+        problems = [f"the images would go to origin ({gh.origin_repo()}) and the links to {gh.repo}"]
     if problems:
         raise CliError(f"Nothing added: {'; '.join(problems)}.", REFUSED)
     folder = f"pr-{pull.number}"
     with tempfile.TemporaryDirectory() as scratch:
         commit = gh.push_files(land.EVIDENCE_BRANCH, folder, files, f"Evidence for PR #{pull.number}", Path(scratch) / "index")
     images = [(file.stem, land.image_url(gh.repo, commit, folder, file.name)) for file in files]
-    if gh.land_pull(pull.number).body != pull.body:
+    if gh.pull_body(pull.number) != pull.body:
         raise CliError(
             f"The images are on the {land.EVIDENCE_BRANCH} branch at {commit[:8]}, but the body of PR #{pull.number} changed while this ran, so it was not edited. Run the command again.",
             REFUSED,
@@ -249,7 +271,7 @@ def add_evidence(gh: GitHub, pull: land.LandPull, files: list[Path]) -> str:
 def settled_pull(gh: GitHub, number: int) -> land.LandPull:
     """GitHub works out `mergeable` in the background after each push, so the first reads after a push can say UNKNOWN."""
     pull = gh.land_pull(number)
-    for _ in range(4):
+    for _ in range(MERGEABLE_READS - 1):
         if pull.state != "OPEN" or pull.mergeable != "UNKNOWN":
             break
         time.sleep(2)
@@ -259,21 +281,27 @@ def settled_pull(gh: GitHub, number: int) -> land.LandPull:
 
 def land_verb(gh: GitHub, args: argparse.Namespace) -> str:
     root = checkout_root(gh)
-    workflow = workflow_text(root)
     here = str(root.resolve())
     pull = settled_pull(gh, args.number)
+    workflow = gate_rules(gh, root, pull)
     commands = land.checks(workflow)
     found = land.evidence(workflow, pull.paths, pull.body)
     reasons = land.refusals(pull, gh.current_branch(), gh.head_commit(), gh.tree_has_changes(), gh.commits_behind(pull.base), found, commands)
     if reasons:
         raise CliError(render.land_refusal(pull.number, reasons), REFUSED)
     for command in commands:
-        code = run.run_command(shlex.split(command), None, 15, gh, sys.stdout)
+        code = run.run_command(shlex.split(command), None, 15, gh, sys.stdout, cwd=root)
         if code != 0:
-            raise CliError(f"Not landed: PR #{pull.number}\n- the check `{command}` exited {code} on {pull.head}.", REFUSED)
+            raise CliError(render.land_refusal(pull.number, [f"the check `{command}` exited {code} on {pull.head}."]), REFUSED)
     if gh.tree_has_changes() or gh.head_commit() != pull.head_commit:
-        raise CliError(f"Not landed: PR #{pull.number}\n- the checks changed tracked files or moved HEAD. Restore the checkout, then run the command again.", REFUSED)
-    gh.merge(pull.number, land.MERGE_METHOD, pull.head_commit)
+        raise CliError(render.land_refusal(pull.number, ["the checks changed tracked files or moved HEAD. Restore the checkout, then run the command again."]), REFUSED)
+    try:
+        gh.merge(pull.number, land.MERGE_METHOD, pull.head_commit)
+    except CliError as error:
+        # gh merges first and deletes the remote branch second, so it can fail when the merge is already done.
+        if gh.pull_state(pull.number) != "MERGED":
+            raise
+        print(f"Note: gh reported a problem after the merge: {error}", file=sys.stderr)
     try:
         notes = sync(gh, pull, here)
     except CliError as error:
@@ -282,26 +310,41 @@ def land_verb(gh: GitHub, args: argparse.Namespace) -> str:
 
 
 def sync(gh: GitHub, pull: land.LandPull, here: str) -> list[str]:
-    """Moves the checkout to the merged base branch and drops the PR branch. A linked worktree is removed, and the main checkout is moved in its place."""
+    """After the merge: moves a checkout to the merged base branch and drops the PR branch. Returns one line per thing done.
+
+    The main checkout switches to the base branch and is fast-forwarded. From a linked worktree, the main checkout is
+    fast-forwarded when it is on the base branch and left alone when it is not, and the worktree is removed. A worktree
+    with a changed or an untracked file stays, and so does a branch or a worktree that moved after the merge.
+    """
     main, branch = gh.worktrees()[0]
+    gh.fetch(main)
     if str(Path(main).resolve()) == here:
         gh.switch(pull.base)
         gh.fast_forward(here, pull.base)
-        gh.delete_branch(here, pull.head)
-        return [f"This checkout is on {pull.base} at {gh.short_head(here)}.", f"Deleted the local branch {pull.head}."]
+        return [f"This checkout is on {pull.base} at {gh.short_head(here)}.", drop_branch(gh, here, pull)]
     if branch == pull.base:
         gh.fast_forward(main, pull.base)
         notes = [f"The main checkout {main} is on {pull.base} at {gh.short_head(main)}."]
     else:
-        gh.fetch(main, pull.base)
         notes = [f"The main checkout {main} is on {branch or 'a detached HEAD'}, so it was not moved. origin/{pull.base} has the merge."]
-    untracked = gh.untracked()
-    if untracked:
-        more = f" and {len(untracked) - 1} more" if len(untracked) > 1 else ""
-        return [*notes, f"Kept the worktree {here} and the branch {pull.head}: the worktree has untracked files ({untracked[0]}{more}). To remove it, run `git -C {main} worktree remove --force {here}`."]
+    status = gh.status(here)
+    unsaved = [line[3:] for line in status if not line.startswith("!!")]
+    if unsaved or gh.head_commit() != pull.head_commit:
+        why = f"it has changed or untracked files ({render.some(unsaved, 1)})" if unsaved else "its HEAD moved after the merge"
+        return [*notes, f"Kept the worktree {here} and the branch {pull.head}: {why}. To remove it, run `git -C {main} worktree remove --force {here}`."]
+    ignored = [line[3:] for line in status if line.startswith("!!")]
     gh.remove_worktree(main, here)
-    gh.delete_branch(main, pull.head)
-    return [*notes, f"Removed the worktree {here} and the local branch {pull.head}. Run `cd {main}`."]
+    notes.append(f"Removed the worktree {here}. Run `cd {main}`.")
+    if ignored:
+        notes.append(f"Git-ignored paths that went with it: {render.some(ignored, 5)}.")
+    return [*notes, drop_branch(gh, main, pull)]
+
+
+def drop_branch(gh: GitHub, checkout: str, pull: land.LandPull) -> str:
+    if gh.branch_commit(checkout, pull.head) != pull.head_commit:
+        return f"Kept the local branch {pull.head}: it moved after the merge."
+    gh.delete_branch(checkout, pull.head)
+    return f"Deleted the local branch {pull.head}."
 
 
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:

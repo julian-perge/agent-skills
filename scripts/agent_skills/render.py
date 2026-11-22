@@ -180,6 +180,11 @@ def plural(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
 
 
+def some(items: Sequence[str], shown: int) -> str:
+    more = f" and {len(items) - shown} more" if len(items) > shown else ""
+    return ", ".join(items[:shown]) + more
+
+
 def evidence_report(number: int, found: Evidence) -> str:
     if not found.configured:
         return f"PR #{number} needs no evidence: docs/agents/workflow.md has no `## Evidence paths` heading.\n"

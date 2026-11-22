@@ -115,14 +115,14 @@ def exit_code(returncode: int) -> int:
     return 128 - returncode if returncode < 0 else returncode
 
 
-def run_command(command: list[str], name: str | None, tail: int, gh: GitHub, out: TextIO) -> int:
+def run_command(command: list[str], name: str | None, tail: int, gh: GitHub, out: TextIO, cwd: Path | None = None) -> int:
     path, log = open_log(command, name, gh)
     print(f"log: {path}", file=out, flush=True)
     result = Digest(tail)
     start = time.monotonic()
     with log:
         try:
-            child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=cwd)
         except (FileNotFoundError, PermissionError) as error:
             missing = isinstance(error, FileNotFoundError)
             message = f"agent-skills run: {'command not found' if missing else 'not executable'}: {command[0]}"

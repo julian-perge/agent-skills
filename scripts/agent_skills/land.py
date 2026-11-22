@@ -1,18 +1,21 @@
 import re
+import shlex
 from collections.abc import Sequence
 from dataclasses import dataclass
 from urllib.parse import quote
 
 from agent_skills.brief import sections
-from agent_skills.tracker import is_decision
 
 EVIDENCE_BRANCH = "evidence"
 MERGE_METHOD = "merge"
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 ITEM = re.compile(r"\s*[-*]\s+`([^`]+)`\s*$")
+LIST_LINE = re.compile(r"\s*[-*]\s+\S")
+FENCE = re.compile(r"\s{0,3}(```|~~~)")
+CODE_SPAN = re.compile(r"`[^`]*`")
 VERIFY_LINE = re.compile(r"\s*Verify command:\s*(\S.*?)\s*$", re.IGNORECASE)
 HEADING = re.compile(r"(#{1,6})\s+(.*?)\s*$")
-IMAGE = re.compile(r"!\[[^\]]*\]\(\s*[^)\s]+[^)]*\)|<img\b[^>]*\bsrc\s*=", re.IGNORECASE)
+IMAGE = re.compile(r"!\[[^\]]*\]\(\s*<?https?://[^)\s]+[^)]*\)|<img\b[^>]*\bsrc\s*=\s*[\"']?https?://", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -60,6 +63,40 @@ def checks(workflow: str) -> tuple[str, ...]:
     return listed(workflow_section(workflow, "Checks"))
 
 
+def command_problem(command: str) -> str | None:
+    if command.startswith("<") and command.endswith(">"):
+        return "is the placeholder of the seed, not a command"
+    try:
+        shlex.split(command)
+    except ValueError as error:
+        return f"does not parse as a command ({error})"
+    return None
+
+
+def glob_problem(glob: str) -> str | None:
+    if glob.startswith("<") and glob.endswith(">"):
+        return "is the placeholder of the seed, not a glob"
+    if glob.startswith(("/", "./")):
+        return "must start at the repo root with no leading / or ./"
+    if "[" in glob:
+        return "uses [ ], and only *, ** and ? are read"
+    return None
+
+
+def workflow_problems(workflow: str) -> list[str]:
+    """Each list item under `## Checks` or `## Evidence paths` that `land` and `evidence` would skip or misread without a word."""
+    problems = []
+    for title, kind, problem in (("Checks", "command", command_problem), ("Evidence paths", "glob", glob_problem)):
+        for line in (workflow_section(workflow, title) or "").splitlines():
+            if not LIST_LINE.match(line):
+                continue
+            item = ITEM.match(line)
+            reason = problem(item[1]) if item else f"is not one {kind} in backticks with nothing after it"
+            if reason:
+                problems.append(f"under `## {title}`, the list item {line.strip()!r} {reason}.")
+    return problems
+
+
 def verify_command(section: str) -> str | None:
     return next((match[1] for line in section.splitlines() if (match := VERIFY_LINE.match(line))), None)
 
@@ -70,7 +107,7 @@ def glob_pattern(glob: str) -> re.Pattern[str]:
         glob += "**"
     pattern, index = "", 0
     while index < len(glob):
-        if glob.startswith("**/", index):
+        if glob.startswith("**/", index) and (index == 0 or glob[index - 1] == "/"):
             pattern, index = pattern + "(?:.*/)?", index + 3
         elif glob.startswith("**", index):
             pattern, index = pattern + ".*", index + 2
@@ -88,11 +125,27 @@ def touched(paths: Sequence[str], globs: Sequence[str]) -> tuple[str, ...]:
     return tuple(path for path in paths if any(pattern.fullmatch(path) for pattern in patterns))
 
 
+def outside_fences(lines: Sequence[str]) -> list[bool]:
+    """For each line, whether it is outside every fenced code block. The fence lines themselves are inside."""
+    marks, fence = [], None
+    for line in lines:
+        mark = FENCE.match(line)
+        marks.append(fence is None and mark is None)
+        if mark and fence is None:
+            fence = mark[1]
+        elif mark and mark[1] == fence:
+            fence = None
+    return marks
+
+
 def verification_span(lines: Sequence[str]) -> tuple[int, int] | None:
-    """The line range of the Verification section of a pull request body: its heading, up to the next heading of the same or a higher level."""
+    """The line range of the Verification section of a pull request body: its heading, up to the next heading of the same or a higher level.
+
+    A line that starts with # inside a fenced code block is a comment of that code, not a heading.
+    """
     start, level = None, 0
-    for index, line in enumerate(lines):
-        heading = HEADING.match(line)
+    for index, (line, outside) in enumerate(zip(lines, outside_fences(lines))):
+        heading = HEADING.match(line) if outside else None
         if heading is None:
             continue
         if start is None and heading[2].lower().startswith("verification"):
@@ -103,9 +156,14 @@ def verification_span(lines: Sequence[str]) -> tuple[int, int] | None:
 
 
 def verification_images(body: str) -> int:
+    """How many images a reader of the pull request sees in its Verification section: web URLs only, and none inside code."""
     lines = body.splitlines()
     span = verification_span(lines)
-    return len(IMAGE.findall("\n".join(lines[span[0] : span[1]]))) if span else 0
+    if span is None:
+        return 0
+    outside = outside_fences(lines)
+    shown = [CODE_SPAN.sub("", lines[index]) for index in range(*span) if outside[index]]
+    return len(IMAGE.findall("\n".join(shown)))
 
 
 def evidence(workflow: str, paths: Sequence[str], body: str) -> Evidence:
@@ -120,24 +178,32 @@ def image_url(repo: str, commit: str, folder: str, name: str) -> str:
 
 
 def with_images(body: str, images: Sequence[tuple[str, str]]) -> str:
-    """The body with one image per (alt text, URL) at the end of its Verification section. A body without the section gets one at its end."""
+    """The body with one image per (alt text, URL) at the end of its Verification section. A body without the section gets one at its end.
+
+    Every other line keeps its own line end. Blank lines at the end of the section become one.
+    """
     newline = "\r\n" if "\r\n" in body else "\n"
-    lines = body.split(newline)
-    block = [line for alt, url in images for line in (f"![{alt}]({url})", "")]
-    span = verification_span(lines)
+    block = "".join(f"{newline}![{alt.replace('[', '(').replace(']', ')')}]({url}){newline}" for alt, url in images)
+    lines = body.splitlines(keepends=True)
+    span = verification_span([line.rstrip("\r\n") for line in lines])
     if span is None:
-        kept = body.rstrip().split(newline) if body.strip() else []
-        return newline.join([*kept, *([""] if kept else []), "## Verification", "", *block])
+        kept = body.rstrip()
+        return (kept + newline * 2 if kept else "") + f"## Verification{newline}{block}"
     start, end = span
-    section = lines[start:end]
-    while section and not section[-1].strip():
-        section.pop()
-    return newline.join([*lines[:start], *section, "", *block, *lines[end:]])
+    last = end
+    while last > start + 1 and not lines[last - 1].strip():
+        last -= 1
+    section = "".join(lines[:last])
+    rest = "".join(lines[end:])
+    if not section.endswith(("\r", "\n")):
+        section += newline
+    return section + block + (newline + rest if rest else "")
 
 
 def has_review_decision(number: int, comments: Sequence[str]) -> bool:
-    named = re.compile(rf"decisions from the review of PR #{number}\b", re.IGNORECASE)
-    return any(is_decision(body) and named.search(body.split("\n", 1)[0]) for body in comments)
+    """Whether a comment is the one that `agent-skills decide --from review --pr <number>` posts: its whole first line names this review."""
+    first_line = re.compile(rf"[#*\s]*decisions from the review of PR #{number}[*\s]*$", re.IGNORECASE)
+    return any(first_line.match(body.split("\n", 1)[0]) for body in comments)
 
 
 def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int, found: Evidence, commands: Sequence[str]) -> list[str]:
@@ -163,7 +229,10 @@ def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int,
     elif pull.mergeable != "MERGEABLE":
         reasons.append("GitHub has not worked out yet whether the pull request merges cleanly. Run the command again.")
     if not has_review_decision(pull.number, pull.comments):
-        reasons.append(f"no review decision comment names PR #{pull.number}. The review posts it with `agent-skills decide <issue> --from review --pr {pull.number}`.")
+        reasons.append(
+            f"no review decision comment names PR #{pull.number} on the pull request, on an issue it closes or on the parent of one. "
+            f"The review posts it with `agent-skills decide <issue or PR> --from review --pr {pull.number}`."
+        )
     if found.missing:
         reasons.append(evidence_gap(pull.number, found))
     if not commands:

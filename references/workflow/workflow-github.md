@@ -103,13 +103,13 @@ When the review passes and its findings are fixed, the session runs `agent-skill
 
 ## Checks
 
-`agent-skills land <pr>` runs each command below on the PR branch, in this order, and merges only when all of them pass. Write one command per list item, in backticks. A command runs without a shell, so shell syntax needs `bash -c '...'`.
+`agent-skills land <pr>` runs each command below on the PR branch, in this order, and merges only when all of them pass. Write one command per list item, in backticks, with nothing after it. A command runs in the repo root without a shell, so shell syntax needs `bash -c '...'`. `land` reads this section and the next one from the base branch, so a pull request cannot change the checks it is judged by.
 
 - `<the verify command from AGENTS.md>`
 
 ## Evidence paths
 
-A pull request that changes one of the paths below must show the change in the real product: its body needs a `## Verification` section with an image. `agent-skills evidence <pr>` checks this, and `agent-skills evidence <pr> --add <image>...` adds the images. Write one glob per list item, in backticks. `*` stays in one folder, `**` crosses folders, and a glob that ends with `/` covers the folder. A repo with nothing to look at has no such section.
+A pull request that changes one of the paths below must show the change in the real product: its body needs a `## Verification` section with an image. `agent-skills evidence <pr>` checks this, and `agent-skills evidence <pr> --add <image>...` adds the images. Write one glob per list item, in backticks. A glob matches the whole path from the repo root, with no leading `/`. `*` stays in one folder, `**` crosses folders, and a glob that ends with `/` covers the folder. A repo with nothing to look at has no such section.
 
 Verify command: <how to take a screenshot of the real product>
 

@@ -10,7 +10,8 @@ from unittest import mock
 
 from agent_skills import cli, land
 from agent_skills.github import parse_worktrees
-from fakes import FakeRunner, fixture_text, names_repo
+from fakes import fixture_text, names_repo
+from gitrepo import ENV, RealGit, commit, git, new_origin
 
 URCHIN = "julian-perge/urchin"
 HEAD = "6baf62c2ba12fbdb9f53609af6710f6bcfa45b55"
@@ -18,6 +19,11 @@ BRANCH = "fix/227-inventory-doll"
 DECISION = "### Decisions from the review of PR #326\n\n- No findings."
 OPEN = land.LandPull(326, "Place the doll", base="main", head=BRANCH, head_commit=HEAD, comments=(DECISION,))
 NO_EVIDENCE = land.Evidence(configured=False)
+GATE = "docs/agents/workflow.md"
+
+
+def workflow(items: str) -> str:
+    return f"# Workflow\n\n## Checks\n\n{items}"
 
 
 def refusals(pull: land.LandPull = OPEN, branch: str = BRANCH, commit: str = HEAD, dirty: bool = False, behind: int = 0,
@@ -62,7 +68,23 @@ class RefusalsTest(unittest.TestCase):
 
     def test_no_review_decision_comment(self) -> None:
         reasons = refusals(changed(comments=("### Decisions from the build of #227\n\n- a", "### Decisions from the review of PR #32\n\n- b")))
-        self.assertEqual(reasons, ["no review decision comment names PR #326. The review posts it with `agent-skills decide <issue> --from review --pr 326`."])
+        self.assertEqual(
+            reasons,
+            ["no review decision comment names PR #326 on the pull request, on an issue it closes or on the parent of one. "
+             "The review posts it with `agent-skills decide <issue or PR> --from review --pr 326`."],
+        )
+
+    def test_only_a_whole_first_line_is_a_review_decision(self) -> None:
+        for body in ("### Decisions from the review of PR #3260", "### Decisions from the review of PR #326 are not made yet",
+                     "Decisions pending. Later: decisions from the review of PR #326", "Notes\n### Decisions from the review of PR #326"):
+            with self.subTest(body=body):
+                self.assertFalse(land.has_review_decision(326, [body]))
+        for body in (DECISION, "**Decisions from the review of PR #326**\n\n- a", "decisions from the review of pr #326"):
+            with self.subTest(body=body):
+                self.assertTrue(land.has_review_decision(326, [body]))
+
+    def test_a_branch_that_is_not_the_pr_branch_gets_no_behind_reason(self) -> None:
+        self.assertEqual(len(refusals(branch="main", behind=4)), 1)
 
     def test_missing_evidence(self) -> None:
         reasons = refusals(found=land.Evidence(True, ("scenes/a.tscn",), 0, "the verify-urchin skill"))
@@ -92,167 +114,382 @@ class WorktreesTest(unittest.TestCase):
         )
 
 
-def pull_json(**changes: object) -> str:
-    data = json.loads(fixture_text("land-urchin-326.json"))
-    pull = {"state": "OPEN", "mergeable": "MERGEABLE", "headRefName": BRANCH, "headRefOid": HEAD, **changes}
-    data["data"]["repository"]["pullRequest"].update(pull)
-    return json.dumps(data)
+class LandCase(unittest.TestCase):
+    """Runs `land` with real git: a bare origin, a clone on the PR branch, and a fake gh whose merge really merges on the origin."""
 
-
-class LandVerbTest(unittest.TestCase):
     def setUp(self) -> None:
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        self.root = Path(folder.name).resolve() / "urchin"
-        (self.root / "docs" / "agents").mkdir(parents=True)
-        self.marker = self.root.parent / "check-ran"
-        self.write_checks(0)
-        patcher = mock.patch.dict(os.environ, {"TMPDIR": str(self.root.parent)})
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.folder = Path(folder.name).resolve()
+        env = mock.patch.dict(os.environ, {**ENV, "TMPDIR": str(self.folder)})
+        env.start()
+        self.addCleanup(env.stop)
+        self.marker = self.folder / "check-ran"
+        self.origin, self.work = new_origin(self.folder, {**self.base_files(), "app.txt": "one\n", ".gitignore": "ignored.env\n"})
+        git(self.work, "switch", "-q", "-c", BRANCH)
+        self.head = commit(self.work, {"app.txt": "two\n", **self.branch_files()}, "fix: the app (#227)")
+        git(self.work, "push", "-q", "-u", "origin", BRANCH)
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.work)
 
-    def write_checks(self, code: int) -> None:
-        script = f"import pathlib, sys; pathlib.Path({str(self.marker)!r}).write_text('x'); sys.exit({code})"
-        (self.root / "docs" / "agents" / "workflow.md").write_text(f'# Workflow\n\n## Checks\n\n- `{sys.executable} -c "{script}"`\n')
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran"))}
 
-    def top(self, runner: FakeRunner) -> FakeRunner:
-        return runner.on("git", "rev-parse", "--show-toplevel", stdout=f"{self.root}\n")
+    def branch_files(self) -> dict[str, str]:
+        return {}
 
-    def gate(self, pull: str, branch: str = BRANCH, behind: int = 0) -> FakeRunner:
-        """The calls up to the checks, in the order that `land` makes them."""
-        runner = self.top(FakeRunner()).on("gh", "api", "graphql", stdout=pull)
-        runner.on("git", "rev-parse", "--abbrev-ref", "HEAD", stdout=f"{branch}\n").on("git", "rev-parse", "HEAD", stdout=f"{HEAD}\n")
-        runner.on("git", "status", "--porcelain").on("git", "fetch", "origin", "main").on("git", "rev-list", "--count", stdout=f"{behind}\n")
+    def check(self, marker: str, code: int = 0) -> str:
+        """A list item for `## Checks` that writes its working directory to a marker file and exits with `code`."""
+        path = self.folder / marker
+        return f'- `{sys.executable} -c "import os, pathlib, sys; pathlib.Path({str(path)!r}).write_text(os.getcwd()); sys.exit({code})"`\n'
+
+    def pull(self, **changes: object) -> str:
+        data = json.loads(fixture_text("land-urchin-326.json"))
+        files = {"totalCount": 1, "nodes": [{"path": "app.txt"}]}
+        pull = {"state": "OPEN", "mergeable": "MERGEABLE", "headRefName": BRANCH, "headRefOid": self.head, "files": files, "body": "Closes #227\n", **changes}
+        data["data"]["repository"]["pullRequest"].update(pull)
+        return json.dumps(data)
+
+    def merge_on_origin(self) -> None:
+        side = self.folder / "merger"
+        if not side.exists():
+            git(self.folder, "clone", "-q", str(self.origin), str(side))
+        git(side, "fetch", "-q", "origin")
+        git(side, "switch", "-q", "main")
+        git(side, "merge", "-q", "--no-ff", f"origin/{BRANCH}", "-m", "Merge pull request #326")
+        git(side, "push", "-q", "origin", "main")
+        git(side, "push", "-q", "origin", "--delete", BRANCH)
+
+    def push_to_main(self) -> None:
+        side = self.folder / "other"
+        git(self.folder, "clone", "-q", str(self.origin), str(side))
+        commit(side, {"other.txt": "x\n"}, "feat: another change")
+        git(side, "push", "-q", "origin", "main")
+
+    def runner(self, *pulls: str, merges: bool = True) -> RealGit:
+        runner = RealGit(self.merge_on_origin if merges else None)
+        for pull in pulls or (self.pull(),):
+            runner.gh.on("gh", "api", "graphql", stdout=pull)
         return runner
 
-    def checked(self, pull: str) -> FakeRunner:
-        """The calls up to the merge: the gate, one check run, and the second look at the checkout."""
-        runner = self.top(self.gate(pull))
-        return runner.on("git", "status", "--porcelain").on("git", "rev-parse", "HEAD", stdout=f"{HEAD}\n").on("gh", "pr", "merge")
-
-    def run_cli(self, runner: FakeRunner) -> tuple[int, str, str]:
+    def land(self, runner: RealGit | None = None) -> tuple[int, str, str, RealGit]:
+        runner = runner or self.merging()
         out, err = io.StringIO(), io.StringIO()
         with redirect_stdout(out), redirect_stderr(err), mock.patch("agent_skills.cli.time.sleep") as self.sleep:
             code = cli.main(["--repo", URCHIN, "land", "326"], runner)
-        return code, out.getvalue(), err.getvalue()
+        return code, out.getvalue(), err.getvalue(), runner
 
-    def writes(self, runner: FakeRunner) -> list[list[str]]:
-        def is_read(call: list[str]) -> bool:
-            words = call[3:] if call[:2] == ["git", "-C"] else call[1:]
-            return call[:2] == ["gh", "api"] or (call[0] == "git" and (words[0] in ("rev-parse", "status", "fetch", "rev-list") or words[:2] == ["worktree", "list"]))
+    def merging(self, *pulls: str) -> RealGit:
+        runner = self.runner(*pulls)
+        runner.gh.on("gh", "pr", "merge")
+        return runner
 
-        return [call for call in runner.calls if not is_read(call)]
+    def merged(self, runner: RealGit) -> bool:
+        return any(call[:3] == ["gh", "pr", "merge"] for call in runner.calls)
 
-    def test_a_clean_pull_request_merges_and_the_checkout_ends_on_the_base_branch(self) -> None:
-        runner = self.checked(pull_json())
-        runner.on("git", "worktree", "list", stdout=f"worktree {self.root}\nHEAD {HEAD}\nbranch refs/heads/{BRANCH}\n")
-        runner.on("git", "switch", "main").on("git", "pull", "--ff-only").on("git", "branch", "-D", BRANCH)
-        runner.on("git", "rev-parse", "--short", "HEAD", stdout="9f8e7d6\n")
-        code, out, err = self.run_cli(runner)
-        self.assertEqual((code, err), (0, ""))
-        self.assertTrue(self.marker.exists())
-        self.assertIn("exit 0 after ", out)
-        self.assertTrue(out.endswith(
-            "Landed PR #326 into main: https://github.com/julian-perge/urchin/pull/326\n"
-            f"This checkout is on main at 9f8e7d6.\nDeleted the local branch {BRANCH}.\n"
-        ))
-        root = str(self.root)
-        self.assertEqual(self.writes(runner), [
-            ["gh", "pr", "merge", "326", "--repo", URCHIN, "--merge", "--delete-branch", "--match-head-commit", HEAD],
-            ["git", "switch", "main"],
-            ["git", "-C", root, "pull", "--ff-only", "--prune", "origin", "main"],
-            ["git", "-C", root, "branch", "-D", BRANCH],
-        ])
-        self.assertTrue(all(names_repo(call, URCHIN) for call in runner.gh_calls()))
+    def branches(self, repo: Path, *args: str) -> list[str]:
+        return git(repo, "branch", "--format=%(refname:short)", *args).split()
 
-    def test_a_linked_worktree_is_removed_and_the_main_checkout_moves(self) -> None:
-        runner = self.checked(pull_json())
-        runner.on("git", "worktree", "list", stdout=f"worktree /code/urchin\nHEAD 1\nbranch refs/heads/main\n\nworktree {self.root}\nHEAD {HEAD}\nbranch refs/heads/{BRANCH}\n")
-        runner.on("git", "-C", "/code/urchin", "pull", "--ff-only").on("git", "rev-parse", "--short", "HEAD", stdout="9f8e7d6\n")
-        runner.on("git", "status", "--porcelain", "--untracked-files=all").on("git", "worktree", "remove").on("git", "branch", "-D", BRANCH)
-        code, out, _ = self.run_cli(runner)
-        self.assertEqual(code, 0)
-        self.assertIn("The main checkout /code/urchin is on main at 9f8e7d6.\n", out)
-        self.assertIn(f"Removed the worktree {self.root} and the local branch {BRANCH}. Run `cd /code/urchin`.\n", out)
-        self.assertEqual(self.writes(runner)[1:], [
-            ["git", "-C", "/code/urchin", "pull", "--ff-only", "--prune", "origin", "main"],
-            ["git", "-C", "/code/urchin", "worktree", "remove", "--force", str(self.root)],
-            ["git", "-C", "/code/urchin", "branch", "-D", BRANCH],
-        ])
-
-    def test_a_linked_worktree_with_untracked_files_stays(self) -> None:
-        runner = self.checked(pull_json())
-        runner.on("git", "worktree", "list", stdout=f"worktree /code/urchin\nHEAD 1\nbranch refs/heads/feat/other\n\nworktree {self.root}\nHEAD {HEAD}\nbranch refs/heads/{BRANCH}\n")
-        runner.on("git", "-C", "/code/urchin", "fetch", "--prune").on("git", "status", "--porcelain", "--untracked-files=all", stdout="?? notes.md\n?? shots/a.png\n")
-        code, out, _ = self.run_cli(runner)
-        self.assertEqual(code, 0)
-        self.assertIn("The main checkout /code/urchin is on feat/other, so it was not moved. origin/main has the merge.\n", out)
-        self.assertIn("the worktree has untracked files (notes.md and 1 more)", out)
-        self.assertEqual(len(self.writes(runner)), 1)
-
-    def test_a_failing_check_merges_nothing(self) -> None:
-        self.write_checks(3)
-        runner = self.top(self.gate(pull_json()))
-        code, out, err = self.run_cli(runner)
-        self.assertEqual(code, 1)
-        self.assertIn("exit 3 after ", out)
-        self.assertIn(f"Not landed: PR #326\n- the check `{sys.executable} -c", err)
-        self.assertIn(f"exited 3 on {BRANCH}.", err)
-        self.assertEqual(self.writes(runner), [])
-
-    def test_merge_conflicts_stop_before_the_checks(self) -> None:
-        runner = self.gate(pull_json(mergeable="CONFLICTING"), behind=3)
-        code, out, err = self.run_cli(runner)
+    def assert_refused(self, reason: str, runner: RealGit | None = None, branch: str = BRANCH) -> str:
+        """Exit 1 with the reason, and nothing ran or changed: no check, no merge, and both repos as they were."""
+        code, out, err, runner = self.land(runner)
         self.assertEqual((code, out), (1, ""))
         self.assertEqual(err.splitlines()[0], "Not landed: PR #326")
-        self.assertIn("- the pull request has merge conflicts with main.", err)
-        self.assertIn("- the PR branch is 3 commits behind main", err)
+        self.assertIn(f"- {reason}", err)
         self.assertFalse(self.marker.exists())
-        self.assertEqual(self.writes(runner), [])
+        self.assertFalse(self.merged(runner))
+        self.assertEqual(git(self.work, "branch", "--show-current"), branch)
+        self.assertEqual(git(self.origin, "rev-parse", BRANCH), self.head)
+        return err
 
-    def test_no_review_decision_comment_stops_before_the_checks(self) -> None:
+
+class LandVerbTest(LandCase):
+    def test_a_clean_pull_request_merges_and_the_checkout_ends_on_the_base_branch(self) -> None:
+        code, out, err, runner = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(self.marker.read_text(), str(self.work))
+        merge = git(self.origin, "rev-parse", "main")
+        self.assertEqual(git(self.work, "branch", "--show-current"), "main")
+        self.assertEqual(git(self.work, "rev-parse", "HEAD"), merge)
+        self.assertEqual(git(self.work, "log", "-1", "--format=%s"), "Merge pull request #326")
+        self.assertEqual(self.branches(self.work, "--all"), ["main", "origin", "origin/main"])
+        self.assertEqual(git(self.work, "status", "--porcelain"), "")
+        self.assertIn(["gh", "pr", "merge", "326", "--repo", URCHIN, "--merge", "--delete-branch", "--match-head-commit", self.head], runner.calls)
+        self.assertTrue(out.endswith(
+            "Landed PR #326 into main: https://github.com/julian-perge/urchin/pull/326\n"
+            f"This checkout is on main at {merge[:7]}.\nDeleted the local branch {BRANCH}.\n"
+        ))
+        self.assertTrue(all(names_repo(call, URCHIN) for call in runner.gh_calls()))
+
+    def test_the_checks_run_in_the_repo_root(self) -> None:
+        (self.work / "sub").mkdir()
+        os.chdir(self.work / "sub")
+        code, _, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertEqual(self.marker.read_text(), str(self.work))
+
+    def test_a_draft_is_refused(self) -> None:
+        self.assert_refused("the pull request is a draft.", self.runner(self.pull(isDraft=True)))
+
+    def test_a_merged_pull_request_is_refused(self) -> None:
+        err = self.assert_refused("the pull request is merged.", self.runner(self.pull(state="MERGED")))
+        self.assertEqual(len(err.splitlines()), 2)
+
+    def test_a_checkout_on_another_branch_is_refused(self) -> None:
+        git(self.work, "switch", "-q", "main")
+        self.assert_refused(f"this checkout is on main, not on the PR branch {BRANCH}.", branch="main")
+
+    def test_a_checkout_that_is_not_at_the_head_of_the_pull_request_is_refused(self) -> None:
+        self.assert_refused(f"HEAD is {self.head[:8]} and the pull request is at 11111111.", self.runner(self.pull(headRefOid="1" * 40)))
+
+    def test_a_changed_tracked_file_is_refused(self) -> None:
+        (self.work / "app.txt").write_text("not committed\n")
+        self.assert_refused("the working tree has changes.")
+
+    def test_a_branch_behind_its_base_is_refused(self) -> None:
+        self.push_to_main()
+        self.assert_refused("the PR branch is 1 commit behind main, so the checks would not test the merged code.")
+
+    def test_merge_conflicts_are_refused(self) -> None:
+        self.assert_refused("the pull request has merge conflicts with main.", self.runner(self.pull(mergeable="CONFLICTING")))
+
+    def test_an_unknown_merge_state_is_read_5_times_and_then_refused(self) -> None:
+        runner = self.runner(*[self.pull(mergeable="UNKNOWN")] * 5)
+        self.assert_refused("GitHub has not worked out yet whether the pull request merges cleanly.", runner)
+        self.assertEqual(len(runner.gh_calls()), 5)
+        self.assertEqual(self.sleep.call_args_list, [mock.call(2)] * 4)
+
+    def test_an_unknown_merge_state_that_settles_goes_on(self) -> None:
+        code, _, _, runner = self.land(self.merging(self.pull(mergeable="UNKNOWN"), self.pull()))
+        self.assertEqual(code, 0)
+        self.sleep.assert_called_once_with(2)
+
+    def test_no_review_decision_comment_is_refused(self) -> None:
         issue = {"comments": {"nodes": [{"body": "### Decisions from the build of #227\n\n- a"}]}, "parent": None}
-        runner = self.gate(pull_json(closingIssuesReferences={"nodes": [issue]}))
-        code, _, err = self.run_cli(runner)
-        self.assertEqual(code, 1)
-        self.assertIn("- no review decision comment names PR #326.", err)
-        self.assertFalse(self.marker.exists())
+        self.assert_refused("no review decision comment names PR #326", self.runner(self.pull(closingIssuesReferences={"nodes": [issue]})))
 
     def test_a_decision_comment_on_the_parent_issue_counts(self) -> None:
         issue = {"comments": {"nodes": []}, "parent": {"comments": {"nodes": [{"body": DECISION}]}}}
-        runner = self.top(self.gate(pull_json(closingIssuesReferences={"nodes": [issue]})))
-        runner.on("git", "status", "--porcelain", stdout=" M scenes/a.tscn\n")
-        code, _, err = self.run_cli(runner)
-        self.assertEqual(code, 1)
-        self.assertIn("the checks changed tracked files or moved HEAD", err)
-        self.assertEqual(self.writes(runner), [])
+        code, _, _, runner = self.land(self.merging(self.pull(closingIssuesReferences={"nodes": [issue]})))
+        self.assertEqual(code, 0)
+        self.assertTrue(self.merged(runner))
 
-    def test_an_unknown_merge_state_is_read_again(self) -> None:
-        runner = self.top(FakeRunner()).on("gh", "api", "graphql", stdout=pull_json(mergeable="UNKNOWN"))
-        runner.on("gh", "api", "graphql", stdout=pull_json(mergeable="CONFLICTING"))
-        runner.on("git", "rev-parse", "--abbrev-ref", "HEAD", stdout=f"{BRANCH}\n").on("git", "rev-parse", "HEAD", stdout=f"{HEAD}\n")
-        runner.on("git", "status", "--porcelain").on("git", "fetch", "origin", "main").on("git", "rev-list", "--count", stdout="0\n")
-        code, _, err = self.run_cli(runner)
-        self.assertEqual(code, 1)
-        self.assertEqual(err, "Not landed: PR #326\n- the pull request has merge conflicts with main.\n")
-        self.sleep.assert_called_once_with(2)
+    def test_a_decision_comment_on_the_pull_request_itself_counts(self) -> None:
+        pull = self.pull(closingIssuesReferences={"nodes": []}, comments={"nodes": [{"body": DECISION}]})
+        code, _, _, runner = self.land(self.merging(pull))
+        self.assertEqual(code, 0)
+        self.assertTrue(self.merged(runner))
 
     def test_a_merge_that_github_refuses_leaves_the_checkout_alone(self) -> None:
-        runner = self.top(self.gate(pull_json()))
-        runner.on("git", "status", "--porcelain").on("git", "rev-parse", "HEAD", stdout=f"{HEAD}\n")
-        runner.on("gh", "pr", "merge", returncode=1, stderr="Pull request is not mergeable: the base branch policy prohibits the merge.")
-        code, _, err = self.run_cli(runner)
+        runner = self.runner(merges=False)
+        runner.gh.on("gh", "pr", "merge", returncode=1, stderr="Pull request is not mergeable: the base branch policy prohibits the merge.")
+        runner.gh.on("gh", "pr", "view", stdout="OPEN\n")
+        code, _, err, _ = self.land(runner)
         self.assertEqual(code, 2)
         self.assertIn("gh failed: Pull request is not mergeable", err)
-        self.assertEqual(len(self.writes(runner)), 1)
+        self.assertEqual(git(self.work, "branch", "--show-current"), BRANCH)
+        self.assertEqual(git(self.origin, "rev-parse", BRANCH), self.head)
+
+    def test_a_merge_that_is_done_although_gh_fails_still_syncs(self) -> None:
+        runner = self.runner()
+        runner.gh.on("gh", "pr", "merge", returncode=1, stderr="failed to delete remote branch").on("gh", "pr", "view", stdout="MERGED\n")
+        code, out, err, _ = self.land(runner)
+        self.assertEqual(code, 0)
+        self.assertIn("Note: gh reported a problem after the merge: gh failed: failed to delete remote branch\n", err)
+        self.assertEqual(git(self.work, "branch", "--show-current"), "main")
+        self.assertEqual(self.branches(self.work), ["main"])
 
     def test_a_failure_after_the_merge_says_that_the_pull_request_is_merged(self) -> None:
-        runner = self.checked(pull_json())
-        runner.on("git", "worktree", "list", stdout=f"worktree {self.root}\nHEAD {HEAD}\nbranch refs/heads/{BRANCH}\n")
-        runner.on("git", "switch", "main", returncode=1, stderr="fatal: 'main' is already used by worktree at '/code/other'")
-        code, _, err = self.run_cli(runner)
+        git(self.work, "switch", "-q", "main")
+        commit(self.work, {"local.txt": "only here\n"}, "wip: not pushed")
+        git(self.work, "switch", "-q", BRANCH)
+        code, _, err, _ = self.land()
         self.assertEqual(code, 2)
-        self.assertIn("PR #326 is merged, but the checkout is not synced: `git switch main` failed", err)
+        self.assertTrue(err.startswith("PR #326 is merged, but the checkout is not synced: `git -C"), err)
+        self.assertIn(BRANCH, self.branches(self.work))
+
+    def test_a_branch_that_moved_after_the_merge_stays(self) -> None:
+        def merge_then_commit() -> None:
+            self.merge_on_origin()
+            commit(self.work, {"late.txt": "after the merge\n"}, "fix: one more thing")
+
+        runner = RealGit(merge_then_commit)
+        runner.gh.on("gh", "api", "graphql", stdout=self.pull()).on("gh", "pr", "merge")
+        code, out, _, _ = self.land(runner)
+        self.assertEqual(code, 0)
+        self.assertIn(f"Kept the local branch {BRANCH}: it moved after the merge.\n", out)
+        self.assertEqual(git(self.work, "log", "-1", "--format=%s", BRANCH), "fix: one more thing")
+
+
+class LinkedWorktreeTest(LandCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.tree = self.folder / "tree"
+        git(self.work, "switch", "-q", "main")
+        git(self.work, "worktree", "add", "-q", str(self.tree), BRANCH)
+        os.chdir(self.tree)
+
+    def test_the_worktree_and_the_branch_go_and_the_main_checkout_moves(self) -> None:
+        (self.tree / "ignored.env").write_text("KEY=1\n")
+        code, out, err, _ = self.land()
+        self.assertEqual((code, err), (0, ""))
+        merge = git(self.origin, "rev-parse", "main")
+        self.assertFalse(self.tree.exists())
+        self.assertEqual(git(self.work, "rev-parse", "HEAD"), merge)
+        self.assertEqual(self.branches(self.work, "--all"), ["main", "origin", "origin/main"])
+        self.assertTrue(out.endswith(
+            f"The main checkout {self.work} is on main at {merge[:7]}.\n"
+            f"Removed the worktree {self.tree}. Run `cd {self.work}`.\n"
+            "Git-ignored paths that went with it: ignored.env.\n"
+            f"Deleted the local branch {BRANCH}.\n"
+        ))
+
+    def test_a_main_checkout_on_another_branch_is_not_moved(self) -> None:
+        git(self.work, "switch", "-q", "-c", "feat/other")
+        before = git(self.work, "rev-parse", "HEAD")
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn(f"The main checkout {self.work} is on feat/other, so it was not moved. origin/main has the merge.\n", out)
+        self.assertEqual((git(self.work, "branch", "--show-current"), git(self.work, "rev-parse", "HEAD")), ("feat/other", before))
+        self.assertEqual(git(self.work, "rev-parse", "origin/main"), git(self.origin, "rev-parse", "main"))
+        self.assertFalse(self.tree.exists())
+
+    def test_a_worktree_with_an_untracked_file_stays(self) -> None:
+        (self.tree / "notes.md").write_text("not committed\n")
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn(f"Kept the worktree {self.tree} and the branch {BRANCH}: it has changed or untracked files (notes.md).", out)
+        self.assertEqual((self.tree / "notes.md").read_text(), "not committed\n")
+        self.assertIn(BRANCH, self.branches(self.work))
+
+
+class SubmoduleWorktreeTest(LandCase):
+    def setUp(self) -> None:
+        super().setUp()
+        lib = self.folder / "lib"
+        git(self.folder, "init", "-q", "-b", "main", str(lib))
+        commit(lib, {"lib.txt": "x\n"}, "first")
+        git(self.work, "submodule", "add", "-q", str(lib), "lib")
+        self.head = commit(self.work, {}, "feat: add the lib submodule")
+        git(self.work, "push", "-q", "origin", BRANCH)
+        git(self.work, "switch", "-q", "main")
+        git(self.work, "submodule", "deinit", "-q", "-f", "--all")
+        self.tree = self.folder / "tree"
+        git(self.work, "worktree", "add", "-q", str(self.tree), BRANCH)
+        git(self.tree, "submodule", "update", "-q", "--init")
+        os.chdir(self.tree)
+
+    def test_a_worktree_with_a_clean_submodule_is_removed(self) -> None:
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertFalse(self.tree.exists())
+
+    def test_an_untracked_file_inside_a_submodule_keeps_the_worktree(self) -> None:
+        (self.tree / "lib" / "untracked-in-submodule.txt").write_text("not committed\n")
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn(f"Kept the worktree {self.tree} and the branch {BRANCH}: it has changed or untracked files (lib).", out)
+        self.assertEqual((self.tree / "lib" / "untracked-in-submodule.txt").read_text(), "not committed\n")
+
+
+class TwoChecksTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("first-ran", 3) + self.check("check-ran"))}
+
+    def test_a_failing_first_check_stops_the_second_and_the_merge(self) -> None:
+        code, out, err, runner = self.land()
+        self.assertEqual(code, 1)
+        self.assertIn("exit 3 after ", out)
+        self.assertEqual(err.splitlines()[0], "Not landed: PR #326")
+        self.assertIn(f"exited 3 on {BRANCH}.", err)
+        self.assertTrue((self.folder / "first-ran").exists())
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(self.merged(runner))
+        self.assertEqual(git(self.work, "branch", "--show-current"), BRANCH)
+
+
+class LastCheckFailsTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("first-ran") + self.check("check-ran", 1))}
+
+    def test_a_failing_last_check_stops_the_merge(self) -> None:
+        code, _, _, runner = self.land()
+        self.assertEqual(code, 1)
+        self.assertTrue(self.marker.exists())
+        self.assertFalse(self.merged(runner))
+
+
+class CheckMovesHeadTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow("- `git commit -q --allow-empty -m moved`\n")}
+
+    def test_a_check_that_moves_head_stops_the_merge(self) -> None:
+        code, _, err, runner = self.land()
+        self.assertEqual(code, 1)
+        self.assertIn("- the checks changed tracked files or moved HEAD.", err)
+        self.assertFalse(self.merged(runner))
+
+
+class EvidenceGateTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran")) + "\n## Evidence paths\n\nVerify command: just verify\n\n- `app.txt`\n"}
+
+    def test_a_pull_request_without_its_image_is_refused(self) -> None:
+        self.assert_refused("it changes 1 evidence path (app.txt), and its body has no `## Verification` section with an image. Make the screenshots with just verify.")
+
+    def test_a_pull_request_with_its_image_lands(self) -> None:
+        body = "Closes #227\n\n## Verification\n\n![app](https://github.com/julian-perge/urchin/blob/abc/pr-326/app.png?raw=true)\n"
+        code, _, _, runner = self.land(self.merging(self.pull(body=body)))
+        self.assertEqual(code, 0)
+        self.assertTrue(self.merged(runner))
+
+
+class NoChecksTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: "# Workflow\n\n## Review\n\nText.\n"}
+
+    def test_a_repo_without_a_check_command_is_refused(self) -> None:
+        self.assert_refused("docs/agents/workflow.md has no `## Checks` heading with a command")
+
+
+class GateFromBaseTest(LandCase):
+    def branch_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("weaker-check-ran"))}
+
+    def test_a_pull_request_cannot_swap_the_checks_it_is_judged_by(self) -> None:
+        files = {"totalCount": 2, "nodes": [{"path": "app.txt"}, {"path": GATE}]}
+        code, _, err, _ = self.land(self.merging(self.pull(files=files)))
+        self.assertEqual(code, 0)
+        self.assertEqual(err, f"Note: this pull request changes {GATE}. The gate comes from main.\n")
+        self.assertTrue(self.marker.exists())
+        self.assertFalse((self.folder / "weaker-check-ran").exists())
+
+
+class NoGateOnBaseTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {}
+
+    def branch_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran"))}
+
+    def test_the_first_pull_request_of_a_repo_is_judged_by_its_own_file(self) -> None:
+        code, _, err, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertEqual(err, f"Note: main has no {GATE} yet, so the gate comes from this checkout.\n")
+        self.assertTrue(self.marker.exists())
+
+
+class UnreadableGateTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow("- `just gut` and then `just pytest`\n- `sh -c 'open quote`\n")}
+
+    def test_a_list_item_that_cannot_be_read_stops_before_anything_runs(self) -> None:
+        code, out, err, runner = self.land()
+        self.assertEqual((code, out), (2, ""))
+        self.assertEqual(len(err.splitlines()), 3)
+        self.assertIn("is not one command in backticks with nothing after it.", err)
+        self.assertIn("does not parse as a command (No closing quotation).", err)
+        self.assertFalse(self.merged(runner))
 
 
 if __name__ == "__main__":

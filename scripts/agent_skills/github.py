@@ -138,7 +138,7 @@ LAND_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
         nodes { path }
       }
       comments(last: 50) { nodes { body } }
-      closingIssuesReferences(first: 5) {
+      closingIssuesReferences(first: 50) {
         nodes {
           comments(last: 50) { nodes { body } }
           parent { comments(last: 50) { nodes { body } } }
@@ -146,6 +146,11 @@ LAND_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
       }
     }
   }
+}"""
+
+
+PULL_BODY_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) { body } }
 }"""
 
 
@@ -377,6 +382,20 @@ class GitHub:
             paths = tuple(listing.splitlines())
         return parse_land_pull(node, paths)
 
+    def pull_body(self, number: int) -> str:
+        return self.graphql(PULL_BODY_QUERY, number=number)["repository"]["pullRequest"]["body"] or ""
+
+    def pull_state(self, number: int) -> str:
+        return self._gh(["gh", "pr", "view", str(number), "--repo", self.repo, "--json", "state", "--jq", ".state"]).strip()
+
+    def origin_repo(self) -> str:
+        return parse_remote(self._git(["git", "config", "--get", "remote.origin.url"]))
+
+    def file_at(self, ref: str, path: str) -> str | None:
+        """The text of a file at a git ref, or None when the ref has no such file."""
+        result = self._run(["git", "show", f"{ref}:{path}"])
+        return result.stdout if result.returncode == 0 else None
+
     def edit_pull_body(self, number: int, body: str) -> None:
         self._gh(["gh", "api", "--method", "PATCH", f"repos/{self.repo}/pulls/{number}", "-f", f"body={body}", "--silent"])
 
@@ -396,11 +415,12 @@ class GitHub:
             self._git([*scratch, "update-index", "--add", "--cacheinfo", f"100644,{blob},{folder}/{file.name}"])
         tree = self._git([*scratch, "write-tree"]).strip()
         commit = self._git(["git", "commit-tree", tree, *(["-p", parent[0]] if parent else []), "-m", message]).strip()
-        self._git(["git", "push", "origin", f"{commit}:{ref}"])
+        # The push is not forced, so a push from another session in the meantime makes this one fail and keeps theirs.
+        self._git(["git", "push", "--no-verify", "origin", f"{commit}:{ref}"])
         return commit
 
     def commits_behind(self, base: str) -> int:
-        self._git(["git", "fetch", "origin", base])
+        """How many commits of origin/<base> the checkout lacks. Fetch the base branch first."""
         return int(self._git(["git", "rev-list", "--count", f"HEAD..origin/{base}"]).strip())
 
     def current_branch(self) -> str:
@@ -412,9 +432,12 @@ class GitHub:
     def short_head(self, checkout: str) -> str:
         return self._git(["git", "-C", checkout, "rev-parse", "--short", "HEAD"]).strip()
 
-    def untracked(self) -> list[str]:
-        status = self._git(["git", "status", "--porcelain", "--untracked-files=all"])
-        return [line[3:] for line in status.splitlines() if line.startswith("??")]
+    def branch_commit(self, checkout: str, branch: str) -> str:
+        return self._git(["git", "-C", checkout, "rev-parse", f"refs/heads/{branch}"]).strip()
+
+    def status(self, checkout: str) -> list[str]:
+        """Every line of `git status --porcelain --ignored`: changed, untracked and ignored paths, and a submodule with any of them."""
+        return self._git(["git", "-C", checkout, "status", "--porcelain", "--ignored"]).splitlines()
 
     def worktrees(self) -> list[tuple[str, str | None]]:
         return parse_worktrees(self._git(["git", "worktree", "list", "--porcelain"]))
@@ -425,16 +448,19 @@ class GitHub:
     def switch(self, branch: str) -> None:
         self._git(["git", "switch", branch])
 
-    def fast_forward(self, checkout: str, branch: str) -> None:
-        self._git(["git", "-C", checkout, "pull", "--ff-only", "--prune", "origin", branch])
+    def fetch(self, checkout: str) -> None:
+        """Fetches origin and drops the remote-tracking refs of branches that origin deleted, such as a merged PR branch."""
+        self._git(["git", "-C", checkout, "fetch", "--prune", "origin"])
 
-    def fetch(self, checkout: str, branch: str) -> None:
-        self._git(["git", "-C", checkout, "fetch", "--prune", "origin", branch])
+    def fast_forward(self, checkout: str, branch: str) -> None:
+        self._git(["git", "-C", checkout, "merge", "--ff-only", f"origin/{branch}"])
 
     def remove_worktree(self, main: str, path: str) -> None:
+        # Git refuses to remove a worktree that has a submodule without --force. The caller checks first that the worktree has no changed or untracked file.
         self._git(["git", "-C", main, "worktree", "remove", "--force", path])
 
     def delete_branch(self, checkout: str, branch: str) -> None:
+        # -D, because after a squash or a rebase merge git does not see the branch as merged. The caller checks first that the branch is at the merged commit.
         self._git(["git", "-C", checkout, "branch", "-D", branch])
 
     def tree_has_changes(self) -> bool:
