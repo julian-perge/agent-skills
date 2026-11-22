@@ -1,5 +1,5 @@
 ---
-description: Implement tasks incrementally — build, test, verify, commit. Add "auto" to run the whole plan in one approved pass.
+description: Implement the plan incrementally, with build, test, verify and commit for each task. Runs every pending task. Add "one" to stop after the next task.
 disable-model-invocation: true
 ---
 
@@ -20,12 +20,17 @@ In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, start w
 
 ## Modes
 
-- **`/build`** — implement the *next* pending task, then stop (careful, one slice at a time).
-- **`/build auto`** — generate the plan if needed, get a single approval, then implement *every* task without stopping between them.
+- **`/build`**: implement *every* pending task of the plan without stopping between them. It generates the plan when there is none.
+- **`/build one`**: implement the *next* pending task, then stop (careful, one slice at a time).
 
-`$ARGUMENTS` selects the mode. Treat `auto` (canonical) or `all` as autonomous mode; anything else (or empty) is the default single-task mode. Note: autonomous mode is not faster *per task* — it runs the same test-driven loop — it only removes the human stepping *between* tasks.
+`$ARGUMENTS` selects the mode. `one` (canonical) or `next` as the first word selects single-task mode. Anything else, or nothing, selects the default whole-plan mode. `auto` and `all` are old names for the whole plan and still select it. The whole-plan mode is not faster *per task*: it runs the same test-driven loop, and it only removes the human stepping *between* tasks.
 
-## Default: one task
+In a repo whose `docs/agents/workflow.md` tracks tasks in GitHub Issues, the issue decides too. `agent-skills brief build <n>` lists the sub-issues of `<n>`.
+
+- **`<n>` has open sub-issues:** it is a source issue, and its open sub-issues are the plan. `/build <n>` runs every one of them on one branch with one pull request. `/build one <n>` runs only the next one.
+- **`<n>` has no open sub-issue:** it is one task. `/build <n>` runs it in single-task mode.
+
+## One task (`/build one`)
 
 Pick the next pending task from the plan. Then:
 
@@ -38,21 +43,21 @@ Pick the next pending task from the plan. Then:
 7. Commit with a descriptive message
 8. Mark the task complete and stop
 
-## Autonomous: the whole plan (`/build auto`)
+## Default: the whole plan
 
 Use this once a spec exists and you want to collapse plan + build into one run. It removes the manual stepping between tasks — **not** the verification. Every task still earns a passing test and its own commit.
 
 1. **Require a spec.** Look only for a spec at a known path: `SPEC.md` at the repo root, a root-level `SPEC-<change>.md` delta spec (per the spec-driven-development skill's Spec Evolution section — when one exists and the run is building that follow-up change, it takes precedence over `SPEC.md`; if there are several, use the one whose `Status:` line is not `implemented`, and if more than one remains, ask which change to build), `docs/SPEC.md`, or a file under `spec/`. A README or arbitrary doc does **not** count. If none exists, stop and tell the user to run `/spec` first — do not invent requirements.
 2. **Establish a clean baseline.** Run `git status --porcelain`. If there are uncommitted changes outside the expected planning artifacts (`SPEC.md`, root-level `SPEC-*.md`, `docs/SPEC.md`, `spec/*`, `tasks/plan.md`, `tasks/todo.md`), stop and ask the user to commit, stash, or confirm how to handle them. Autonomous per-task commits must not absorb unrelated local work, or the clean-rollback guarantee breaks.
 3. **Plan if needed.** If there is no `tasks/plan.md`, invoke agent-skills:planning-and-task-breakdown to generate one, and record the spec it was generated from as a `Source spec: <path>` line at the top of the plan (e.g. `Source spec: SPEC-ocr.md`). If `tasks/plan.md` already exists, reuse it only when its `Source spec:` line matches the spec selected in step 1. On a mismatch — including an older plan with no `Source spec:` line — stop and ask the user whether to archive or replace it; never silently execute a plan generated from a different spec.
-4. **Single checkpoint.** Present the full plan and wait for an unambiguous affirmative (e.g. "approve", "go", "yes"). Treat hedged responses ("looks reasonable", "I guess") as **not** approved. This is the only human gate — after approval, run autonomously. If you generated `tasks/plan.md`, commit it as a single preparatory commit now so it doesn't bleed into the first task's commit.
-5. **Execute every task in dependency order.** Use each task's declared dependencies; if they aren't explicit, execute in the order the plan lists them. For each task, run the full default loop above (RED → GREEN → regression → build → commit → mark complete). Stage only the files that task touched plus its task-status update — never `git add -A` blindly — and make one commit per task so any point is a clean rollback.
+4. **Checkpoint, only for a plan this run made.** A plan that was there before this run was approved when it was made: a `tasks/plan.md` that step 3 reused, or the sub-issues that `/plan` published. Start its first task without asking. When this run generated the plan, present the full plan and ask once with the question tool, with the approval as the first option. The question tool is AskUserQuestion. In a host without one, show the plan, then stop and wait for an unambiguous affirmative (e.g. "approve", "go", "yes"). Treat hedged responses ("looks reasonable", "I guess") as **not** approved. After approval, run autonomously, and commit the generated `tasks/plan.md` as a single preparatory commit now so it doesn't bleed into the first task's commit.
+5. **Execute every task in dependency order.** Use each task's declared dependencies; if they aren't explicit, execute in the order the plan lists them. For each task, run the full single-task loop above (RED → GREEN → regression → build → commit → mark complete). Stage only the files that task touched plus its task-status update — never `git add -A` blindly — and make one commit per task so any point is a clean rollback.
 6. **Stop and ask the user** (do not push through) when:
    - a test can't be made to pass or the build breaks without an obvious fix → follow agent-skills:debugging-and-error-recovery
    - the spec is ambiguous, or a task needs a decision the spec doesn't cover
    - a task is high-risk or irreversible — auth/permission changes, destructive data migrations, payments, deletions, deploys, anything touching secrets, **or anything you can't undo with `git revert`** → follow agent-skills:doubt-driven-development and get explicit sign-off before continuing
 
-   After the user resolves a blocker, they re-invoke `/build auto` — it resumes from the next pending task.
+   After the user resolves a blocker, they re-invoke `/build`, and it resumes from the next pending task.
 7. **Summarize at the end:** tasks completed, tests added, commits made, and anything skipped, flagged, or left for the user.
 
 If any step fails, follow the agent-skills:debugging-and-error-recovery skill.

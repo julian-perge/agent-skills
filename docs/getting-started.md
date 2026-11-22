@@ -129,8 +129,8 @@ The `.claude/commands/` directory contains slash commands for Claude Code:
 | `/spec` | spec-driven-development |
 | `/constraints` | constraint-driven-development |
 | `/plan` | planning-and-task-breakdown |
-| `/build` | incremental-implementation + test-driven-development |
-| `/build auto` | planning-and-task-breakdown → incremental-implementation + test-driven-development (whole plan, one approval) |
+| `/build` | planning-and-task-breakdown (when there is no plan) → incremental-implementation + test-driven-development (whole plan) |
+| `/build one` | incremental-implementation + test-driven-development (next task only) |
 | `/test` | test-driven-development |
 | `/review` | code-review-and-quality |
 | `/code-simplify` | code-simplification |
@@ -187,7 +187,7 @@ The same artifacts are the handoff between sessions. For a small task, run the w
 
 #### Task-boundary restarts and Ralph loops
 
-`/build auto` can run the whole approved plan in one session. It does not require or perform a fresh process per task. Its per-task status updates, verification results, and commits make each completed task a restartable boundary, so a capable external harness may exit and resume there without depending on chat history.
+`/build` can run the whole plan in one session. It does not require or perform a fresh process per task. Its per-task status updates, verification results, and commits make each completed task a restartable boundary, so a capable external harness may exit and resume there without depending on chat history.
 
 A shell-level "Ralph loop" is harness behavior, not a separate skill workflow. If you use one, restart only after the current task has reached a recorded boundary; on re-entry, read the durable artifacts and repository state before selecting the next pending task. A process exit is not evidence that a task passed, and a restart must not bypass an approval gate.
 
