@@ -138,11 +138,12 @@ def run_command(command: list[str], name: str | None, tail: int, gh: GitHub, out
             previous = {signum: signal.signal(signum, forward) for signum in (signal.SIGINT, signal.SIGTERM)} if in_main else {}
             try:
                 assert child.stdout is not None
-                for raw in child.stdout:
-                    line = clean(raw.decode("utf-8", errors="replace"))
-                    log.write(line + "\n")
-                    log.flush()
-                    result.add(line)
+                with child.stdout:
+                    for raw in child.stdout:
+                        line = clean(raw.decode("utf-8", errors="replace"))
+                        log.write(line + "\n")
+                        log.flush()
+                        result.add(line)
                 code = exit_code(child.wait())
             finally:
                 for signum, handler in previous.items():

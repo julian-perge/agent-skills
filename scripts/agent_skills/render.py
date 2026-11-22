@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from agent_skills.land import Evidence
 from agent_skills.tracker import Box, Frontier, Groups, Issue, IssueRow, PullRequest, ReviewRow, SpecMatch, SubIssue, TaskMatch, is_decision
 
 BODY_LIMIT = 2000
@@ -173,6 +174,31 @@ def ac_report(boxes: Sequence[Box]) -> str:
     lines = [f"{index}. [{'x' if box.ticked else ' '}] {box.text}" for index, box in enumerate(boxes, 1)]
     lines.append(f"Ticked: {sum(box.ticked for box in boxes)} of {len(boxes)}")
     return "\n".join(lines) + "\n"
+
+
+def plural(count: int, noun: str) -> str:
+    return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
+def evidence_report(number: int, found: Evidence) -> str:
+    if not found.configured:
+        return f"PR #{number} needs no evidence: docs/agents/workflow.md has no `## Evidence paths` heading.\n"
+    if not found.touched:
+        return f"PR #{number} needs no evidence: it changes no evidence path.\n"
+    return f"PR #{number} has evidence: it changes {plural(len(found.touched), 'evidence path')}, and its `## Verification` section has {plural(found.images, 'image')}.\n"
+
+
+def added_report(number: int, branch: str, commit: str, urls: Sequence[str]) -> str:
+    lines = [f"Added {plural(len(urls), 'image')} to the `## Verification` section of PR #{number}, from the {branch} branch at {commit[:8]}:", *urls]
+    return "\n".join(lines) + "\n"
+
+
+def land_refusal(number: int, reasons: Sequence[str]) -> str:
+    return "\n".join([f"Not landed: PR #{number}", *(f"- {reason}" for reason in reasons)])
+
+
+def land_report(number: int, url: str, base: str, notes: Sequence[str]) -> str:
+    return "\n".join([f"Landed PR #{number} into {base}: {url}", *notes]) + "\n"
 
 
 def claim_report(number: int, assigned: str, branch: str | None, default: str, commit: str) -> str:

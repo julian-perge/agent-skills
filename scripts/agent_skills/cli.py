@@ -1,10 +1,13 @@
 import argparse
 import re
+import shlex
 import sys
+import tempfile
+import time
 from collections.abc import Callable
 from pathlib import Path
 
-from agent_skills import REFUSED, CliError, brief, render, run, tracker
+from agent_skills import REFUSED, CliError, brief, land, render, run, tracker
 from agent_skills.github import GitHub, Runner, run_process
 
 Handler = Callable[[GitHub, argparse.Namespace], str]
@@ -73,11 +76,15 @@ def pr_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return render.pr_report(pr, task, title, spec, standard, args.full)
 
 
-def brief_verb(gh: GitHub, args: argparse.Namespace) -> str:
-    path = checkout_root(gh) / "docs" / "agents" / "workflow.md"
+def workflow_text(root: Path) -> str:
+    path = root / "docs" / "agents" / "workflow.md"
     if not path.is_file():
         raise CliError("No docs/agents/workflow.md in this repo. Run /agent-skills:setup-workflow first.")
-    rules = f"# Rules for {args.stage}, from docs/agents/workflow.md\n\n{brief.RULES_NOTE}\n\n" + "".join(brief.stage_sections(path.read_text(), args.stage))
+    return path.read_text()
+
+
+def brief_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    rules = f"# Rules for {args.stage}, from docs/agents/workflow.md\n\n{brief.RULES_NOTE}\n\n" + "".join(brief.stage_sections(workflow_text(checkout_root(gh)), args.stage))
     if args.number is None:
         return rules
     if args.stage != "review":
@@ -208,6 +215,95 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return gh.comment(args.number, f"{header}\n\n{body}").strip() + "\n"
 
 
+def evidence_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    workflow = workflow_text(checkout_root(gh))
+    pull = gh.land_pull(args.number)
+    if args.add:
+        return add_evidence(gh, pull, args.add)
+    found = land.evidence(workflow, pull.paths, pull.body)
+    if found.missing:
+        raise CliError(f"PR #{pull.number} needs evidence: {land.evidence_gap(pull.number, found)}", REFUSED)
+    return render.evidence_report(pull.number, found)
+
+
+def add_evidence(gh: GitHub, pull: land.LandPull, files: list[Path]) -> str:
+    names = [file.name for file in files]
+    problems = [f"{file} is not a file" for file in files if not file.is_file()]
+    problems += [f"{file.name} is not an image ({', '.join(land.IMAGE_SUFFIXES)})" for file in files if file.suffix.lower() not in land.IMAGE_SUFFIXES]
+    problems += [f"two files are named {name}" for name in sorted({name for name in names if names.count(name) > 1})]
+    if problems:
+        raise CliError(f"Nothing added: {'; '.join(problems)}.", REFUSED)
+    folder = f"pr-{pull.number}"
+    with tempfile.TemporaryDirectory() as scratch:
+        commit = gh.push_files(land.EVIDENCE_BRANCH, folder, files, f"Evidence for PR #{pull.number}", Path(scratch) / "index")
+    images = [(file.stem, land.image_url(gh.repo, commit, folder, file.name)) for file in files]
+    if gh.land_pull(pull.number).body != pull.body:
+        raise CliError(
+            f"The images are on the {land.EVIDENCE_BRANCH} branch at {commit[:8]}, but the body of PR #{pull.number} changed while this ran, so it was not edited. Run the command again.",
+            REFUSED,
+        )
+    gh.edit_pull_body(pull.number, land.with_images(pull.body, images))
+    return render.added_report(pull.number, land.EVIDENCE_BRANCH, commit, [url for _, url in images])
+
+
+def settled_pull(gh: GitHub, number: int) -> land.LandPull:
+    """GitHub works out `mergeable` in the background after each push, so the first reads after a push can say UNKNOWN."""
+    pull = gh.land_pull(number)
+    for _ in range(4):
+        if pull.state != "OPEN" or pull.mergeable != "UNKNOWN":
+            break
+        time.sleep(2)
+        pull = gh.land_pull(number)
+    return pull
+
+
+def land_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    root = checkout_root(gh)
+    workflow = workflow_text(root)
+    here = str(root.resolve())
+    pull = settled_pull(gh, args.number)
+    commands = land.checks(workflow)
+    found = land.evidence(workflow, pull.paths, pull.body)
+    reasons = land.refusals(pull, gh.current_branch(), gh.head_commit(), gh.tree_has_changes(), gh.commits_behind(pull.base), found, commands)
+    if reasons:
+        raise CliError(render.land_refusal(pull.number, reasons), REFUSED)
+    for command in commands:
+        code = run.run_command(shlex.split(command), None, 15, gh, sys.stdout)
+        if code != 0:
+            raise CliError(f"Not landed: PR #{pull.number}\n- the check `{command}` exited {code} on {pull.head}.", REFUSED)
+    if gh.tree_has_changes() or gh.head_commit() != pull.head_commit:
+        raise CliError(f"Not landed: PR #{pull.number}\n- the checks changed tracked files or moved HEAD. Restore the checkout, then run the command again.", REFUSED)
+    gh.merge(pull.number, land.MERGE_METHOD, pull.head_commit)
+    try:
+        notes = sync(gh, pull, here)
+    except CliError as error:
+        raise CliError(f"PR #{pull.number} is merged, but the checkout is not synced: {error}") from None
+    return render.land_report(pull.number, pull.url, pull.base, notes)
+
+
+def sync(gh: GitHub, pull: land.LandPull, here: str) -> list[str]:
+    """Moves the checkout to the merged base branch and drops the PR branch. A linked worktree is removed, and the main checkout is moved in its place."""
+    main, branch = gh.worktrees()[0]
+    if str(Path(main).resolve()) == here:
+        gh.switch(pull.base)
+        gh.fast_forward(here, pull.base)
+        gh.delete_branch(here, pull.head)
+        return [f"This checkout is on {pull.base} at {gh.short_head(here)}.", f"Deleted the local branch {pull.head}."]
+    if branch == pull.base:
+        gh.fast_forward(main, pull.base)
+        notes = [f"The main checkout {main} is on {pull.base} at {gh.short_head(main)}."]
+    else:
+        gh.fetch(main, pull.base)
+        notes = [f"The main checkout {main} is on {branch or 'a detached HEAD'}, so it was not moved. origin/{pull.base} has the merge."]
+    untracked = gh.untracked()
+    if untracked:
+        more = f" and {len(untracked) - 1} more" if len(untracked) > 1 else ""
+        return [*notes, f"Kept the worktree {here} and the branch {pull.head}: the worktree has untracked files ({untracked[0]}{more}). To remove it, run `git -C {main} worktree remove --force {here}`."]
+    gh.remove_worktree(main, here)
+    gh.delete_branch(main, pull.head)
+    return [*notes, f"Removed the worktree {here} and the local branch {pull.head}. Run `cd {main}`."]
+
+
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
     title, subs = gh.sub_issues(args.number)
     return render.frontier_report(args.number, title, subs, tracker.frontier(subs))
@@ -267,6 +363,26 @@ def build_parser() -> argparse.ArgumentParser:
     decide.add_argument("--from", dest="stage", type=stage_arg, required=True, metavar="STAGE", help=f"one of {', '.join(brief.STAGES)}, or {', '.join(brief.COMMAND_NAMES)}")
     decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from")
     decide.set_defaults(handler=decide_verb)
+
+    evidence = verbs.add_parser(
+        "evidence",
+        help="check that a pull request that changes an evidence path shows an image in its Verification section, or add images to it",
+        description="Exits 1 when the pull request changes a path under the `## Evidence paths` heading of docs/agents/workflow.md and its body has no "
+        "`## Verification` section with an image. With --add, pushes the images to the evidence branch of the repo and writes them into that section.",
+    )
+    evidence.add_argument("number", type=issue_number, metavar="PR")
+    evidence.add_argument("--add", nargs="+", type=Path, metavar="IMAGE", help="image files to push to the evidence branch and show in the Verification section")
+    evidence.set_defaults(handler=evidence_verb)
+
+    land_parser = verbs.add_parser(
+        "land",
+        help="run the checks of the repo on the PR branch, merge the pull request and sync the checkout",
+        description="Run it on the PR branch. Exits 1 and merges nothing when the pull request is not open, is a draft, has merge conflicts, has no review "
+        "decision comment or lacks evidence, when the checkout is not at the head commit of the pull request, or when a command under the `## Checks` heading "
+        "of docs/agents/workflow.md fails. Otherwise it merges, moves the checkout to the base branch, and deletes the PR branch and its worktree.",
+    )
+    land_parser.add_argument("number", type=issue_number, metavar="PR")
+    land_parser.set_defaults(handler=land_verb)
 
     run_parser = run.add_parser(verbs)
     run_parser.set_defaults(handler=None, run_parser=run_parser)

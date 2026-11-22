@@ -25,6 +25,12 @@ Done on 2026-11-16.
 | --- | --- | --- | --- |
 | stage-contract | One contract for build and review: how findings are fixed, asked about and committed, decision comments on issues (the verb `decide`, and a Decisions section in `issue`), AC boxes ticked by the review (the verb `ac`), ready PRs, and the cleanup in urchin and blender. Source: [docs/intent/stage-contract.md](../docs/intent/stage-contract.md). | tracker-cli, stage-brief, stage-wiring | [helpers-stage-contract.md](helpers-stage-contract.md) |
 
+### Slice 4
+
+| Module id | Responsibility | Depends on | Spec |
+| --- | --- | --- | --- |
+| land | The verbs `evidence` and `land`: a pull request that changes what the user sees must show an image, and the session that finishes a review merges with one command that runs the checks first and then syncs the checkout. | tracker-cli, run-wrapper, stage-contract | [helpers-land.md](helpers-land.md) |
+
 ## Interfaces at the boundaries
 
 - **install provides paths.** The fork is at `~/code/agent-skills` on every machine. `agent-skills` is on the PATH of Claude Code (plugin `bin/`), Codex and OpenCode (`~/.local/bin/agent-skills`).
@@ -83,4 +89,4 @@ Naming: modules and functions in `snake_case`, verbs in `kebab-case`. Type hints
 
 - **Always:** run the unit tests and the fork checks before each commit. Pass `--repo <owner>/<repo>` of `origin` on every `gh` call. Mark every guess in the output with `(guess)`.
 - **Ask first:** a verb or flag that no spec names. A CI change other than the one unit-test step in tracker-cli. Deleting anything outside the repos named in a spec.
-- **Never:** write to GitHub from a test. Add a third-party Python dependency. Merge a PR, except as the workflow's merge rule allows (the user's own message in this session must say that merging without their approval is fine).
+- **Never:** write to GitHub from a test. Add a third-party Python dependency. Merge a PR, except with `agent-skills land`.
