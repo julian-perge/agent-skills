@@ -93,6 +93,7 @@ Prints one paste line with no Markdown, for the end of a stage:
 | --- | --- | --- |
 | `next-cmd review <pr>` | the review line of `pr` | never. The parts with no value are left out, and stderr names them |
 | `next-cmd build <parent>` | `/agent-skills:build #<frontier>`, with the frontier rule of `frontier` | there is no frontier: no open sub-issue has `ready-for-agent`, no open blocker and no assignee |
+| `next-cmd build <parent> --whole` | `/agent-skills:build #<parent>`, which builds every open sub-issue on one branch | there is no frontier, as above |
 | `next-cmd plan <issue>` | `/agent-skills:plan #<issue>, spec <spec>` | the issue has no spec |
 | `next-cmd spec <issue>` | `/agent-skills:spec #<issue>` | never |
 

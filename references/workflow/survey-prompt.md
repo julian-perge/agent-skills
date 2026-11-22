@@ -17,7 +17,7 @@ List every open issue in this repo and recommend a next step for each. Change no
    - /agent-skills:interview-me: the problem is known, but the design is not settled. Add "then ADR" if a decision must be recorded.
    - /agent-skills:spec: the design is settled, no file under spec/ covers it, and the work needs more than one task. Say "with capability map" when it spans several independent parts.
    - /agent-skills:plan: a spec file exists and the issue has no task sub-issues.
-   - /agent-skills:build: the issue is one task with acceptance criteria, no open blockers and the ready-for-agent label.
+   - /agent-skills:build: the issue is one task with acceptance criteria, no open blockers and the ready-for-agent label, or a source issue whose open sub-issues are such tasks.
    - /agent-skills:test: a bug with a known reproduction and no failing test yet.
    - convert: an issue labelled `wayfinder:map` or `wayfinder:*`. Say what it becomes.
    Do not invent other steps for this column.

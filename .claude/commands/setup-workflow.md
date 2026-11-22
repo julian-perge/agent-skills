@@ -34,7 +34,7 @@ Build the gap table. One row per artifact, one state per row:
 |---|---|
 | Agent file `## Workflow` block | missing, current, stale (an `## Agent skills` block still exists, or the block says "Read `docs/agents/workflow.md` before any `/agent-skills` command.", or it says "Read all of `docs/agents/workflow.md` before other work in this repo." with no "do not read that file in a stage") |
 | Agent file `## Every task` verify line | missing, current |
-| `docs/agents/workflow.md` | missing, current, stale (names old stage skills, says specs live in issues, or has no rule that a stage ends by printing the next command with real values, or GitHub mode has no `## Helpers` section, or says "Report every guess and every gap you accepted" with no `agent-skills decide`, or says `tasks/plan.md` holds the plan's decisions, or GitHub mode has no rule about closing keywords under Reports, or its `auto` pull request does not close the source issue), foreign (owner-written, different shape) |
+| `docs/agents/workflow.md` | missing, current, stale (names old stage skills, says specs live in issues, or has no rule that a stage ends by printing the next command with real values, or GitHub mode has no `## Helpers` section, or says "Report every guess and every gap you accepted" with no `agent-skills decide`, or says `tasks/plan.md` holds the plan's decisions, or GitHub mode has no rule about closing keywords under Reports, or its `auto` pull request does not close the source issue, or it says "`/agent-skills:build` reads one argument"), foreign (owner-written, different shape) |
 | `docs/agents/issue-tracker.md` | missing, current, stale (still has the triage, "When a skill says" or wayfinding sections, reads issues with raw `gh` where the seed names an `agent-skills` verb, or has a frontier query without the `ready-for-agent` condition) |
 | `docs/agents/triage-labels.md`, `docs/agents/domain.md` | absent, present (to fold and delete) |
 | `tasks/` in `.gitignore` | missing, current |
@@ -99,6 +99,6 @@ Report one table: each artifact, and **written**, **deleted**, **left** or **dec
 - Existing `ready-for-agent` issues stay valid. Report the sections they lack, such as a verification line or a `Spec` line, and convert nothing.
 - GitHub mode: tell the user that `/agent-skills:next` lists the PRs to review, the tasks to build and the issues to spec or plan, each with the command to paste.
 - Name the open wayfinder issues, the old-flow helper scripts and any issue text that names an old skill. The user decides each one.
-- Name the two unproven parts, for the user to dry-run on one small feature: `/agent-skills:plan` creating sub-issues, and `/agent-skills:build auto` running tracker tasks.
+- Name the two unproven parts, for the user to dry-run on one small feature: `/agent-skills:plan` creating sub-issues, and `/agent-skills:build <source issue>` running every tracker task on one branch.
 - Tell the user the last step, to do by hand after three issues pass through the new flow and no wayfinder issue is open: set the older skill plugin to `false` under `enabledPlugins` in the repo's `.claude/settings.json`. Say that it is unverified that a project-level `false` overrides a user-level `true`.
 - Print the survey prompt from `${CLAUDE_PLUGIN_ROOT}/references/workflow/survey-prompt.md`.

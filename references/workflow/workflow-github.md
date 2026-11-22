@@ -17,7 +17,7 @@ The `agent-skills` CLI is in the `bin/` folder of julian-perge/agent-skills, and
 | `agent-skills claim <n>` | Assign the task to `@me` and make its branch from the default branch. |
 | `agent-skills decide <n> --from <stage> [--pr <pr>]` | Post the decisions on stdin as one decision comment on the issue, and print its URL. |
 | `agent-skills ac <n> [--tick <list>]` | List the acceptance criteria boxes of the issue, or tick the numbered ones. No other line of the body changes. |
-| `agent-skills next-cmd <stage> <n>` | The paste line that ends a stage: `review <pr>`, `build <parent>`, `plan <issue>` or `spec <issue>`. |
+| `agent-skills next-cmd <stage> <n>` | The paste line that ends a stage: `review <pr>`, `build <parent>` (the next task, or the whole plan with `--whole`), `plan <issue>` or `spec <issue>`. |
 | `agent-skills evidence <pr> [--add <image>...]` | Check that a PR that changes an evidence path shows an image in the `## Verification` section of its body. `--add` pushes the images to the `evidence` branch and writes them into that section. |
 | `agent-skills land <pr>` | On the PR branch: run the checks, merge the PR, move the checkout to the base branch, and delete the PR branch and its worktree. It exits 1 and merges nothing when its gate fails. |
 | `agent-skills run -- <cmd>` | Run a test, lint or build command once. It saves the full log and prints the exit code, the result lines and the last lines. Read the log when you need more, and do not run the command again. |
@@ -71,7 +71,7 @@ Task body: `Parent`, `Spec` (the spec file's path), `What to build`, `Acceptance
 
 `/agent-skills:build <n>` reads the issue. When `<n>` has open sub-issues, it is a source issue, and the build runs every one of them: the whole plan. When it has none, `<n>` is one task. `/agent-skills:build one <n>` runs only the next task of a source issue. `auto` is the old word for the whole plan and still selects it. The plan is the open sub-issues of the source issue.
 
-Pick the task with `agent-skills frontier <source issue>`. Claim it with `agent-skills claim <n>`, which also makes the branch.
+For one task: pick it with `agent-skills frontier <source issue>`, and claim it with `agent-skills claim <n>`, which also makes the branch.
 
 One task, one branch, one pull request. Branch: `<type>/<issue>-<slug>`. Reference the task as `(#<issue>)` in the PR title and `Closes #<issue>` in the body. When `agent-skills frontier` shows that the task is the last open sub-issue of its source issue, also put `Closes #<source issue>` in the body, because GitHub does not close a parent when its last sub-issue closes. Bug tasks start with a failing test.
 

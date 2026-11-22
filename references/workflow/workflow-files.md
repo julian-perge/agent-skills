@@ -12,7 +12,7 @@ The user types each stage. Run one stage per session. When it ends, print the ne
 | Design | `/agent-skills:interview-me` | A settled design. |
 | Spec | `/agent-skills:spec` | `spec/<slug>.md`. |
 | Plan | `/agent-skills:plan` | `tasks/plan.md` and `tasks/todo.md`. |
-| Build | `/agent-skills:build` | The next unchecked task, built and committed. |
+| Build | `/agent-skills:build` | Every unchecked task, built with one commit per task. `build one` builds only the next task. |
 | Bug | `/agent-skills:test` | A failing test, then the fix. |
 | Review | `/agent-skills:review PR #<pr>, spec <spec file>, standard <standard file>` | Findings against the standards and the spec. |
 
