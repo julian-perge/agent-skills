@@ -10,7 +10,7 @@ from unittest import mock
 
 from agent_skills import cli, land
 from fakes import FakeRunner, fixture_text, names_repo
-from gitrepo import ENV, RealGit, commit, git, new_origin
+from gitrepo import RealGit, clone, commit, git, hermetic, new_origin
 
 URCHIN = "julian-perge/urchin"
 SECTIONS = """## Checks
@@ -79,6 +79,20 @@ class WorkflowTest(unittest.TestCase):
 
     def test_a_heading_matches_without_case_and_ends_at_the_next_one(self) -> None:
         self.assertEqual(land.checks("## checks\n- `a`\n## Other\n- `b`\n"), ("a",))
+
+    def test_a_heading_inside_a_code_fence_is_not_the_section(self) -> None:
+        text = "## Review\n\n```\n## Checks\n- `fake`\n```\n\n## Checks\n\n- `real`\n"
+        self.assertEqual(land.checks(text), ("real",))
+
+    def test_list_items_that_would_be_skipped_or_misread_are_problems(self) -> None:
+        text = "## Checks\n1. `just a`\n+ `just b`\n- `just a && just b`\n- ` `\n- `bash -c 'just a && just b'`\n## Evidence paths\n- `scenes/*.{tscn,gd}`\n* `scenes/**`\n"
+        problems = land.workflow_problems(text)
+        self.assertEqual(len(problems), 5)
+        self.assertIn("'1. `just a`' is not one command in backticks", problems[0])
+        self.assertIn("'+ `just b`' is not one command in backticks", problems[1])
+        self.assertIn("uses shell syntax, and a command runs without a shell.", problems[2])
+        self.assertIn("is empty.", problems[3])
+        self.assertIn("uses [ ], { } or a backslash", problems[4])
 
     def test_evidence_reads_the_globs_and_the_verify_command(self) -> None:
         found = land.evidence(WORKFLOW, ["scripts/ui/hotbar.gd", "dev/tests/test_a.py"], "")
@@ -163,7 +177,7 @@ class EvidenceVerbTest(unittest.TestCase):
     def runner(self, pull: str, base: str | None = WORKFLOW) -> FakeRunner:
         """The calls of `evidence`, in its order. `base` is docs/agents/workflow.md on the base branch, or None when it has none."""
         runner = FakeRunner().on("gh", "api", "graphql", stdout=pull).on("git", "rev-parse", "--show-toplevel", stdout=f"{self.root}\n")
-        runner.on("git", "fetch", "--prune", "origin")
+        runner.on("git", "fetch", "--prune", "origin").on("git", "rev-parse", "--verify", "--quiet")
         return runner.on("git", "show", "origin/main:docs/agents/workflow.md", stdout=base or "", returncode=0 if base else 128)
 
     def run_cli(self, argv: list[str], runner: FakeRunner) -> tuple[int, str, str]:
@@ -229,7 +243,7 @@ class EvidenceVerbTest(unittest.TestCase):
             "docs/agents/workflow.md has list items that cannot be read:",
             "- under `## Checks`, the list item '- `just gut` (fast)' is not one command in backticks with nothing after it.",
             "- under `## Evidence paths`, the list item '- `/scenes/**`' must start at the repo root with no leading / or ./.",
-            "- under `## Evidence paths`, the list item '- `scripts/[a-z]*.gd`' uses [ ], and only *, ** and ? are read.",
+            "- under `## Evidence paths`, the list item '- `scripts/[a-z]*.gd`' uses [ ], { } or a backslash, and only *, ** and ? are read.",
             "- under `## Evidence paths`, the list item '- `<glob>`' is the placeholder of the seed, not a glob.",
         ])
 
@@ -255,7 +269,7 @@ class AddEvidenceTest(unittest.TestCase):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
         self.folder = Path(folder.name).resolve()
-        env = mock.patch.dict(os.environ, ENV)
+        env = hermetic()
         env.start()
         self.addCleanup(env.stop)
         self.origin, self.work = new_origin(self.folder, {"README.md": "x\n"})
@@ -342,6 +356,23 @@ class AddEvidenceTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(self.on_origin("rev-parse", "evidence"), theirs)
         self.assertEqual(len(runner.gh_calls()), 1)
+
+    def test_a_clone_that_lacks_the_evidence_branch_adds_on_top_of_it(self) -> None:
+        second = clone(self.origin, self.folder / "second")
+        self.add(self.image("a.png"))
+        os.chdir(second)
+        code, _, _, _ = self.add(self.image("b.png", b"second"))
+        self.assertEqual(code, 0)
+        self.assertEqual(self.on_origin("ls-tree", "-r", "--name-only", "evidence").splitlines(), ["pr-326/a.png", "pr-326/b.png"])
+
+    def test_a_body_with_windows_line_ends_keeps_them(self) -> None:
+        self.body = "Closes #227\r\n\r\nText.\r\n"
+        self.pull = pull_json("land-urchin-326.json", body=self.body)
+        code, out, _, runner = self.add(self.image("a.png"))
+        self.assertEqual(code, 0)
+        patch = runner.gh_calls()[-1]
+        url = out.splitlines()[-1]
+        self.assertEqual(patch[patch.index("-f") + 1], f"body=Closes #227\r\n\r\nText.\r\n\r\n## Verification\r\n\r\n![a]({url})\r\n")
 
     def test_a_file_that_is_not_an_image_adds_nothing(self) -> None:
         notes = self.folder / "notes.txt"

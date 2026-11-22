@@ -2,6 +2,7 @@ import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from unittest import mock
 
 from agent_skills.github import Result
 from fakes import FakeRunner
@@ -16,6 +17,12 @@ ENV = {
     "GIT_COMMITTER_NAME": "Test",
     "GIT_COMMITTER_EMAIL": "test@example.com",
 }
+
+
+def hermetic(**extra: str) -> mock._patch_dict:
+    """The environment for a test that runs git: no GIT_* variable of the caller, such as the GIT_DIR and GIT_INDEX_FILE that a commit hook sets."""
+    kept = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    return mock.patch.dict(os.environ, {**kept, **ENV, **extra}, clear=True)
 
 
 def git(cwd: Path, *args: str) -> str:

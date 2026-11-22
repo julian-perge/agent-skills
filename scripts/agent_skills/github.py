@@ -436,8 +436,25 @@ class GitHub:
         return self._git(["git", "-C", checkout, "rev-parse", f"refs/heads/{branch}"]).strip()
 
     def status(self, checkout: str) -> list[str]:
-        """Every line of `git status --porcelain --ignored`: changed, untracked and ignored paths, and a submodule with any of them."""
-        return self._git(["git", "-C", checkout, "status", "--porcelain", "--ignored"]).splitlines()
+        """Every changed, untracked and ignored path of a checkout, and each submodule that has one, whatever the git config says to hide."""
+        return self._git(["git", "-C", checkout, "status", "--porcelain", "--ignored", "--untracked-files=normal", "--ignore-submodules=none"]).splitlines()
+
+    def unpushed_in_submodules(self, checkout: str) -> list[str]:
+        """One commit per submodule that holds a commit, a branch or a stash that none of its remotes has.
+
+        A linked worktree keeps the git folders of its submodules inside itself, so such a commit goes away with the worktree.
+        """
+        listing = self._git(["git", "-C", checkout, "submodule", "foreach", "--quiet", "--recursive", "git rev-list -n 1 --all --not --remotes"])
+        return listing.split()
+
+    def has_ref(self, checkout: str, ref: str) -> bool:
+        return self._run(["git", "-C", checkout, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]).returncode == 0
+
+    def commits_ahead(self, checkout: str, branch: str) -> int:
+        """How many commits the local branch has that origin/<branch> lacks, or 0 when the checkout has no such local branch."""
+        if not self.has_ref(checkout, f"refs/heads/{branch}"):
+            return 0
+        return int(self._git(["git", "-C", checkout, "rev-list", "--count", f"origin/{branch}..refs/heads/{branch}"]).strip())
 
     def worktrees(self) -> list[tuple[str, str | None]]:
         return parse_worktrees(self._git(["git", "worktree", "list", "--porcelain"]))
@@ -460,11 +477,11 @@ class GitHub:
         self._git(["git", "-C", main, "worktree", "remove", "--force", path])
 
     def delete_branch(self, checkout: str, branch: str) -> None:
-        # -D, because after a squash or a rebase merge git does not see the branch as merged. The caller checks first that the branch is at the merged commit.
+        # -D, because -d refuses when this checkout is not on the base branch. The caller checks first that the branch is at the merged commit.
         self._git(["git", "-C", checkout, "branch", "-D", branch])
 
     def tree_has_changes(self) -> bool:
-        return bool(self._git(["git", "status", "--porcelain", "--untracked-files=no"]).strip())
+        return bool(self._git(["git", "status", "--porcelain", "--untracked-files=no", "--ignore-submodules=untracked"]).strip())
 
     def default_branch(self) -> str:
         result = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"])

@@ -4,14 +4,15 @@ import os
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 from agent_skills import cli, land
-from agent_skills.github import parse_worktrees
+from agent_skills.github import LAND_QUERY, parse_worktrees
 from fakes import fixture_text, names_repo
-from gitrepo import ENV, RealGit, commit, git, new_origin
+from gitrepo import RealGit, commit, git, hermetic, new_origin
 
 URCHIN = "julian-perge/urchin"
 HEAD = "6baf62c2ba12fbdb9f53609af6710f6bcfa45b55"
@@ -121,7 +122,7 @@ class LandCase(unittest.TestCase):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
         self.folder = Path(folder.name).resolve()
-        env = mock.patch.dict(os.environ, {**ENV, "TMPDIR": str(self.folder)})
+        env = hermetic(TMPDIR=str(self.folder))
         env.start()
         self.addCleanup(env.stop)
         self.marker = self.folder / "check-ran"
@@ -179,9 +180,17 @@ class LandCase(unittest.TestCase):
             code = cli.main(["--repo", URCHIN, "land", "326"], runner)
         return code, out.getvalue(), err.getvalue(), runner
 
-    def merging(self, *pulls: str) -> RealGit:
-        runner = self.runner(*pulls)
-        runner.gh.on("gh", "pr", "merge")
+    def merging(self, *pulls: str, on_merge: Callable[[], None] | None = None) -> RealGit:
+        """A runner whose gh merges on the origin, runs `on_merge` after that, and then reports the pull request as merged."""
+        def merge() -> None:
+            self.merge_on_origin()
+            if on_merge:
+                on_merge()
+
+        runner = RealGit(merge)
+        for pull in pulls or (self.pull(),):
+            runner.gh.on("gh", "api", "graphql", stdout=pull)
+        runner.gh.on("gh", "pr", "merge").on("gh", "pr", "view", stdout="MERGED\n")
         return runner
 
     def merged(self, runner: RealGit) -> bool:
@@ -299,23 +308,53 @@ class LandVerbTest(LandCase):
         self.assertEqual(git(self.work, "branch", "--show-current"), "main")
         self.assertEqual(self.branches(self.work), ["main"])
 
-    def test_a_failure_after_the_merge_says_that_the_pull_request_is_merged(self) -> None:
+    def test_a_local_base_branch_with_commits_of_its_own_is_refused(self) -> None:
         git(self.work, "switch", "-q", "main")
         commit(self.work, {"local.txt": "only here\n"}, "wip: not pushed")
         git(self.work, "switch", "-q", BRANCH)
-        code, _, err, _ = self.land()
+        self.assert_refused("the local branch main has 1 commit that origin/main lacks, so it cannot be fast-forwarded after the merge.")
+
+    def test_a_base_branch_that_another_worktree_holds_is_refused(self) -> None:
+        git(self.work, "worktree", "add", "-q", str(self.folder / "base-tree"), "main")
+        self.assert_refused(f"the base branch main is checked out in the worktree {self.folder / 'base-tree'}, so this checkout cannot switch to it after the merge.")
+
+    def test_a_clone_without_the_base_branch_is_an_environment_error(self) -> None:
+        git(self.work, "config", "remote.origin.fetch", f"+refs/heads/{BRANCH}:refs/remotes/origin/{BRANCH}")
+        git(self.work, "update-ref", "-d", "refs/remotes/origin/main")
+        code, out, err, runner = self.land()
+        self.assertEqual((code, out), (2, ""))
+        self.assertIn("This clone has no origin/main, so the gate of the base branch cannot be read.", err)
+        self.assertFalse(self.merged(runner))
+
+    def test_a_gh_merge_that_ends_well_and_merges_nothing_is_not_trusted(self) -> None:
+        runner = self.runner(merges=False)
+        runner.gh.on("gh", "pr", "merge").on("gh", "pr", "view", stdout="OPEN\n")
+        code, out, err, _ = self.land(runner)
+        self.assertEqual(code, 2)
+        self.assertIn("gh pr merge ended without an error, but PR #326 is open, not merged.", err)
+        self.assertNotIn("Landed", out)
+        self.assertEqual(git(self.work, "branch", "--show-current"), BRANCH)
+        self.assertEqual(git(self.origin, "rev-parse", BRANCH), self.head)
+
+    def test_six_closing_issues_are_all_read(self) -> None:
+        silent = {"comments": {"nodes": []}, "parent": None}
+        last = {"comments": {"nodes": [{"body": DECISION}]}, "parent": None}
+        code, _, _, _ = self.land(self.merging(self.pull(closingIssuesReferences={"nodes": [silent] * 5 + [last]})))
+        self.assertEqual(code, 0)
+        self.assertIn("closingIssuesReferences(first: 50)", LAND_QUERY)
+
+    def test_a_failure_after_the_merge_says_that_the_pull_request_is_merged(self) -> None:
+        def diverge_local_main() -> None:
+            mine = git(self.work, "commit-tree", "refs/heads/main^{tree}", "-p", "refs/heads/main", "-m", "wip: made during the checks")
+            git(self.work, "update-ref", "refs/heads/main", mine)
+
+        code, _, err, _ = self.land(self.merging(on_merge=diverge_local_main))
         self.assertEqual(code, 2)
         self.assertTrue(err.startswith("PR #326 is merged, but the checkout is not synced: `git -C"), err)
         self.assertIn(BRANCH, self.branches(self.work))
 
     def test_a_branch_that_moved_after_the_merge_stays(self) -> None:
-        def merge_then_commit() -> None:
-            self.merge_on_origin()
-            commit(self.work, {"late.txt": "after the merge\n"}, "fix: one more thing")
-
-        runner = RealGit(merge_then_commit)
-        runner.gh.on("gh", "api", "graphql", stdout=self.pull()).on("gh", "pr", "merge")
-        code, out, _, _ = self.land(runner)
+        code, out, _, _ = self.land(self.merging(on_merge=lambda: commit(self.work, {"late.txt": "after the merge\n"}, "fix: one more thing")))
         self.assertEqual(code, 0)
         self.assertIn(f"Kept the local branch {BRANCH}: it moved after the merge.\n", out)
         self.assertEqual(git(self.work, "log", "-1", "--format=%s", BRANCH), "fix: one more thing")
@@ -354,6 +393,20 @@ class LinkedWorktreeTest(LandCase):
         self.assertEqual(git(self.work, "rev-parse", "origin/main"), git(self.origin, "rev-parse", "main"))
         self.assertFalse(self.tree.exists())
 
+    def test_a_worktree_whose_head_moved_after_the_merge_stays(self) -> None:
+        code, out, _, _ = self.land(self.merging(on_merge=lambda: git(self.tree, "commit", "-q", "--allow-empty", "-m", "fix: one more thing")))
+        self.assertEqual(code, 0)
+        self.assertIn(f"Kept the worktree {self.tree} and the branch {BRANCH}: its HEAD moved after the merge.", out)
+        self.assertEqual(git(self.tree, "log", "-1", "--format=%s"), "fix: one more thing")
+
+    def test_a_git_config_that_hides_untracked_files_does_not_hide_them_from_land(self) -> None:
+        git(self.work, "config", "status.showUntrackedFiles", "no")
+        (self.tree / "notes.md").write_text("not committed\n")
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn("it has changed or untracked files (notes.md)", out)
+        self.assertTrue((self.tree / "notes.md").exists())
+
     def test_a_worktree_with_an_untracked_file_stays(self) -> None:
         (self.tree / "notes.md").write_text("not committed\n")
         code, out, _, _ = self.land()
@@ -383,6 +436,44 @@ class SubmoduleWorktreeTest(LandCase):
         code, out, _, _ = self.land()
         self.assertEqual(code, 0)
         self.assertFalse(self.tree.exists())
+
+    def kept_for_the_submodule(self) -> None:
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn(f"Kept the worktree {self.tree} and the branch {BRANCH}: a submodule in it holds a commit, a branch or a stash that no remote has (", out)
+        self.assertTrue((self.tree / "lib" / "lib.txt").exists())
+
+    def test_a_submodule_branch_that_was_never_pushed_keeps_the_worktree(self) -> None:
+        lib = self.tree / "lib"
+        pinned = git(lib, "rev-parse", "HEAD")
+        git(lib, "switch", "-q", "-c", "side")
+        commit(lib, {"side.txt": "only here\n"}, "wip: side work")
+        git(lib, "switch", "-q", "--detach", pinned)
+        self.assertEqual(git(self.tree, "status", "--porcelain"), "")
+        self.kept_for_the_submodule()
+
+    def test_a_stash_inside_a_submodule_keeps_the_worktree(self) -> None:
+        lib = self.tree / "lib"
+        (lib / "lib.txt").write_text("changed\n")
+        git(lib, "stash", "-q")
+        self.assertEqual(git(self.tree, "status", "--porcelain"), "")
+        self.kept_for_the_submodule()
+
+    def test_a_git_config_that_hides_submodule_changes_does_not_hide_them_from_land(self) -> None:
+        git(self.tree, "config", "submodule.lib.ignore", "dirty")
+        (self.tree / "lib" / "untracked-in-submodule.txt").write_text("not committed\n")
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn("it has changed or untracked files (lib)", out)
+        self.assertTrue((self.tree / "lib" / "untracked-in-submodule.txt").exists())
+
+    def test_a_changed_file_inside_a_submodule_is_refused_whatever_the_config_hides(self) -> None:
+        git(self.tree, "config", "submodule.lib.ignore", "dirty")
+        (self.tree / "lib" / "lib.txt").write_text("changed\n")
+        code, _, err, runner = self.land()
+        self.assertEqual(code, 1)
+        self.assertIn("- the working tree has changes.", err)
+        self.assertFalse(self.merged(runner))
 
     def test_an_untracked_file_inside_a_submodule_keeps_the_worktree(self) -> None:
         (self.tree / "lib" / "untracked-in-submodule.txt").write_text("not committed\n")
@@ -424,6 +515,17 @@ class CheckMovesHeadTest(LandCase):
         return {GATE: workflow("- `git commit -q --allow-empty -m moved`\n")}
 
     def test_a_check_that_moves_head_stops_the_merge(self) -> None:
+        code, _, err, runner = self.land()
+        self.assertEqual(code, 1)
+        self.assertIn("- the checks changed tracked files or moved HEAD.", err)
+        self.assertFalse(self.merged(runner))
+
+
+class CheckChangesFileTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(f"- `{sys.executable} -c \"open('app.txt', 'w').write('formatted')\"`\n")}
+
+    def test_a_check_that_changes_a_tracked_file_stops_the_merge(self) -> None:
         code, _, err, runner = self.land()
         self.assertEqual(code, 1)
         self.assertIn("- the checks changed tracked files or moved HEAD.", err)

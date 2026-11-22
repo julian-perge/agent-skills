@@ -13,7 +13,7 @@ After this module, the session that finishes a review merges the pull request it
 
 ## Interface
 
-Both verbs read `docs/agents/workflow.md` from `origin/<base>` of the pull request, after a `git fetch --prune origin`. A pull request can therefore not change the rules it is judged by. Two cases print a note on stderr: the base branch has no such file yet, and then the file of the checkout is read, or the pull request changes the file. With no file in either place the verbs exit 2. `evidence --add` reads no rules.
+Both verbs read `docs/agents/workflow.md` from `origin/<base>` of the pull request, after a `git fetch --prune origin`. A pull request can therefore not change the rules it is judged by. Two cases print a note on stderr: the base branch has no such file yet, and then the file of the checkout is read, or the pull request changes the file. With no file in either place, or in a clone that has no `origin/<base>`, the verbs exit 2. `evidence --add` reads no rules.
 
 ### Two headings in `docs/agents/workflow.md`
 
@@ -31,8 +31,8 @@ Verify command: the verify-urchin skill
 - `scripts/ui/**`
 ```
 
-- **A list item** under the two headings is `- ` or `* `, then one span in backticks, and nothing after it. Lines that are not list items are prose for the reader.
-- **A list item that cannot be read** makes both verbs exit 2 and print the line: text after the span, a command that `shlex` cannot split, a glob that starts with `/` or `./` or uses `[`, or a `<placeholder>` of the seed. A skipped line would be a check that never runs.
+- **A list item** under the two headings is `- ` or `* `, then one span in backticks, and nothing after it. Lines that are not list items are prose for the reader. A heading inside a fenced code block is not a heading.
+- **A list item that cannot be read** makes both verbs exit 2 and print the line. A skipped line would be a check that never runs. These are: a `+` or a numbered item, text after the span, a command that is empty, that `shlex` cannot split or that has a shell word such as `&&` or `|`, a glob that starts with `/` or `./` or uses `[`, `{` or a backslash, and a `<placeholder>` of the seed.
 - **Glob rules:** a glob must match the whole path from the repo root. `*` and `?` stay inside one path part. `**` crosses parts, and `**/` at the start or after a `/` also matches no folder. A glob that ends with `/` covers the whole folder.
 - **`Verify command:`** is one line of free text. The refusal of `evidence` prints it.
 - A heading matches without case. `brief` prints both sections for the build, bug and review stages.
@@ -61,18 +61,19 @@ Run it on the PR branch. It works in this order:
 2. **Gate.** Each failed condition is one line under `Not landed: PR #<PR>` on stderr, the exit code is 1, and no check runs:
    - The pull request is not open (this is then the only line), or it is a draft.
    - The checkout is not on the PR branch, or `HEAD` is not the head commit of the pull request.
-   - The working tree has changes to tracked files.
+   - The working tree has changes to tracked files, also inside a submodule, whatever the git config hides.
    - The PR branch is behind `origin/<base>`, after a fetch. The checks would then not test the code that the merge makes.
    - The pull request has merge conflicts, or `mergeable` is still `UNKNOWN`.
    - No comment has the first line `Decisions from the review of PR #<PR>`, after any leading `#`, `*` and spaces and with nothing after the number. The comments of the pull request, of each issue it closes (up to 50) and of their parents are read (the last 50 of each).
    - `evidence` would exit 1.
    - The file has no command under `## Checks`.
+   - The sync after the merge would fail: the base branch is checked out in another worktree, or the local base branch has commits that `origin/<base>` lacks.
 3. **Checks.** Each command under `## Checks` runs through the run wrapper, in the repo root, with no shell, in order. The first one that fails stops the verb with exit 1. After the checks, changed tracked files or a moved `HEAD` also stop it with exit 1.
-4. **Merge:** `gh pr merge PR --repo OWNER/REPO --merge --delete-branch --match-head-commit <head commit>`. A merge commit keeps the commit ids that pull request bodies and decision comments cite, and one commit per task of `/build auto`. `--match-head-commit` makes GitHub refuse when the branch moved after the checks. `gh` merges first and deletes the remote branch second. When it fails and the pull request is merged all the same, `land` prints a note and goes on.
+4. **Merge:** `gh pr merge PR --repo OWNER/REPO --merge --delete-branch --match-head-commit <head commit>`. A merge commit keeps the commit ids that pull request bodies and decision comments cite, and one commit per task of `/build auto`. `--match-head-commit` makes GitHub refuse when the branch moved after the checks. The exit code of `gh` is not trusted in either direction, so `land` then reads the state of the pull request. `gh` merges first and deletes the remote branch second: when it fails and the pull request is merged all the same, `land` prints a note and goes on. When `gh` ends without an error and the pull request is not merged, as a merge queue can do, `land` exits 2 and leaves the checkout as it was.
 5. **Sync.** It starts with `git fetch --prune origin`, which also drops the remote-tracking ref of the merged branch.
    - In the main checkout: `git switch <base>`, `git merge --ff-only origin/<base>`, `git branch -D <PR branch>`.
    - In a linked worktree: the main checkout is fast-forwarded when it is on the base branch, and left alone when it is on another branch. The worktree is removed with `git worktree remove --force`, and then the branch is deleted. `--force` is needed for a worktree with a submodule.
-   - **What stays:** a worktree with a changed or an untracked file, also inside a submodule, and a worktree or a branch that is no longer at the merged commit. The output says why and gives the command that removes it.
+   - **What stays:** a worktree with a changed or an untracked file, also inside a submodule and whatever the git config hides. A worktree whose submodule holds a commit, a branch or a stash that none of its remotes has, because a linked worktree keeps the git folders of its submodules inside itself. A worktree or a branch that is no longer at the merged commit. The output says why, and for a worktree it gives the command that removes it.
    - **What goes without a question:** git-ignored files of a removed worktree. The output names the first 5 paths and counts the rest.
    - The output is `Landed PR #<PR> into <base>: <url>`, then one line per thing done.
 6. **A failure after the merge** exits 2, and its message starts with `PR #<PR> is merged, but the checkout is not synced:`.
@@ -100,14 +101,15 @@ scripts/agent_skills/tests/fixtures/land-urchin-326.json, land-urchin-328.json  
 - **Rules:** unit tests of the glob rules, the two headings, the Verification section, the body edit and each refusal.
 - **`land` and `evidence --add`:** `cli.main` with real git against a local bare repo (`tests/gitrepo.py`). Only `gh` is faked, and its fake merge really merges on the bare repo. The tests look at the repos afterwards: the branch, the worktree, the index file, the evidence branch. The checks are real `python3 -c` children that write a marker file, so a test can prove that no check ran.
 - **`evidence`:** `cli.main` with the fake runner.
-- **Mutants:** 27 one-line changes of the gate, the sync and the push each fail at least one test (2026-11-22).
+- **Hermetic:** the tests that run git drop every `GIT_*` variable of the caller and read no user or system git config, so a run inside a commit hook cannot write to the repo around it.
+- **Mutants:** 39 one-line changes of the gate, the sync and the push each fail at least one test (2026-11-22).
 - **No test writes to GitHub.**
 
 ## Success criteria
 
 1. With the two headings above, `evidence` exits 1 for the recorded responses of urchin PR #326 and PR #328, and names the verify command.
 2. After `evidence --add`, the index file, the status and `HEAD` of the checkout are the same as before, no hook ran, and the new body differs from the old one only by the added image lines.
-3. For each gate condition, `land` exits 1, runs no check, does not merge, and leaves both repos as they were.
+3. For each gate condition, `land` exits 1, runs no check, does not merge, and leaves the branches and files of both repos as they were. Only the fetch has run.
 4. A failing check stops the later checks and the merge.
 5. On a clean pull request the checkout ends on the base branch at the merge commit, with the PR branch and its remote-tracking ref gone. From a linked worktree, the worktree is gone too.
 6. Real proof in julian-perge/agent-skills: `land` exits 1 on a throwaway pull request with a merge conflict. It lands the pull request of this module, and the checkout ends on an up-to-date `main` with the branch gone.
@@ -121,6 +123,9 @@ scripts/agent_skills/tests/fixtures/land-urchin-326.json, land-urchin-328.json  
 - **A decision comment that is older than the last commit.** `land` does not compare the two.
 - **A second run that only syncs.** After exit 2 "is merged, but the checkout is not synced", the user syncs by hand.
 - **A timeout for the checks.**
+- **Untracked files that the checks read.** A check can pass because of a file that is not in the pull request. A refusal would stop every checkout that holds scratch files.
+- **A submodule commit that the pull request pins and no remote has.** `land` keeps the worktree that holds it, and does not refuse the merge.
+- **Images inside an HTML comment or an indented code fence.** They count as images.
 - **Videos as evidence.** GitHub does not show a video from a repo link.
 - **Cleanup of the `evidence` branch.**
 - **The `gh pr merge` ask of the dotfiles hook** (runbook decision 9), and the two headings in urchin and blender. Each is a change in another repo.

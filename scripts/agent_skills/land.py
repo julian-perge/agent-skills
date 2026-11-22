@@ -4,13 +4,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from urllib.parse import quote
 
-from agent_skills.brief import sections
 
 EVIDENCE_BRANCH = "evidence"
 MERGE_METHOD = "merge"
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".webp")
 ITEM = re.compile(r"\s*[-*]\s+`([^`]+)`\s*$")
-LIST_LINE = re.compile(r"\s*[-*]\s+\S")
+LIST_LINE = re.compile(r"\s*(?:[-*+]|\d+[.)])\s+\S")
+SHELL_WORDS = frozenset({"&&", "||", "|", ";", ">", ">>", "<"})
 FENCE = re.compile(r"\s{0,3}(```|~~~)")
 CODE_SPAN = re.compile(r"`[^`]*`")
 VERIFY_LINE = re.compile(r"\s*Verify command:\s*(\S.*?)\s*$", re.IGNORECASE)
@@ -48,10 +48,11 @@ class Evidence:
 
 def workflow_section(text: str, title: str) -> str | None:
     """The text under the heading `## <title>` of docs/agents/workflow.md, or None when the file has no such heading."""
-    for section in sections(text):
-        first, _, rest = section.partition("\n")
-        if first.strip().lower() == f"## {title}".lower():
-            return rest
+    lines = text.splitlines(keepends=True)
+    starts = [index for index, outside in enumerate(outside_fences(lines)) if outside and lines[index].startswith("## ")]
+    for start, end in zip(starts, [*starts[1:], len(lines)]):
+        if lines[start].strip().lower() == f"## {title}".lower():
+            return "".join(lines[start + 1 : end])
     return None
 
 
@@ -67,9 +68,13 @@ def command_problem(command: str) -> str | None:
     if command.startswith("<") and command.endswith(">"):
         return "is the placeholder of the seed, not a command"
     try:
-        shlex.split(command)
+        words = shlex.split(command)
     except ValueError as error:
         return f"does not parse as a command ({error})"
+    if not words:
+        return "is empty"
+    if SHELL_WORDS.intersection(words):
+        return "uses shell syntax, and a command runs without a shell. Wrap it in bash -c '...'"
     return None
 
 
@@ -78,8 +83,8 @@ def glob_problem(glob: str) -> str | None:
         return "is the placeholder of the seed, not a glob"
     if glob.startswith(("/", "./")):
         return "must start at the repo root with no leading / or ./"
-    if "[" in glob:
-        return "uses [ ], and only *, ** and ? are read"
+    if any(char in glob for char in "[{\\"):
+        return "uses [ ], { } or a backslash, and only *, ** and ? are read"
     return None
 
 
@@ -206,8 +211,11 @@ def has_review_decision(number: int, comments: Sequence[str]) -> bool:
     return any(first_line.match(body.split("\n", 1)[0]) for body in comments)
 
 
-def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int, found: Evidence, commands: Sequence[str]) -> list[str]:
-    """Every reason that stops `land` before it runs the checks. An empty list lets it go on."""
+def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int, found: Evidence, commands: Sequence[str], blocked: Sequence[str] = ()) -> list[str]:
+    """Every reason that stops `land` before it runs the checks. An empty list lets it go on.
+
+    `blocked` holds the reasons why the checkout could not move to the base branch after the merge.
+    """
     if pull.state != "OPEN":
         return [f"the pull request is {pull.state.lower()}."]
     reasons = []
@@ -237,7 +245,7 @@ def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int,
         reasons.append(evidence_gap(pull.number, found))
     if not commands:
         reasons.append("docs/agents/workflow.md has no `## Checks` heading with a command, so the checks of the repo cannot run.")
-    return reasons
+    return [*reasons, *blocked]
 
 
 def evidence_gap(number: int, found: Evidence) -> str:
