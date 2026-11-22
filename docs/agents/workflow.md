@@ -1,6 +1,6 @@
 # Workflow
 
-This repo keeps its tasks in `tasks/todo.md` and its specs in `spec/`, as [spec/helpers-map.md](../../spec/helpers-map.md) says. This file holds what `agent-skills land` reads.
+Head side of the land conflict proof.
 
 ## Checks
 
