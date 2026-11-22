@@ -25,7 +25,7 @@ Read the repo. Do not assume.
 - **Convention evidence**: the last five merged PR titles and branch names (`gh pr list --state merged --limit 5`, `git branch -r`), `git log --oneline -15`, and any rule in a roadmap or parent issue about branches, PRs or reviews. These beat the defaults in the templates.
 - **Verify command**: `package.json` scripts, `pyproject.toml`, `prek.toml`, `Makefile`, `justfile`, and any "Every task" or "Build" lines in the agent file.
 - **Domain docs**: whether `GLOSSARY.md`, `docs/adr/` and `CODING_STANDARDS.md` exist. Create none of them.
-- **Old workflow in live docs**: `rg -uu -n -e '/to-spec|/to-tickets|implement-spec|grill-with-docs|/wayfinder|/triage|/domain-modeling|\bcode-review\b' AGENTS.md CLAUDE.md docs/agents` (skip the paths that do not exist). Also search code and scripts for helpers of the old flow, and report them without changing them.
+- **Old workflow in live docs**: `rg -uu -n -e '/to-spec|/to-tickets|implement-spec|grill-with-docs|/wayfinder|/triage|/domain-modeling|\bcode-review([^-\w]|$)' AGENTS.md CLAUDE.md docs/agents` (skip the paths that do not exist). Also search code and scripts for helpers of the old flow, and report them without changing them.
 - **Open wayfinder work**: `gh issue list --state open --label wayfinder:map` and any open `wayfinder:*` issue.
 
 Build the gap table. One row per artifact, one state per row:
