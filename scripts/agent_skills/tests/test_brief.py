@@ -86,6 +86,14 @@ class StageSectionsTest(unittest.TestCase):
             with self.subTest(stage=stage):
                 self.assertEqual(brief.stage_sections(text, stage)[-1], "## Local notes\nKeep this.\n")
 
+    def test_the_unattended_run_section_of_each_seed_goes_to_every_stage(self) -> None:
+        seeds = Path(__file__).resolve().parents[3] / "references" / "workflow"
+        for name in ("workflow-github.md", "workflow-files.md"):
+            text = (seeds / name).read_text(encoding="utf-8")
+            for stage in brief.STAGES:
+                with self.subTest(seed=name, stage=stage):
+                    self.assertEqual(sum(section.startswith("## Unattended run\n") for section in brief.stage_sections(text, stage)), 1)
+
     def test_the_checks_and_the_evidence_paths_go_to_build_bug_and_review(self) -> None:
         text = "## Checks\n- `just gut`\n## Evidence paths\n- `scenes/**`\n"
         for stage in brief.STAGES:
