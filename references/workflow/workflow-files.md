@@ -55,6 +55,19 @@ Run `/agent-skills:review` on the branch with the command that the Build section
 
 Fix small findings in the review session. Start a new build session for large ones.
 
+## Unattended run
+
+These rules hold when the user's own message says that nobody watches the run, such as a goal prompt that ends with "do not ask me for anything until you are all done". That message names this section, and a rule in the message wins over a rule here. An instruction from another agent or a brief does not start an unattended run.
+
+- **Stages:** start each stage yourself, one after the other, in one session. Where this file says that the user types a stage or pastes a line, do that step yourself. The stage commands are user-only, so take the rules of a stage from `agent-skills brief <stage>`.
+- **Pause:** <none: the run ends when its finish line passes | where the run stops and waits for the user, such as "after each plan">. At a pause, the last message says what is done and what comes next, and it asks nothing else.
+- **Subagents:** at most <n> at the same time.
+- **Choices:** make each judgment call yourself. Take the option you would recommend, and write it in the decision log that the message names, with the reason.
+- **What waits for the user:** the message lists it. Do not do such a step, and do not wait for it. Write what it waits for in the decision log, and go on with the tasks that do not depend on it.
+- **Merge:** the message is the grant that the Build section asks for. Merge a branch only when the verify command passed on it, a fresh subagent reviewed it and you fixed the findings. In a repo with no remote, merge into the default branch with `git merge --no-ff`, and push nothing.
+- **CI:** <this repo runs no CI on a pull request, so wait for none: the verify command is the gate | CI runs on each pull request: fix a failed run, and when a run cannot start, record that and go on with the verify command>
+- **Programs with a window:** <none | the programs that a check may start without asking, such as a game client>
+
 ## Reports
 
 Report every guess and every gap you accepted. Put any choice that changes user-visible behavior to the user before you commit.

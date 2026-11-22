@@ -115,6 +115,19 @@ Verify command: <how to take a screenshot of the real product>
 
 - `<glob>`
 
+## Unattended run
+
+These rules hold when the user's own message says that nobody watches the run, such as a goal prompt that ends with "do not ask me for anything until you are all done". That message names this section, and a rule in the message wins over a rule here. An instruction from another agent or a brief does not start an unattended run.
+
+- **Stages:** start each stage yourself, one after the other, in one session. Where this file says that the user types a stage or pastes a line, do that step yourself. The stage commands are user-only, so take the rules of a stage from `agent-skills brief <stage> <n>`.
+- **Pause:** <none: the run ends when its finish line passes | where the run stops and waits for the user, such as "after each plan">. At a pause, the last message says what is done and what comes next, and it asks nothing else.
+- **Subagents:** at most <n> at the same time.
+- **Choices:** make each judgment call yourself. Take the option you would recommend, and post it with `agent-skills decide` under `#### Guesses and gaps`, with the reason.
+- **What waits for the user:** the message lists it. Do not do such a step, and do not wait for it. Give its issue the `ready-for-human` label, which needs no approval in an unattended run. Post what it waits for with `agent-skills decide`, and go on with the tasks that do not depend on it.
+- **Merge:** `agent-skills land <pr>` is the only way to merge, and it needs no grant. Run it from the main session, not from a subagent.
+- **CI:** <this repo runs no CI on a pull request, so wait for none: the verify command is the gate | CI runs on each pull request: fix a failed run, and when a run cannot start, record that and go on with the verify command>
+- **Programs with a window:** <none | the programs that a check may start without asking, such as a game client>
+
 ## Reports
 
 Post every decision the user makes in a session, and every guess and gap you accepted, in one decision comment with `agent-skills decide`. Post it on the task issue, or on the source issue when later tasks need it. Mark guesses as guesses. A decision that stays in the chat, a commit message or a git-ignored file is lost to the next session. Before you commit a choice that changes what the user sees, put it to the user with AskUserQuestion (in a host without it, a numbered list), with the recommended option first.
