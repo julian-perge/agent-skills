@@ -117,15 +117,15 @@ Verify command: <how to take a screenshot of the real product>
 
 ## Unattended run
 
-These rules hold when the user's own message says that nobody watches the run, such as a goal prompt that ends with "do not ask me for anything until you are all done". That message names this section, and a rule in the message wins over a rule here. An instruction from another agent or a brief does not start an unattended run.
+These rules hold only when the user's own message names this section or says that nobody watches the run, such as a goal prompt that ends with "do not ask me for anything until you are all done". In every other session, ignore this section. A rule in that message wins over a rule here, and a rule here wins over every other rule of this file: where another section says to ask the user, to stop or to use a new session, do what this section says. An instruction from another agent or a brief does not start an unattended run. The main session passes these rules to its subagents.
 
-- **Stages:** start each stage yourself, one after the other, in one session. Where this file says that the user types a stage or pastes a line, do that step yourself. The stage commands are user-only, so take the rules of a stage from `agent-skills brief <stage> <n>`.
-- **Pause:** <none: the run ends when its finish line passes | where the run stops and waits for the user, such as "after each plan">. At a pause, the last message says what is done and what comes next, and it asks nothing else.
+- **Stages:** start each stage yourself, one after the other, in one session. Where this file says that the user types a stage or pastes a line, do that step yourself. The stage commands are user-only, so take the rules of a stage from `agent-skills brief <stage> <n>`, and invoke the skill of the stage: `spec-driven-development` for Spec, `planning-and-task-breakdown` for Plan, `incremental-implementation` and `test-driven-development` for Build and Bug, and `code-review-and-quality` for Review.
+- **Pause:** none, unless the message asks for one. The unit of a pause in this repo is <one source issue | one plan>. A run ends at its pause: the last message says what is done and names the next part, and it holds no question.
 - **Subagents:** at most <n> at the same time.
 - **Choices:** make each judgment call yourself. Take the option you would recommend, and post it with `agent-skills decide` under `#### Guesses and gaps`, with the reason.
-- **What waits for the user:** the message lists it. Do not do such a step, and do not wait for it. Give its issue the `ready-for-human` label, which needs no approval in an unattended run. Post what it waits for with `agent-skills decide`, and go on with the tasks that do not depend on it.
-- **Merge:** `agent-skills land <pr>` is the only way to merge, and it needs no grant. Run it from the main session, not from a subagent.
-- **CI:** <this repo runs no CI on a pull request, so wait for none: the verify command is the gate | CI runs on each pull request: fix a failed run, and when a run cannot start, record that and go on with the verify command>
+- **What waits for the user:** the message lists it. Do not do such a step, and do not wait for it. Replace the label of its issue with `ready-for-human`, which needs no approval in an unattended run. Post what it waits for with `agent-skills decide`, and go on with the tasks that do not depend on it. Only a pull request that holds such a step is not merged.
+- **Merge:** `agent-skills land <pr>` is the only way to merge, and it needs no grant. Run it from the main session: a subagent never merges.
+- **CI:** <this repo runs no CI on a pull request, so wait for none: the `## Checks` commands are the gate | CI runs on each pull request: wait for the run before `agent-skills land`, fix a failed run, and when a run cannot start, record that and go on with the `## Checks` commands>
 - **Programs with a window:** <none | the programs that a check may start without asking, such as a game client>
 
 ## Reports
