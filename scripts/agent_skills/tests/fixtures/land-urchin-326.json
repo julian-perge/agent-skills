@@ -1,0 +1,108 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "number": 326,
+        "title": "Place the Inventory doll from its part placements and draw the experience bar",
+        "state": "MERGED",
+        "isDraft": false,
+        "url": "https://github.com/julian-perge/urchin/pull/326",
+        "body": "Closes #227\n\nThe menu doll is the rig's idle frame: the 15 male part clips match `stand` frame 1 of `model1_animations.json` to under 0.001 in every matrix entry, mirrored in x at 1.3075. Part origins match within 0.03 px, except `arm1`, which sits 1.0 px right and 1.0 px up. The port's static `REST_POSE` is not that frame: `hand2` is turned 180 degrees, and `hand1`, `arm1`, `leg2`, `leg3` and `weapon1` are 10 to 30% smaller. Julian chose to keep the existing doll code, so the doll is not changed. Its union rect is 0.89 px off on the left and 0.98 px off on the right, which passes the 1 px limit by 0.02 px.\n\n- Added a `doll` piece to the rect record. `extract_screen_rects` fits the scale and position from the 31 clips and records the union rect of the unequipped male doll.\n- Moved the `Doll` into the scene. `EquipDollView.setup` keeps a `Doll` it finds there, and the Store still builds its own.\n- Removed `DOLL_POSITION`, `DOLL_SCALE` and `EXP_FILL` from `inventory_window.gd`, and the three hand-cut exp textures.\n- The experience row is the left box, the `xp_bar` fill, the gloss and the percent, all in the record. The width of the full bar comes from `menu_math.json`.\n- The percent rounds like the original's `Math.round`.\n- The doll now faces left, as the SWF places it.\n\nThe port draws no ground shadow (shape 143, the 31st clip). Decisions, guesses and gaps: https://github.com/julian-perge/urchin/issues/227#issuecomment-6947874455\n\nReview decisions: https://github.com/julian-perge/urchin/issues/227#issuecomment-6948145769\n\nChecked: `just gut` (877), `just pytest` (618) and the prek hooks pass. The new tests fail when I break the percent rounding, the fill scale or the median in the doll fit. I looked at windowed renders at 0%, 38% and 100% experience.\n\n",
+        "baseRefName": "main",
+        "headRefName": "feat/227-place-the-inventory-doll-from",
+        "headRefOid": "760c456eb7cc3df611f7ca9ec598d19708fa2091",
+        "mergeable": "UNKNOWN",
+        "files": {
+          "totalCount": 17,
+          "nodes": [
+            {
+              "path": "assets/ui/menu/exp_fill.png"
+            },
+            {
+              "path": "assets/ui/menu/exp_fill.png.import"
+            },
+            {
+              "path": "assets/ui/menu/exp_track.png"
+            },
+            {
+              "path": "assets/ui/menu/exp_track.png.import"
+            },
+            {
+              "path": "assets/ui/menu/exp_zero_box.png"
+            },
+            {
+              "path": "assets/ui/menu/exp_zero_box.png.import"
+            },
+            {
+              "path": "dev/converted_json/menu_math.json"
+            },
+            {
+              "path": "dev/tests/test_menu_math.py"
+            },
+            {
+              "path": "dev/tests/test_screen_rects.py"
+            },
+            {
+              "path": "dev/urchin_dev/convert/menu_math.py"
+            },
+            {
+              "path": "dev/urchin_dev/swf/extract/screen_rects.py"
+            },
+            {
+              "path": "scenes/ui/menu/inventory_window.tscn"
+            },
+            {
+              "path": "scripts/ui/menu/equip_doll_view.gd"
+            },
+            {
+              "path": "scripts/ui/menu/inventory_window.gd"
+            },
+            {
+              "path": "test/fixtures/screen_rects.json"
+            },
+            {
+              "path": "test/integration/test_inventory_window.gd"
+            },
+            {
+              "path": "test/unit/test_screen_rects.gd"
+            }
+          ]
+        },
+        "comments": {
+          "nodes": []
+        },
+        "closingIssuesReferences": {
+          "nodes": [
+            {
+              "comments": {
+                "nodes": [
+                  {
+                    "body": "### Decisions from the build of #227\n\n- **Doll facing.** Julian chose to face the doll left, as the SWF places it. The 31 part clips are mirrored in x, so the scale is (-1.3075, 1.3075). Before this task the doll faced right."
+                  },
+                  {
+                    "body": "### Decisions from the review of PR #326\n\nReview of #227 (PR #326). The review found no Critical finding and asked Julian no question."
+                  }
+                ]
+              },
+              "parent": {
+                "comments": {
+                  "nodes": [
+                    {
+                      "body": "### Decisions from the review of PR #290\n\nReview of #219 (PR #290)."
+                    },
+                    {
+                      "body": "### Decisions from the review of PR #297\n\nReview of PR #297 (task #226). The review found no Critical or Required finding and asked Julian no question."
+                    },
+                    {
+                      "body": "### Decisions from the build of PR #324\n\nBuild of #225 (PR #324)."
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

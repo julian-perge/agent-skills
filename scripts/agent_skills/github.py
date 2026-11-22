@@ -2,10 +2,12 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 from agent_skills import CliError
+from agent_skills.land import LandPull
 from agent_skills.tracker import Comment, FileChange, Issue, Link, OpenPull, PullRequest, Review, SubIssue, TrackerIssue
 
 REMOTE = re.compile(r"[/:](?P<owner>[\w.-]+)/(?P<name>[\w.-]+?)(?:\.git)?/?$")
@@ -127,6 +129,31 @@ PR_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
 }"""
 
 
+LAND_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      number title state isDraft url body baseRefName headRefName headRefOid mergeable
+      files(first: 100) {
+        totalCount
+        nodes { path }
+      }
+      comments(last: 50) { nodes { body } }
+      closingIssuesReferences(first: 50) {
+        nodes {
+          comments(last: 50) { nodes { body } }
+          parent { comments(last: 50) { nodes { body } } }
+        }
+      }
+    }
+  }
+}"""
+
+
+PULL_BODY_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) { body } }
+}"""
+
+
 @dataclass(frozen=True)
 class Result:
     returncode: int
@@ -220,6 +247,37 @@ def parse_pull_request(node: dict[str, Any]) -> PullRequest:
             for r in node["reviews"]["nodes"]
         ),
     )
+
+
+def parse_land_pull(node: dict[str, Any], paths: tuple[str, ...]) -> LandPull:
+    """The body stays exactly as GitHub stores it, because `evidence --add` writes it back."""
+    threads = [node["comments"]]
+    for issue in node["closingIssuesReferences"]["nodes"]:
+        threads += [issue["comments"], (issue["parent"] or {}).get("comments") or {"nodes": []}]
+    return LandPull(
+        number=node["number"],
+        title=node["title"],
+        state=node["state"],
+        draft=node["isDraft"],
+        url=node["url"],
+        body=node["body"] or "",
+        base=node["baseRefName"],
+        head=node["headRefName"],
+        head_commit=node["headRefOid"],
+        mergeable=node["mergeable"],
+        paths=paths,
+        comments=tuple(text(comment["body"]) for thread in threads for comment in thread["nodes"]),
+    )
+
+
+def parse_worktrees(porcelain: str) -> list[tuple[str, str | None]]:
+    """Each worktree of `git worktree list --porcelain` as its path and its branch. The main worktree is first."""
+    trees: list[tuple[str, str | None]] = []
+    for block in porcelain.strip().split("\n\n"):
+        fields = dict(line.partition(" ")[::2] for line in block.splitlines())
+        if "worktree" in fields:
+            trees.append((fields["worktree"], fields["branch"].removeprefix("refs/heads/") if "branch" in fields else None))
+    return trees
 
 
 def parse_claim_issue(node: dict[str, Any]) -> Issue:
@@ -316,8 +374,114 @@ class GitHub:
     def add_assignee_me(self, number: int) -> None:
         self._gh(["gh", "issue", "edit", str(number), "--repo", self.repo, "--add-assignee", "@me"])
 
+    def land_pull(self, number: int) -> LandPull:
+        node = self.graphql(LAND_QUERY, number=number)["repository"]["pullRequest"]
+        paths = tuple(file["path"] for file in node["files"]["nodes"])
+        if node["files"]["totalCount"] > len(paths):
+            listing = self._gh(["gh", "api", "--paginate", f"repos/{self.repo}/pulls/{number}/files", "--jq", ".[].filename"])
+            paths = tuple(listing.splitlines())
+        return parse_land_pull(node, paths)
+
+    def pull_body(self, number: int) -> str:
+        return self.graphql(PULL_BODY_QUERY, number=number)["repository"]["pullRequest"]["body"] or ""
+
+    def pull_state(self, number: int) -> str:
+        return self._gh(["gh", "pr", "view", str(number), "--repo", self.repo, "--json", "state", "--jq", ".state"]).strip()
+
+    def origin_repo(self) -> str:
+        return parse_remote(self._git(["git", "config", "--get", "remote.origin.url"]))
+
+    def file_at(self, ref: str, path: str) -> str | None:
+        """The text of a file at a git ref, or None when the ref has no such file."""
+        result = self._run(["git", "show", f"{ref}:{path}"])
+        return result.stdout if result.returncode == 0 else None
+
+    def edit_pull_body(self, number: int, body: str) -> None:
+        self._gh(["gh", "api", "--method", "PATCH", f"repos/{self.repo}/pulls/{number}", "-f", f"body={body}", "--silent"])
+
+    def push_files(self, branch: str, folder: str, files: Sequence[Path], message: str, index: Path) -> str:
+        """Adds the files to `folder` on `branch` of origin as one new commit, and returns the commit.
+
+        It builds the commit in the scratch index file `index`, so the checkout and its own index stay as they are.
+        """
+        scratch = ["env", f"GIT_INDEX_FILE={index}", "git"]
+        ref = f"refs/heads/{branch}"
+        parent = self._git(["git", "ls-remote", "origin", ref]).split()[:1]
+        if parent:
+            self._git(["git", "fetch", "origin", ref])
+            self._git([*scratch, "read-tree", parent[0]])
+        for file in files:
+            blob = self._git(["git", "hash-object", "-w", "--no-filters", "--", str(file)]).strip()
+            self._git([*scratch, "update-index", "--add", "--cacheinfo", f"100644,{blob},{folder}/{file.name}"])
+        tree = self._git([*scratch, "write-tree"]).strip()
+        commit = self._git(["git", "commit-tree", tree, *(["-p", parent[0]] if parent else []), "-m", message]).strip()
+        # The push is not forced, so a push from another session in the meantime makes this one fail and keeps theirs.
+        self._git(["git", "push", "--no-verify", "origin", f"{commit}:{ref}"])
+        return commit
+
+    def commits_behind(self, base: str) -> int:
+        """How many commits of origin/<base> the checkout lacks. Fetch the base branch first."""
+        return int(self._git(["git", "rev-list", "--count", f"HEAD..origin/{base}"]).strip())
+
+    def current_branch(self) -> str:
+        return self._git(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
+
+    def head_commit(self) -> str:
+        return self._git(["git", "rev-parse", "HEAD"]).strip()
+
+    def short_head(self, checkout: str) -> str:
+        return self._git(["git", "-C", checkout, "rev-parse", "--short", "HEAD"]).strip()
+
+    def branch_commit(self, checkout: str, branch: str) -> str:
+        return self._git(["git", "-C", checkout, "rev-parse", f"refs/heads/{branch}"]).strip()
+
+    def status(self, checkout: str) -> list[str]:
+        """Every changed, untracked and ignored path of a checkout, and each submodule that has one, whatever the git config says to hide."""
+        return self._git(["git", "-C", checkout, "status", "--porcelain", "--ignored", "--untracked-files=normal", "--ignore-submodules=none"]).splitlines()
+
+    def unpushed_in_submodules(self, checkout: str) -> list[str]:
+        """One commit per submodule that holds a commit, a branch or a stash that none of its remotes has.
+
+        A linked worktree keeps the git folders of its submodules inside itself, so such a commit goes away with the worktree.
+        """
+        listing = self._git(["git", "-C", checkout, "submodule", "foreach", "--quiet", "--recursive", "git rev-list -n 1 --all --not --remotes"])
+        return listing.split()
+
+    def has_ref(self, checkout: str, ref: str) -> bool:
+        return self._run(["git", "-C", checkout, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]).returncode == 0
+
+    def commits_ahead(self, checkout: str, branch: str, merged: str) -> int:
+        """How many commits the local branch has that neither origin/<branch> nor the commit `merged` holds, or 0 when the checkout has no such local branch."""
+        if not self.has_ref(checkout, f"refs/heads/{branch}"):
+            return 0
+        return int(self._git(["git", "-C", checkout, "rev-list", "--count", f"refs/heads/{branch}", "--not", f"origin/{branch}", merged]).strip())
+
+    def worktrees(self) -> list[tuple[str, str | None]]:
+        return parse_worktrees(self._git(["git", "worktree", "list", "--porcelain"]))
+
+    def merge(self, number: int, method: str, commit: str) -> None:
+        self._gh(["gh", "pr", "merge", str(number), "--repo", self.repo, f"--{method}", "--delete-branch", "--match-head-commit", commit])
+
+    def switch(self, branch: str) -> None:
+        self._git(["git", "switch", branch])
+
+    def fetch(self, checkout: str) -> None:
+        """Fetches origin and drops the remote-tracking refs of branches that origin deleted, such as a merged PR branch."""
+        self._git(["git", "-C", checkout, "fetch", "--prune", "origin"])
+
+    def fast_forward(self, checkout: str, branch: str) -> None:
+        self._git(["git", "-C", checkout, "merge", "--ff-only", f"origin/{branch}"])
+
+    def remove_worktree(self, main: str, path: str) -> None:
+        # Git refuses to remove a worktree that has a submodule without --force. The caller checks first that the worktree has no changed or untracked file.
+        self._git(["git", "-C", main, "worktree", "remove", "--force", path])
+
+    def delete_branch(self, checkout: str, branch: str) -> None:
+        # -D, because -d refuses when this checkout is not on the base branch. The caller checks first that the branch is at the merged commit.
+        self._git(["git", "-C", checkout, "branch", "-D", branch])
+
     def tree_has_changes(self) -> bool:
-        return bool(self._git(["git", "status", "--porcelain", "--untracked-files=no"]).strip())
+        return bool(self._git(["git", "status", "--porcelain", "--untracked-files=no", "--ignore-submodules=untracked"]).strip())
 
     def default_branch(self) -> str:
         result = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"])

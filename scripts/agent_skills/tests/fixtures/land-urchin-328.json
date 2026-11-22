@@ -1,0 +1,159 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "number": 328,
+        "title": "Draw the 16 element bars with four layers, a Glow and tooltips",
+        "state": "MERGED",
+        "isDraft": false,
+        "url": "https://github.com/julian-perge/urchin/pull/328",
+        "body": "Closes #230\n\nDecisions and guesses are in https://github.com/julian-perge/urchin/issues/230#issuecomment-6950129906\n\n- Added `ElementBar` (`element_bar.tscn`): a 13x70 track and the `ybar`, `bar`, `gbar` and `xbar` layers. `show_value` sets the heights from `MenuMath`, and a height under 0 draws no height.\n- Added `element_bar_glow.gdshader` for the Glow on `gbar` and `xbar`, instead of ffdec art, since the layer's height changes. It is within 0.08 alpha of ffdec's render of a full bar.\n- `convert_menu_math` now also writes the layer transforms, the Glow, and `elementColorArray`. `MenuTheme.ELEMENT_COLORS` loads the colours from `menu_math.json`.\n- Added `bar_shade.png` to `extract_window_chrome`, the gradient that shape 2874 draws over all eight bars of a block.\n- The rect record gets the 16 bars, each with a track and four layers, and the two shades. `through_sprites` places a shape through several nested sprites.\n- `MenuMath.load_math` parses each file once. Removed `MenuTheme.bar_fill_fraction` and `element_display_value`, and the typed bar nodes of `inventory_window.tscn`.\n- Piercing tooltip body is `SYSTEM[38]`, `[37]`, `[39]`, `[40]` with the rounded percentages. Defense body is `DEFTIP` by the five thresholds.\n\n`just gut` passes with 919 tests and `just pytest` with 641.\n\nReview decisions: https://github.com/julian-perge/urchin/issues/230#issuecomment-6950923034 and https://github.com/julian-perge/urchin/issues/230#issuecomment-6951360133\n\n- Ruff now checks comment and docstring width with W505 (88 characters).\n\n",
+        "baseRefName": "main",
+        "headRefName": "feat/230-draw-the-16-element-bars",
+        "headRefOid": "7813511da036414557b01f43f961e3bf1e50f7e6",
+        "mergeable": "UNKNOWN",
+        "files": {
+          "totalCount": 33,
+          "nodes": [
+            {
+              "path": "DECODED_ALGORITHMS.md"
+            },
+            {
+              "path": "assets/ui/window/bar_shade.png"
+            },
+            {
+              "path": "assets/ui/window/bar_shade.png.import"
+            },
+            {
+              "path": "assets/ui/window/window_chrome.json"
+            },
+            {
+              "path": "dev/converted_json/menu_math.json"
+            },
+            {
+              "path": "dev/tests/test_menu_math.py"
+            },
+            {
+              "path": "dev/tests/test_screen_rects.py"
+            },
+            {
+              "path": "dev/tests/test_window_chrome.py"
+            },
+            {
+              "path": "dev/urchin_dev/checks/doc_paths.py"
+            },
+            {
+              "path": "dev/urchin_dev/convert/battles.py"
+            },
+            {
+              "path": "dev/urchin_dev/convert/menu_math.py"
+            },
+            {
+              "path": "dev/urchin_dev/swf/extract/cutscenes.py"
+            },
+            {
+              "path": "dev/urchin_dev/swf/extract/screen_rects.py"
+            },
+            {
+              "path": "dev/urchin_dev/swf/extract/window_chrome.py"
+            },
+            {
+              "path": "dev/urchin_dev/swf/label_xref.py"
+            },
+            {
+              "path": "dev/urchin_dev/swf/swf_index.py"
+            },
+            {
+              "path": "pyproject.toml"
+            },
+            {
+              "path": "scenes/ui/element_bar_glow.gdshader"
+            },
+            {
+              "path": "scenes/ui/element_bar_glow.gdshader.uid"
+            },
+            {
+              "path": "scenes/ui/menu/element_bar.tscn"
+            },
+            {
+              "path": "scenes/ui/menu/inventory_window.tscn"
+            },
+            {
+              "path": "scripts/ui/menu/element_bar.gd"
+            },
+            {
+              "path": "scripts/ui/menu/element_bar.gd.uid"
+            },
+            {
+              "path": "scripts/ui/menu/inventory_window.gd"
+            },
+            {
+              "path": "scripts/ui/menu/menu_math.gd"
+            },
+            {
+              "path": "scripts/ui/menu/menu_theme.gd"
+            },
+            {
+              "path": "spec/107-inventory.md"
+            },
+            {
+              "path": "test/fixtures/screen_rects.json"
+            },
+            {
+              "path": "test/integration/test_inventory_window.gd"
+            },
+            {
+              "path": "test/unit/test_element_bar.gd"
+            },
+            {
+              "path": "test/unit/test_element_bar.gd.uid"
+            },
+            {
+              "path": "test/unit/test_menu_math.gd"
+            },
+            {
+              "path": "test/unit/test_screen_rects.gd"
+            }
+          ]
+        },
+        "comments": {
+          "nodes": []
+        },
+        "closingIssuesReferences": {
+          "nodes": [
+            {
+              "comments": {
+                "nodes": [
+                  {
+                    "body": "### Decisions from the build of #230\n\n- **Glow.** Julian chose a shader over ffdec art. `scenes/ui/element_bar_glow.gdshader` draws the three-pass box blur of a rectangle in closed form, because a layer's height changes at run time and a picture of one height cannot follow it. I measured it against ffdec's render of a full bar: at most 0.08 alpha apart outside the bar, 0.035 on average. I updated the spec line."
+                  },
+                  {
+                    "body": "### Decisions from the review of PR #328\n\nReview of PR #328 (task #230). The review found no Critical finding. Julian answered three questions."
+                  },
+                  {
+                    "body": "### Decisions from the review of PR #328\n\n### Decisions from the second review of PR #328"
+                  }
+                ]
+              },
+              "parent": {
+                "comments": {
+                  "nodes": [
+                    {
+                      "body": "### Decisions from the review of PR #290\n\nReview of #219 (PR #290)."
+                    },
+                    {
+                      "body": "### Decisions from the review of PR #297\n\nReview of PR #297 (task #226). The review found no Critical or Required finding and asked Julian no question."
+                    },
+                    {
+                      "body": "### Decisions from the build of PR #324\n\nBuild of #225 (PR #324)."
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

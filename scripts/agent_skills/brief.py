@@ -12,6 +12,8 @@ SECTION_STAGES = {
     "plan": ("plan",),
     "labels": ("plan",),
     "build": ("build", "bug"),
+    "checks": ("build", "bug", "review"),
+    "evidence": ("build", "bug", "review"),
     "review": ("review",),
     # The Earlier layout section names old spec and task paths that no stage works on.
     "earlier": (),

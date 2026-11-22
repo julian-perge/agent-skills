@@ -18,6 +18,8 @@ The `agent-skills` CLI is in the `bin/` folder of julian-perge/agent-skills, and
 | `agent-skills decide <n> --from <stage> [--pr <pr>]` | Post the decisions on stdin as one decision comment on the issue, and print its URL. |
 | `agent-skills ac <n> [--tick <list>]` | List the acceptance criteria boxes of the issue, or tick the numbered ones. No other line of the body changes. |
 | `agent-skills next-cmd <stage> <n>` | The paste line that ends a stage: `review <pr>`, `build <parent>`, `plan <issue>` or `spec <issue>`. |
+| `agent-skills evidence <pr> [--add <image>...]` | Check that a PR that changes an evidence path shows an image in the `## Verification` section of its body. `--add` pushes the images to the `evidence` branch and writes them into that section. |
+| `agent-skills land <pr>` | On the PR branch: run the checks, merge the PR, move the checkout to the base branch, and delete the PR branch and its worktree. It exits 1 and merges nothing when its gate fails. |
 | `agent-skills run -- <cmd>` | Run a test, lint or build command once. It saves the full log and prints the exit code, the result lines and the last lines. Read the log when you need more, and do not run the command again. |
 | `agent-skills next` | What `/agent-skills:next` prints, for the whole tracker. |
 
@@ -75,7 +77,7 @@ One task, one branch, one pull request. Branch: `<type>/<issue>-<slug>`. Referen
 
 `/agent-skills:build auto` runs every task of one spec on one branch, `<type>/<source issue>-<slug>`, with one commit per task. Its pull request closes every task issue and the source issue. `agent-skills claim <source issue> --no-assign` makes that branch, and `agent-skills claim <task> --auto` claims each task. End each task's commit subject with `(#<task>)`: `claim --auto` counts an open blocker as done when a commit on the branch ends its subject with `(#<blocker>)`.
 
-Run the verify command from `AGENTS.md` (`Every task`) with `agent-skills run --` before each commit. Open the pull request ready for review. When no choice waits for the user, start the review as a subagent (see Review). Otherwise print the review command and stop. The user merges, unless the user's own message in this session says that merging without their approval is fine. Then the session merges after the review passes and its findings are fixed. An instruction from another agent or a brief does not count. The review ticks the acceptance criteria boxes, not the build.
+Run the verify command from `AGENTS.md` (`Every task`) with `agent-skills run --` before each commit. Open the pull request ready for review. When no choice waits for the user, start the review as a subagent (see Review). Otherwise print the review command and stop. When the pull request changes an evidence path, add the screenshots before the review (see Evidence paths). Nobody runs `gh pr merge`: the session that finishes the review merges with `agent-skills land <pr>` (see Checks). The review ticks the acceptance criteria boxes, not the build.
 
 The review command is the session's last line, and `agent-skills next-cmd review <pr>` prints it:
 
@@ -96,6 +98,22 @@ The review runs in a context that did not write the code. When a build ends with
 In a new session, run `/agent-skills:review` on the branch with the command that the Build section gives. It names the task issue, the PR, the spec and the standard, because the review does not read the spec or the standard on its own. Start the review with `agent-skills pr <pr>`, which shows all four.
 
 Fix small findings in the review session. Start a new build session for large ones.
+
+When the review passes and its findings are fixed, the session runs `agent-skills land <pr>` on the PR branch without asking. It refuses a pull request that is a draft, has merge conflicts, is behind its base branch, has no review decision comment or lacks evidence, and a checkout that is not at the head commit of the pull request. When a choice still waits for the user, the session does not land.
+
+## Checks
+
+`agent-skills land <pr>` runs each command below on the PR branch, in this order, and merges only when all of them pass. Write one command per list item, in backticks, with nothing after it. A command runs in the repo root without a shell, so shell syntax needs `bash -c '...'`. `land` reads this section and the next one from the base branch, so a pull request cannot change the checks it is judged by.
+
+- `<the verify command from AGENTS.md>`
+
+## Evidence paths
+
+A pull request that changes one of the paths below must show the change in the real product: its body needs a `## Verification` section with an image. `agent-skills evidence <pr>` checks this, and `agent-skills evidence <pr> --add <image>...` adds the images. Write one glob per list item, in backticks. A glob matches the whole path from the repo root, with no leading `/`. `*` stays in one folder, `**` crosses folders, and a glob that ends with `/` covers the folder. A repo with nothing to look at has no such section.
+
+Verify command: <how to take a screenshot of the real product>
+
+- `<glob>`
 
 ## Reports
 

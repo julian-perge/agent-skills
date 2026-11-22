@@ -86,6 +86,13 @@ class StageSectionsTest(unittest.TestCase):
             with self.subTest(stage=stage):
                 self.assertEqual(brief.stage_sections(text, stage)[-1], "## Local notes\nKeep this.\n")
 
+    def test_the_checks_and_the_evidence_paths_go_to_build_bug_and_review(self) -> None:
+        text = "## Checks\n- `just gut`\n## Evidence paths\n- `scenes/**`\n"
+        for stage in brief.STAGES:
+            with self.subTest(stage=stage):
+                wanted = ["## Checks\n- `just gut`\n", "## Evidence paths\n- `scenes/**`\n"] if stage in ("build", "bug", "review") else []
+                self.assertEqual(brief.stage_sections(text, stage), wanted)
+
     def test_headings_match_by_first_word_without_case(self) -> None:
         text = "## BUILD steps\nb\n## review\nr\n"
         self.assertEqual(brief.stage_sections(text, "build"), ["## BUILD steps\nb\n"])
