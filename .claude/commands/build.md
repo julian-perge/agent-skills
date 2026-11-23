@@ -1,6 +1,7 @@
 ---
 description: Implement the plan incrementally, with build, test, verify and commit for each task. Runs every pending task. Add "one" to stop after the next task.
 disable-model-invocation: true
+effort: medium
 ---
 
 Invoke the agent-skills:incremental-implementation skill alongside agent-skills:test-driven-development.
