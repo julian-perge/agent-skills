@@ -397,6 +397,30 @@ def drop_branch(gh: GitHub, checkout: str, pull: land.LandPull) -> str:
     return f"Deleted the local branch {pull.head}."
 
 
+def imports_agents_file(claude_text: str) -> bool:
+    return any(line.strip() == "@AGENTS.md" for line in claude_text.splitlines())
+
+
+def doctor_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    root = checkout_root(gh)
+    if not (root / "AGENTS.md").is_file():
+        return "No AGENTS.md in this repo, so CLAUDE.md needs no import.\n"
+    claude = root / "CLAUDE.md"
+    if not claude.is_file():
+        raise CliError(
+            "AGENTS.md exists and CLAUDE.md does not. Claude Code reads only CLAUDE.md, so it never loads the rules in AGENTS.md. "
+            "Create CLAUDE.md with the line `@AGENTS.md`.",
+            REFUSED,
+        )
+    if not imports_agents_file(claude.read_text()):
+        raise CliError(
+            "CLAUDE.md has no line `@AGENTS.md`. Claude Code reads only CLAUDE.md, so it never loads the rules in AGENTS.md. "
+            "Add the line `@AGENTS.md` to CLAUDE.md.",
+            REFUSED,
+        )
+    return "CLAUDE.md imports AGENTS.md.\n"
+
+
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
     title, subs = gh.sub_issues(args.number)
     return render.frontier_report(args.number, title, subs, tracker.frontier(subs))
@@ -478,6 +502,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     land_parser.add_argument("number", type=issue_number, metavar="PR")
     land_parser.set_defaults(handler=land_verb)
+
+    doctor = verbs.add_parser(
+        "doctor",
+        help="check that the checkout is set up for Claude Code: a repo with AGENTS.md needs a CLAUDE.md with the line @AGENTS.md",
+        description="Reads only the files of the checkout and calls no gh command. Exits 1 when AGENTS.md exists and CLAUDE.md is missing or has no line that is `@AGENTS.md`.",
+    )
+    doctor.set_defaults(handler=doctor_verb)
 
     run_parser = run.add_parser(verbs)
     run_parser.set_defaults(handler=None, run_parser=run_parser)
