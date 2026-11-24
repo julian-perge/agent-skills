@@ -302,14 +302,17 @@ def gate_rules(gh: GitHub, root: Path, pull: land.LandPull) -> str:
     return gate_text(gh, root, f"origin/{pull.base}", pull.base, GATE_FILE in pull.paths, "this pull request")
 
 
+ANY_CHECKS_HEADING = re.compile(r"^[^\w#]{0,4}#+\s*checks\b", re.IGNORECASE | re.MULTILINE)
+
+
 def gate_text(gh: GitHub, root: Path, ref: str, base: str, changed: bool, change: str) -> str:
     """The text of docs/agents/workflow.md at `ref`, or in the checkout when `ref` has none or has one with no checks. `changed` says whether `change` edits the file."""
     text = gh.file_at(ref, GATE_FILE)
     if text is None:
         text = workflow_text(root)
         print(f"Note: {base} has no {GATE_FILE} yet, so the gate comes from this checkout.", file=sys.stderr)
-    elif not land.checks(text) and (root / GATE_FILE).is_file() and land.checks(mine := (root / GATE_FILE).read_text(encoding="utf-8")):
-        # A base file with no checks can never pass, so the setup that adds the first checks to an older repo could never land. That file holds no gate to weaken.
+    elif not ANY_CHECKS_HEADING.search(text) and (root / GATE_FILE).is_file() and land.checks(mine := workflow_text(root)):
+        # A base file with no Checks heading at any level can never pass, so the setup that adds the first checks to an older repo could never land. That file holds no gate to weaken. A base with a Checks heading that cannot be read still judges the pull request.
         text = mine
         print(f"Note: the {GATE_FILE} of {base} has no `## Checks` yet, so the gate comes from this checkout.", file=sys.stderr)
     elif changed:

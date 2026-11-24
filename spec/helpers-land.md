@@ -13,7 +13,7 @@ After this module, the session that finishes a review merges the pull request it
 
 ## Interface
 
-Both verbs read `docs/agents/workflow.md` from `origin/<base>` of the pull request, after a `git fetch --prune origin`. A pull request can therefore not change the rules it is judged by. Three cases print a note on stderr: the base branch has no such file yet, and then the file of the checkout is read; the file of the base branch has no `## Checks` command and the file of the checkout has one, and then the file of the checkout is read, because a base file with no checks holds no gate to weaken and would keep the setup that adds the first checks from ever landing; or the pull request changes the file. With no file in either place, or in a clone that has no `origin/<base>`, the verbs exit 2. `evidence --add` reads no rules.
+Both verbs read `docs/agents/workflow.md` from `origin/<base>` of the pull request, after a `git fetch --prune origin`. A pull request can therefore not change the rules it is judged by. Three cases print a note on stderr: the base branch has no such file yet, and then the file of the checkout is read; the file of the base branch has no Checks heading at any level and the file of the checkout has a `## Checks` command, and then the file of the checkout is read, because a base file with no checks holds no gate to weaken and would keep the setup that adds the first checks from ever landing; or the pull request changes the file. With no file in either place, or in a clone that has no `origin/<base>`, the verbs exit 2. `evidence --add` reads no rules.
 
 ### Two headings in `docs/agents/workflow.md`
 

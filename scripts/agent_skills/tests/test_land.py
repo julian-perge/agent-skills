@@ -704,6 +704,34 @@ class NoChecksOnBaseTest(LandCase):
         self.assertTrue(self.marker.exists())
 
 
+class UnreadableChecksOnBaseTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: "# Workflow\n\n## Checks\n\n- just test\n"}
+
+    def branch_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran"))}
+
+    def test_a_base_with_checks_it_cannot_read_still_judges_the_pull_request(self) -> None:
+        code, _, err, _ = self.land()
+        self.assertEqual(code, 2)
+        self.assertIn("has list items that cannot be read", err)
+        self.assertFalse(self.marker.exists())
+
+
+class OtherChecksHeadingOnBaseTest(LandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: "# Workflow\n\n### Checks\n\n- `just test`\n"}
+
+    def branch_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran"))}
+
+    def test_a_base_with_another_checks_heading_still_judges_the_pull_request(self) -> None:
+        code, _, err, _ = self.land()
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("gate comes from this checkout", err)
+        self.assertFalse(self.marker.exists())
+
+
 class UnreadableGateTest(LandCase):
     def base_files(self) -> dict[str, str]:
         return {GATE: workflow("- `just gut` and then `just pytest`\n- `sh -c 'open quote`\n")}
