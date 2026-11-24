@@ -1,10 +1,11 @@
 import argparse
+import os
 import re
 import shlex
 import sys
 import tempfile
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from agent_skills import REFUSED, CliError, brief, land, render, run, tracker
@@ -397,28 +398,83 @@ def drop_branch(gh: GitHub, checkout: str, pull: land.LandPull) -> str:
     return f"Deleted the local branch {pull.head}."
 
 
-def imports_agents_file(claude_text: str) -> bool:
-    return any(line.strip() == "@AGENTS.md" for line in claude_text.splitlines())
+CLAUDE_FILES = ("CLAUDE.md", ".claude/CLAUDE.md")
+FENCE = re.compile(r" {0,3}(`{3,}|~{3,})")
+CODE_SPAN = re.compile(r"(`+).+?\1")
+
+
+def import_targets(claude_text: str) -> Iterator[str]:
+    """Yield the path of each @ token that Claude Code reads as an import.
+
+    Claude Code skips imports in code blocks and code spans, and it hides HTML comments, so doctor skips @ tokens in all three.
+    """
+    fence = ""
+    in_comment = False
+    for line in claude_text.splitlines():
+        if fence:
+            closing = line.strip()
+            if closing.startswith(fence) and set(closing) == {fence[0]}:
+                fence = ""
+            continue
+        if not in_comment and (opened := FENCE.match(line)):
+            fence = opened.group(1)
+            continue
+        kept = ""
+        while line:
+            if in_comment:
+                end = line.find("-->")
+                if end < 0:
+                    break
+                line, in_comment = line[end + 3 :], False
+            else:
+                start = line.find("<!--")
+                if start < 0:
+                    kept += line
+                    break
+                kept += line[:start] + " "
+                line, in_comment = line[start + 4 :], True
+        for token in CODE_SPAN.sub(" ", kept).split():
+            if token.startswith("@"):
+                yield token[1:]
+
+
+def imports_agents_file(claude: Path, agents: Path) -> bool:
+    try:
+        text = claude.read_bytes().decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise CliError(f"{claude} is not UTF-8 text (byte {error.start} is not valid), so doctor cannot read its imports. Save it as UTF-8.") from error
+    return any(
+        not target.startswith(("/", "~")) and Path(os.path.normpath(claude.parent / target)) == agents for target in import_targets(text)
+    )
 
 
 def doctor_verb(gh: GitHub, args: argparse.Namespace) -> str:
     root = checkout_root(gh)
-    if not (root / "AGENTS.md").is_file():
+    agents = root / "AGENTS.md"
+    if not agents.is_file():
         return "No AGENTS.md in this repo, so CLAUDE.md needs no import.\n"
-    claude = root / "CLAUDE.md"
-    if not claude.is_file():
-        raise CliError(
-            "AGENTS.md exists and CLAUDE.md does not. Claude Code reads only CLAUDE.md, so it never loads the rules in AGENTS.md. "
-            "Create CLAUDE.md with the line `@AGENTS.md`.",
-            REFUSED,
-        )
-    if not imports_agents_file(claude.read_text()):
-        raise CliError(
-            "CLAUDE.md has no line `@AGENTS.md`. Claude Code reads only CLAUDE.md, so it never loads the rules in AGENTS.md. "
-            "Add the line `@AGENTS.md` to CLAUDE.md.",
-            REFUSED,
-        )
-    return "CLAUDE.md imports AGENTS.md.\n"
+    claudes = [root / name for name in CLAUDE_FILES if (root / name).is_file()]
+    if not claudes:
+        if (root / "CLAUDE.local.md").is_file():
+            raise CliError(
+                "CLAUDE.local.md exists and CLAUDE.md does not. When a CLAUDE file exists, Claude Code reads it instead of AGENTS.md, "
+                "so it never loads the rules in AGENTS.md. Create CLAUDE.md with the line `@AGENTS.md`.",
+                REFUSED,
+            )
+        return "No CLAUDE.md in this repo, so Claude Code reads AGENTS.md itself.\n"
+    for claude in claudes:
+        name = claude.relative_to(root).as_posix()
+        if claude.is_symlink() and claude.resolve() == agents.resolve():
+            return f"{name} is a link to AGENTS.md, so Claude Code reads AGENTS.md.\n"
+        if imports_agents_file(claude, agents):
+            return f"{name} imports AGENTS.md.\n"
+    names = [claude.relative_to(root).as_posix() for claude in claudes]
+    fix = "@AGENTS.md" if names[0] == "CLAUDE.md" else "@../AGENTS.md"
+    raise CliError(
+        f"{' and '.join(names)} {'do' if len(names) > 1 else 'does'} not import AGENTS.md. When {names[0]} exists, Claude Code reads it "
+        f"instead of AGENTS.md, so it never loads the rules in AGENTS.md. Add the line `{fix}` to {names[0]}, outside any code block or HTML comment.",
+        REFUSED,
+    )
 
 
 def frontier_verb(gh: GitHub, args: argparse.Namespace) -> str:
@@ -505,8 +561,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = verbs.add_parser(
         "doctor",
-        help="check that the checkout is set up for Claude Code: a repo with AGENTS.md needs a CLAUDE.md with the line @AGENTS.md",
-        description="Reads only the files of the checkout and calls no gh command. Exits 1 when AGENTS.md exists and CLAUDE.md is missing or has no line that is `@AGENTS.md`.",
+        help="check that Claude Code loads AGENTS.md: when CLAUDE.md or .claude/CLAUDE.md exists, it must import AGENTS.md",
+        description="Reads only the files of the checkout and calls no gh command. Exits 1 when AGENTS.md exists, a CLAUDE.md or .claude/CLAUDE.md exists, "
+        "and none of them imports AGENTS.md or is a link to it. Exits 2 when a CLAUDE.md is not UTF-8.",
     )
     doctor.set_defaults(handler=doctor_verb)
 
