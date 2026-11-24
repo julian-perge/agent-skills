@@ -15,7 +15,7 @@ The `agent-skills` CLI is in the `bin/` folder of julian-perge/agent-skills, and
 | `agent-skills pr <pr>` | The PR with its task, spec, standard, checks and files, and the review command. |
 | `agent-skills frontier <parent>` | The parent's open sub-issues and the next task to build. |
 | `agent-skills claim <n>` | Assign the task to `@me` and make its branch from the default branch. |
-| `agent-skills decide <n> --from <stage> [--pr <pr>]` | Post the decisions on stdin as one decision comment on the issue, and print its URL. |
+| `agent-skills decide <n> --from <stage> [--pr <pr>] [--reviewer <text>]` | Post the decisions on stdin as one decision comment on the issue, and print its URL. A review decision needs `--pr` and `--reviewer`, and the comment records the PR head and the reviewer. |
 | `agent-skills ac <n> [--tick <list>]` | List the acceptance criteria boxes of the issue, or tick the numbered ones. No other line of the body changes. |
 | `agent-skills next-cmd <stage> <n>` | The paste line that ends a stage: `review <pr>`, `build <parent>` (the next task, or the whole plan with `--whole`), `plan <issue>` or `spec <issue>`. |
 | `agent-skills evidence <pr> [--add <image>...]` | Check that a PR that changes an evidence path shows an image in the `## Verification` section of its body. `--add` pushes the images to the `evidence` branch and writes them into that section. |
@@ -99,7 +99,9 @@ In a new session, run `/agent-skills:review` on the branch with the command that
 
 Fix small findings in the review session. Start a new build session for large ones.
 
-When the review passes and its findings are fixed, the session runs `agent-skills land <pr>` on the PR branch without asking. It refuses a pull request that is a draft, has merge conflicts, is behind its base branch, has no review decision comment or lacks evidence, and a checkout that is not at the head commit of the pull request. When a choice still waits for the user, the session does not land.
+The review decision comes from a reviewer that did not write the code at the PR head: an `agent-skills:code-reviewer` subagent that committed no fix, or a review session that committed no fix. The reviewer posts it with `agent-skills decide <task> --from review --pr <pr> --reviewer <text>`, where `--reviewer` names it, such as `"agent-skills:code-reviewer subagent"`. The comment records the PR head as `Reviewed head:` and the reviewer as `Reviewer:`. The reviewer identity is recorded, not verified: `land` reads the line and does not check who posted the comment. A push after the review needs a new review and a new decision, unless the patch-id of the PR change is unchanged, as after a rebase or a merge of the base branch that leaves the PR's own diff as it was.
+
+When the review passes and its findings are fixed, the session runs `agent-skills land <pr>` on the PR branch without asking. It refuses a pull request that is a draft, has merge conflicts, is behind its base branch, has no review decision comment that covers the change at its head or lacks evidence, and a checkout that is not at the head commit of the pull request. When a choice still waits for the user, the session does not land.
 
 ## Checks
 
@@ -124,6 +126,7 @@ These rules hold only when the user's own message names this section or says tha
 - **Subagents:** at most <n> at the same time.
 - **Choices:** make each judgment call yourself. Take the option you would recommend, and post it with `agent-skills decide` under `#### Guesses and gaps`, with the reason.
 - **What waits for the user:** the message lists it. Do not do such a step, and do not wait for it. Replace the label of its issue with `ready-for-human`, which needs no approval in an unattended run. Post what it waits for with `agent-skills decide`, and go on with the tasks that do not depend on it. Only a pull request that holds such a step is not merged.
+- **Review:** run the review as one `agent-skills:code-reviewer` subagent, not in the context that wrote the code. That subagent posts the review decision with `--reviewer "agent-skills:code-reviewer subagent"` only when it applied no finding. When it applied findings, or the main session pushes after the decision, a new reviewer subagent reviews the new head and posts a new decision, unless the patch-id of the PR change is unchanged.
 - **Merge:** `agent-skills land <pr>` is the only way to merge, and it needs no grant. Run it from the main session: a subagent never merges.
 - **CI:** <this repo runs no CI on a pull request, so wait for none: the `## Checks` commands are the gate | CI runs on each pull request: wait for the run before `agent-skills land`, fix a failed run, and when a run cannot start, record that and go on with the `## Checks` commands>
 - **Programs with a window:** <none | the programs that a check may start without asking, such as a game client>

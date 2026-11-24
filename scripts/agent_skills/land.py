@@ -14,6 +14,8 @@ SHELL_WORDS = frozenset({"&&", "||", "|", ";", ">", ">>", "<"})
 FENCE = re.compile(r"\s{0,3}(```|~~~)")
 CODE_SPAN = re.compile(r"`[^`]*`")
 VERIFY_LINE = re.compile(r"\s*Verify command:\s*(\S.*?)\s*$", re.IGNORECASE)
+REVIEWED_HEAD = re.compile(r"\s*Reviewed head:\s*([0-9a-f]{40})\s*$", re.IGNORECASE)
+REVIEWER = re.compile(r"\s*Reviewer:\s*(\S.*?)\s*$", re.IGNORECASE)
 HEADING = re.compile(r"(#{1,6})\s+(.*?)\s*$")
 IMAGE = re.compile(r"!\[[^\]]*\]\(\s*<?https?://[^)\s]+[^)]*\)|<img\b[^>]*\bsrc\s*=\s*[\"']?https?://", re.IGNORECASE)
 
@@ -205,16 +207,35 @@ def with_images(body: str, images: Sequence[tuple[str, str]]) -> str:
     return section + block + (newline + rest if rest else "")
 
 
-def has_review_decision(number: int, comments: Sequence[str]) -> bool:
-    """Whether a comment is the one that `agent-skills decide --from review --pr <number>` posts: its whole first line names this review."""
+def review_decision(number: int, comments: Sequence[str]) -> str | None:
+    """The newest comment that `agent-skills decide --from review --pr <number>` posts: its whole first line names this review. `comments` are oldest first."""
     first_line = re.compile(rf"[#*\s]*decisions from the review of PR #{number}[*\s]*$", re.IGNORECASE)
-    return any(first_line.match(body.split("\n", 1)[0]) for body in comments)
+    return next((body for body in reversed(comments) if first_line.match(body.split("\n", 1)[0])), None)
 
 
-def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int, found: Evidence, commands: Sequence[str], blocked: Sequence[str] = ()) -> list[str]:
+def review_line(body: str, pattern: re.Pattern[str]) -> str | None:
+    return next((match[1] for line in body.splitlines() if (match := pattern.match(line))), None)
+
+
+def review_gap(number: int, comments: Sequence[str]) -> str | None:
+    """Why no review decision comment can show which commit the review covers and who reviewed it, or None when the newest one shows both."""
+    decide = f"`agent-skills decide <issue or PR> --from review --pr {number} --reviewer <reviewer>`"
+    decision = review_decision(number, comments)
+    if decision is None:
+        return f"no review decision comment names PR #{number} on the pull request, on an issue it closes or on the parent of one. The review posts it with {decide}."
+    missing = [f"no `{label}` line" for label, pattern in (("Reviewed head:", REVIEWED_HEAD), ("Reviewer:", REVIEWER)) if review_line(decision, pattern) is None]
+    if missing:
+        return f"the newest review decision comment of PR #{number} has {' and '.join(missing)}. The reviewer posts the decision again with {decide}, which writes both lines."
+    return None
+
+
+def refusals(
+    pull: LandPull, branch: str, commit: str, dirty: bool, behind: int, found: Evidence, commands: Sequence[str], blocked: Sequence[str] = (), stale: Sequence[str] = ()
+) -> list[str]:
     """Every reason that stops `land` before it runs the checks. An empty list lets it go on.
 
-    `blocked` holds the reasons why the checkout could not move to the base branch after the merge.
+    `blocked` holds the reasons why the checkout could not move to the base branch after the merge. `stale` holds the reasons why
+    the review decision does not cover the change at the head of the pull request.
     """
     if pull.state != "OPEN":
         return [f"the pull request is {pull.state.lower()}."]
@@ -236,11 +257,8 @@ def refusals(pull: LandPull, branch: str, commit: str, dirty: bool, behind: int,
         reasons.append(f"the pull request has merge conflicts with {pull.base}.")
     elif pull.mergeable != "MERGEABLE":
         reasons.append("GitHub has not worked out yet whether the pull request merges cleanly. Run the command again.")
-    if not has_review_decision(pull.number, pull.comments):
-        reasons.append(
-            f"no review decision comment names PR #{pull.number} on the pull request, on an issue it closes or on the parent of one. "
-            f"The review posts it with `agent-skills decide <issue or PR> --from review --pr {pull.number}`."
-        )
+    gap = review_gap(pull.number, pull.comments)
+    reasons += [gap] if gap else stale
     if found.missing:
         reasons.append(evidence_gap(pull.number, found))
     if not commands:

@@ -42,6 +42,12 @@ def branch_kind(value: str) -> str:
     return value
 
 
+def one_line(value: str) -> str:
+    if not value.strip() or "\n" in value:
+        raise argparse.ArgumentTypeError("expected one line of text")
+    return value.strip()
+
+
 def box_list(value: str) -> list[int]:
     parts = [part.strip() for part in value.split(",")]
     if not all(part.isdigit() for part in parts):
@@ -209,6 +215,16 @@ def ac_verb(gh: GitHub, args: argparse.Namespace) -> str:
 
 
 def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    if args.stage == "review" and args.reviewer is None:
+        raise CliError(
+            'Nothing posted: a review decision needs --reviewer <text> that names the agent that reviewed the PR, such as "agent-skills:code-reviewer subagent". '
+            "`agent-skills land` refuses a review decision without it.",
+            REFUSED,
+        )
+    if args.stage == "review" and args.pr is None:
+        raise CliError("Nothing posted: a review decision needs --pr <n>, because `agent-skills land` reads the head commit that it records.", REFUSED)
+    if args.stage != "review" and args.reviewer is not None:
+        raise CliError("--reviewer goes with --from review only.")
     body = sys.stdin.read().strip()
     if not body:
         raise CliError("Nothing posted: the decisions come on stdin, and stdin was empty.", REFUSED)
@@ -217,6 +233,8 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
     first, _, rest = body.partition("\n")
     if first.strip() == header:
         body = rest.strip()
+    if args.stage == "review":
+        body = f"Reviewed head: {gh.pull_head(args.pr)}\nReviewer: {args.reviewer}\n\n{body}"
     return gh.comment(args.number, f"{header}\n\n{body}").strip() + "\n"
 
 
@@ -239,6 +257,27 @@ def gate_rules(gh: GitHub, root: Path, pull: land.LandPull) -> str:
     if problems:
         raise CliError("\n".join([f"{GATE_FILE} has list items that cannot be read:", *(f"- {problem}" for problem in problems)]))
     return text
+
+
+def stale_review(gh: GitHub, root: Path, pull: land.LandPull) -> list[str]:
+    """Why the newest review decision does not cover the change at the head of the pull request. Fetch origin first.
+
+    A review of an older commit still counts when the change of the pull request has the same patch-id at both commits,
+    as after a rebase or a merge of the base branch. A note on stderr then says so.
+    """
+    decision = land.review_decision(pull.number, pull.comments)
+    reviewed = land.review_line(decision, land.REVIEWED_HEAD) if decision else None
+    if reviewed is None or reviewed.lower() == pull.head_commit.lower():
+        return []
+    again = "Review the PR again and post the decision with `agent-skills decide`."
+    for commit in (reviewed, pull.head_commit):
+        if not gh.get_commit(str(root), commit):
+            return [f"the review covers {reviewed[:8]}, but this clone does not have commit {commit[:8]} and `git fetch origin {commit}` cannot get it, so the two changes cannot be compared. {again}"]
+    before, after = (gh.patch_id(str(root), pull.base, commit) for commit in (reviewed, pull.head_commit))
+    if before != after:
+        return [f"the review covers {reviewed[:8]}, but the PR head is {pull.head_commit[:8]} and its change differs. {again}"]
+    print(f"Note: the review covers {reviewed[:8]} and the PR head is {pull.head_commit[:8]}, but the change of the pull request has the same patch-id at both, so the review still counts.", file=sys.stderr)
+    return []
 
 
 def evidence_verb(gh: GitHub, args: argparse.Namespace) -> str:
@@ -295,7 +334,7 @@ def land_verb(gh: GitHub, args: argparse.Namespace) -> str:
     found = land.evidence(workflow, pull.paths, pull.body)
     commit = gh.head_commit()
     reasons = land.refusals(
-        pull, gh.current_branch(), commit, gh.tree_has_changes(), gh.commits_behind(pull.base), found, commands, sync_blockers(gh, pull, here, commit)
+        pull, gh.current_branch(), commit, gh.tree_has_changes(), gh.commits_behind(pull.base), found, commands, sync_blockers(gh, pull, here, commit), stale_review(gh, root, pull)
     )
     if reasons:
         raise CliError(render.land_refusal(pull.number, reasons), REFUSED)
@@ -545,7 +584,8 @@ def build_parser() -> argparse.ArgumentParser:
     decide = verbs.add_parser("decide", help="post the decisions on stdin as one decision comment on an issue, and print its URL")
     decide.add_argument("number", type=issue_number, metavar="N")
     decide.add_argument("--from", dest="stage", type=stage_arg, required=True, metavar="STAGE", help=f"one of {', '.join(brief.STAGES)}, or {', '.join(brief.COMMAND_NAMES)}")
-    decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from")
+    decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from. Needed with --from review, where the comment also records its head commit")
+    decide.add_argument("--reviewer", type=one_line, metavar="TEXT", help="needed with --from review: the agent that reviewed the PR, such as \"agent-skills:code-reviewer subagent\". It is recorded, not verified")
     decide.set_defaults(handler=decide_verb)
 
     evidence = verbs.add_parser(
@@ -562,7 +602,7 @@ def build_parser() -> argparse.ArgumentParser:
         "land",
         help="run the checks of the repo on the PR branch, merge the pull request and sync the checkout",
         description="Run it on the PR branch. Exits 1 and merges nothing when the pull request is not open, is a draft, has merge conflicts, is behind its "
-        "base branch, has no review decision comment or lacks evidence, when the checkout has changed tracked files or is not at the head commit of the "
+        "base branch, has no review decision comment that covers the change at its head or lacks evidence, when the checkout has changed tracked files or is not at the head commit of the "
         "pull request, or when docs/agents/workflow.md has no command under `## Checks` or one of them fails. Otherwise it merges, moves the checkout to "
         "the base branch, and deletes the PR branch and its worktree.",
     )
