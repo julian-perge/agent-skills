@@ -1,0 +1,5 @@
+description = "Start an unattended run from one line: land the PRs that are ready, build the ready-for-agent tasks, then review and land what the build opened, in this repo or in the ~/code repos that the line names. It asks nothing and logs each choice."
+
+prompt = """
+This command needs Claude Code and the agent-skills CLI. Run /agent-skills:overnight in Claude Code.
+"""
