@@ -94,6 +94,36 @@ Run it on the PR branch. It works in this order:
 - **`references/workflow/workflow-github.md`:** the two verbs in the Helpers table, the land rule under Build and Review, and the `## Checks` and `## Evidence paths` sections. `setup-workflow` fills both sections.
 - **Merge rule:** a session may merge only with `land`. It replaces "the user merges, unless the user's own message says otherwise".
 
+## Local land
+
+A repo with no GitHub remote has no pull request and no comments, so the review record is a committed file on the branch. osrs-shorts and osrs-handoff have a GitHub origin and must never push, so they use the local land too.
+
+### `decide --from review --local --reviewer <text>`
+
+- It takes no issue number and no `--pr`. It writes `docs/reviews/<branch>.md` on the current branch, with each `/` of the branch name written as `-`. The file holds the heading `### Decisions from the review of <branch>`, a blank line, `Reviewed head: <full sha of HEAD>`, `Reviewer: <text>`, a blank line, and the body from stdin. A body that starts with the same heading gets it once.
+- It commits only that file, with the message `docs: record the review of <branch>`, and prints the path and the new commit. It never pushes.
+- **Refused (exit 1, nothing written):** no `--reviewer`, empty stdin, a detached HEAD, the base branch (`main`, else `master`), or a working tree with changed tracked files. Another stage, an issue number or `--pr` with `--local` is a usage error (exit 2).
+
+### `land --local [--base <branch>]`
+
+It lands the current branch into its base branch. The base is `--base`, else `main` when `refs/heads/main` exists, else `master`. A repo with neither exits 2. It never fetches or pushes. It works in this order:
+
+1. **GitHub origin.** When `remote.origin.url` (as the git config holds it) names `github.com`, it exits 1 and says to use `agent-skills land <pr>`. The main checkout folder named osrs-shorts or osrs-handoff is the exception.
+2. **Gate.** It reads `docs/agents/workflow.md` from the local base branch, with the same notes and exit 2 as `land PR` when the base has no such file, the branch changes it, or a list item cannot be read. On the base branch or a detached HEAD, that is the only line. Otherwise each failed condition is one line under `Not landed: <branch>` on stderr, the exit code is 1, and no check runs:
+   - The working tree has changed tracked files.
+   - The branch does not contain the tip of the base branch.
+   - A linked worktree holds the base branch, or the main checkout holds it and has changed tracked files.
+   - The branch has no `docs/reviews/<branch>.md` at HEAD, or the file has no `Reviewed head:` line or no `Reviewer:` line.
+   - The review is stale (see below), or the repo does not have the reviewed commit.
+   - The file has no command under `## Checks`.
+   **Review freshness.** The review counts when the reviewed sha is HEAD, or when the only path that differs between the reviewed sha and HEAD is the review file. Otherwise `land --local` compares the verbatim patch-id of `git diff $(git merge-base <base> <sha>) <sha> -- . ':(exclude)docs/reviews'` at both commits. Equal patch-ids mean a rebase onto a newer base: the review counts, and a note on stderr says so. Different patch-ids give the line "the review covers <short sha>, but HEAD is <short sha> and the change of the branch differs."
+3. **Checks.** The same runner and refusals as `land PR`: each command runs in the repo root with no shell, a non-zero exit stops the verb with exit 1, and so do changed tracked files or a moved HEAD after the checks.
+4. **Merge:** `git merge --no-ff --no-edit <branch>`. In the main checkout, or in a linked worktree when the main checkout is not on the base branch, the checkout first runs `git switch <base>`. From a linked worktree while the main checkout is on the base branch, the merge runs in the main checkout, as `land PR` fast-forwards it. When the merge fails, as on a conflict, `land --local` runs `git merge --abort`, switches back to the branch, and exits 1. The base branch is then as it was.
+5. **Sync:** `git branch -d <branch>`, and a linked worktree is removed with the same rules as `land PR`: a worktree with a changed or an untracked file, a submodule commit that no remote has, or a HEAD that moved stays, and the output says why. A failure after the merge exits 2, and its message starts with `<branch> is merged into <base>, but the checkout is not synced:`.
+6. The output is `Landed <branch> into <base> at <short sha>.`, then one line per thing done.
+
+**Tests:** real git in a temp repo with no remote (`LocalLandCase` in `test_land.py`). They cover the file and the commit of `decide --local` and its refusals, a merge from the main checkout and from a linked worktree, each refusal, a stale review after a code change, a review kept after a rebase onto a newer base, a conflict that a check makes on the base branch, a GitHub origin, and osrs-shorts with a GitHub origin.
+
 ## Project structure
 
 ```

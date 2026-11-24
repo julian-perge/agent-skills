@@ -12,7 +12,7 @@ from unittest import mock
 from agent_skills import cli, land
 from agent_skills.github import LAND_QUERY, parse_worktrees
 from fakes import fixture_text, names_repo
-from gitrepo import RealGit, commit, git, hermetic, new_origin
+from gitrepo import URL, RealGit, commit, git, hermetic, new_origin
 
 URCHIN = "julian-perge/urchin"
 HEAD = "6baf62c2ba12fbdb9f53609af6710f6bcfa45b55"
@@ -701,6 +701,285 @@ class UnreadableGateTest(LandCase):
         self.assertIn("is not one command in backticks with nothing after it.", err)
         self.assertIn("does not parse as a command (No closing quotation).", err)
         self.assertFalse(self.merged(runner))
+
+
+LOCAL = "feat/local-land"
+REVIEW_FILE = "docs/reviews/feat-local-land.md"
+
+
+class LocalLandCase(unittest.TestCase):
+    """Runs `decide --local` and `land --local` with real git in a repo with no remote. Every gh call would fail the test."""
+
+    name = "repo"
+    check = LandCase.check
+
+    def setUp(self) -> None:
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.folder = Path(folder.name).resolve()
+        env = hermetic(TMPDIR=str(self.folder))
+        env.start()
+        self.addCleanup(env.stop)
+        self.marker = self.folder / "check-ran"
+        self.repo = self.folder / self.name
+        git(self.folder, "init", "-q", "-b", "main", str(self.repo))
+        commit(self.repo, {**self.base_files(), "app.txt": "one\n", ".gitignore": "ignored.env\n"}, "first")
+        git(self.repo, "switch", "-q", "-c", LOCAL)
+        self.reviewed = commit(self.repo, {"app.txt": "two\n"}, "feat: the app")
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.repo)
+
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran"))}
+
+    def cli(self, argv: list[str], stdin: str = "") -> tuple[int, str, str, RealGit]:
+        runner = RealGit()
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch("sys.stdin", io.StringIO(stdin)), redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(argv, runner)
+        self.assertFalse([call for call in runner.calls if "fetch" in call or "push" in call])
+        return code, out.getvalue(), err.getvalue(), runner
+
+    def decide(self, *extra: str, stdin: str = "- No findings.\n") -> tuple[int, str, str, RealGit]:
+        return self.cli(["decide", "--from", "review", "--local", *extra], stdin)
+
+    def record(self) -> str:
+        code, _, err, _ = self.decide("--reviewer", REVIEWER)
+        self.assertEqual(code, 0, err)
+        return git(self.repo, "rev-parse", "HEAD")
+
+    def land(self, *extra: str) -> tuple[int, str, str, RealGit]:
+        return self.cli(["land", "--local", *extra])
+
+    def assert_refused(self, reason: str, branch: str = LOCAL) -> str:
+        """Exit 1 with the reason, no check ran, and the branches are as they were."""
+        branches = git(self.repo, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads")
+        code, out, err, _ = self.land()
+        self.assertEqual((code, out), (1, ""), err)
+        self.assertIn(reason, err)
+        self.assertFalse(self.marker.exists())
+        self.assertEqual(git(self.repo, "branch", "--show-current"), branch)
+        self.assertEqual(git(self.repo, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads"), branches)
+        return err
+
+
+class DecideLocalTest(LocalLandCase):
+    def test_it_writes_and_commits_only_the_review_file(self) -> None:
+        (self.repo / "notes.md").write_text("untracked\n")
+        code, out, err, runner = self.decide("--reviewer", REVIEWER, stdin="### Decisions from the review of feat/local-land\n\n- No findings.\n")
+        self.assertEqual((code, err), (0, ""))
+        head = git(self.repo, "rev-parse", "HEAD")
+        self.assertEqual(out, f"{REVIEW_FILE}\n{head}\n")
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD~1"), self.reviewed)
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s"), "docs: record the review of feat/local-land")
+        self.assertEqual(git(self.repo, "show", "--name-only", "--format=", "HEAD"), REVIEW_FILE)
+        self.assertEqual(
+            git(self.repo, "show", f"HEAD:{REVIEW_FILE}") + "\n",
+            f"### Decisions from the review of {LOCAL}\n\nReviewed head: {self.reviewed}\nReviewer: {REVIEWER}\n\n- No findings.\n",
+        )
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "?? notes.md")
+        self.assertEqual(runner.gh_calls(), [])
+
+    def assert_not_written(self, reason: str, *extra: str, stdin: str = "- a\n") -> None:
+        before = git(self.repo, "rev-parse", "HEAD")
+        code, out, err, _ = self.decide(*extra, stdin=stdin)
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn(reason, err)
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), before)
+        self.assertFalse((self.repo / REVIEW_FILE).exists())
+
+    def test_a_tree_with_changes_is_refused(self) -> None:
+        (self.repo / "app.txt").write_text("not committed\n")
+        self.assert_not_written("the working tree has changes.", "--reviewer", REVIEWER)
+
+    def test_the_base_branch_is_refused(self) -> None:
+        git(self.repo, "switch", "-q", "main")
+        self.assert_not_written("this checkout is on the base branch main.", "--reviewer", REVIEWER)
+
+    def test_no_reviewer_is_refused(self) -> None:
+        self.assert_not_written("a local review needs --reviewer <text>")
+
+    def test_empty_stdin_is_refused(self) -> None:
+        self.assert_not_written("stdin was empty", "--reviewer", REVIEWER, stdin=" \n\n")
+
+    def test_another_stage_or_an_issue_number_is_a_usage_error(self) -> None:
+        for argv in (["decide", "--from", "build", "--local"], ["decide", "215", "--from", "review", "--local", "--reviewer", REVIEWER]):
+            with self.subTest(argv=argv):
+                code, _, _, runner = self.cli(argv, "- a\n")
+                self.assertEqual(code, 2)
+                self.assertEqual(runner.calls, [])
+
+
+class LandLocalTest(LocalLandCase):
+    def test_a_reviewed_branch_merges_into_main_and_the_branch_goes(self) -> None:
+        self.record()
+        tip, main_before = git(self.repo, "rev-parse", "HEAD"), git(self.repo, "rev-parse", "main")
+        code, out, err, runner = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(self.marker.read_text(), str(self.repo))
+        self.assertEqual(git(self.repo, "branch", "--show-current"), "main")
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD^1", "HEAD^2").split(), [main_before, tip])
+        self.assertEqual(git(self.repo, "branch", "--format=%(refname:short)"), "main")
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+        self.assertTrue(out.endswith(f"Landed {LOCAL} into main at {git(self.repo, 'rev-parse', '--short', 'HEAD')}.\nThis checkout is on main.\nDeleted the local branch {LOCAL}.\n"), out)
+        self.assertEqual(runner.gh_calls(), [])
+
+    def test_the_base_branch_is_refused(self) -> None:
+        self.record()
+        git(self.repo, "switch", "-q", "main")
+        self.assert_refused("- this checkout is on the base branch main. Switch to the branch to land.", branch="main")
+
+    def test_a_changed_tracked_file_is_refused(self) -> None:
+        self.record()
+        (self.repo / "app.txt").write_text("not committed\n")
+        self.assert_refused("- the working tree has changes.")
+
+    def test_a_branch_behind_its_base_is_refused(self) -> None:
+        self.record()
+        git(self.repo, "switch", "-q", "main")
+        commit(self.repo, {"other.txt": "x\n"}, "feat: another change")
+        git(self.repo, "switch", "-q", LOCAL)
+        self.assert_refused("- the branch is 1 commit behind main, so the checks would not test the merged code.")
+
+    def test_a_base_branch_that_another_worktree_holds_is_refused(self) -> None:
+        self.record()
+        git(self.repo, "worktree", "add", "-q", str(self.folder / "base-tree"), "main")
+        self.assert_refused(f"- the base branch main is checked out in the worktree {self.folder / 'base-tree'}, so this checkout cannot switch to it for the merge.")
+
+    def test_no_review_file_is_refused(self) -> None:
+        self.assert_refused(f"- this branch has no review file {REVIEW_FILE}. A reviewer that did not write the code records it with `agent-skills decide --from review --local --reviewer <text>`.")
+
+    def test_a_review_file_without_its_two_lines_is_refused(self) -> None:
+        for text, missing in ((f"Reviewer: {REVIEWER}\n", "no `Reviewed head:` line"), (f"Reviewed head: {self.reviewed}\n", "no `Reviewer:` line")):
+            with self.subTest(missing=missing):
+                commit(self.repo, {REVIEW_FILE: f"### Decisions from the review of {LOCAL}\n\n{text}\n- a\n"}, "docs: a review by hand")
+                self.assert_refused(f"- {REVIEW_FILE} has {missing}. The reviewer records the review again with")
+
+    def test_a_code_change_after_the_review_is_refused(self) -> None:
+        self.record()
+        head = commit(self.repo, {"app.txt": "three\n"}, "feat: one more thing")
+        self.assert_refused(f"- the review covers {self.reviewed[:8]}, but HEAD is {head[:8]} and the change of the branch differs. Review the branch again")
+
+    def test_a_rebase_onto_a_newer_base_keeps_the_review(self) -> None:
+        self.record()
+        git(self.repo, "switch", "-q", "main")
+        commit(self.repo, {"other.txt": "x\n"}, "feat: another change")
+        git(self.repo, "switch", "-q", LOCAL)
+        git(self.repo, "rebase", "-q", "main")
+        head = git(self.repo, "rev-parse", "HEAD")
+        code, _, err, _ = self.land()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, f"Note: the review covers {self.reviewed[:8]} and HEAD is {head[:8]}, but the change of the branch has the same patch-id at both, so the review still counts.\n")
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD^2"), head)
+
+    def test_a_github_origin_is_refused(self) -> None:
+        self.record()
+        git(self.repo, "remote", "add", "origin", URL)
+        code, out, err, _ = self.land()
+        self.assertEqual((code, out), (1, ""))
+        self.assertEqual(err, f"Not landed: origin points at GitHub ({URL}). Push the branch, open a pull request and run `agent-skills land <pr>`.\n")
+        self.assertFalse(self.marker.exists())
+        self.assertEqual(git(self.repo, "branch", "--show-current"), LOCAL)
+
+    def test_a_pr_number_with_local_is_a_usage_error(self) -> None:
+        code, _, _, runner = self.cli(["land", "326", "--local"])
+        self.assertEqual(code, 2)
+        self.assertEqual(runner.calls, [])
+
+
+class LocalOnlyRepoTest(LocalLandCase):
+    name = "osrs-shorts"
+
+    def test_a_github_origin_is_accepted_and_nothing_is_pushed(self) -> None:
+        self.record()
+        git(self.repo, "remote", "add", "origin", URL)
+        code, _, err, _ = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(git(self.repo, "branch", "--show-current"), "main")
+
+
+class LocalNoChecksTest(LocalLandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: "# Workflow\n\n## Review\n\nText.\n"}
+
+    def test_a_repo_without_a_check_command_is_refused(self) -> None:
+        self.record()
+        self.assert_refused("- docs/agents/workflow.md has no `## Checks` heading with a command")
+
+
+class LocalFailingCheckTest(LocalLandCase):
+    def base_files(self) -> dict[str, str]:
+        return {GATE: workflow(self.check("check-ran", 4))}
+
+    def test_a_failing_check_stops_the_merge(self) -> None:
+        self.record()
+        main_before = git(self.repo, "rev-parse", "main")
+        code, _, err, _ = self.land()
+        self.assertEqual(code, 1)
+        self.assertIn(f"exited 4 on {LOCAL}.", err)
+        self.assertEqual((git(self.repo, "branch", "--show-current"), git(self.repo, "rev-parse", "main")), (LOCAL, main_before))
+
+
+class LocalConflictTest(LocalLandCase):
+    def base_files(self) -> dict[str, str]:
+        script = self.folder / "move-main.py"
+        side = self.folder / "side"
+        script.write_text(
+            "import pathlib, subprocess\n"
+            f"subprocess.run(['git', 'worktree', 'add', '-q', {str(side)!r}, 'main'], check=True)\n"
+            f"pathlib.Path({str(side)!r}, 'app.txt').write_text('conflict\\n')\n"
+            f"subprocess.run(['git', '-C', {str(side)!r}, 'commit', '-q', '-am', 'feat: a change on main'], check=True)\n"
+            f"subprocess.run(['git', 'worktree', 'remove', {str(side)!r}], check=True)\n"
+        )
+        return {GATE: workflow(f"- `{sys.executable} {script}`\n")}
+
+    def test_a_conflict_aborts_the_merge_and_goes_back_to_the_branch(self) -> None:
+        tip = self.record()
+        code, out, err, _ = self.land()
+        self.assertEqual(code, 1, err)
+        self.assertIn(f"Not landed: {LOCAL}\n- `git merge --no-ff {LOCAL}` into main failed (", err)
+        self.assertIn("The merge is aborted and main is as it was.", err)
+        self.assertEqual(git(self.repo, "branch", "--show-current"), LOCAL)
+        self.assertEqual(git(self.repo, "rev-parse", "HEAD"), tip)
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s", "main"), "feat: a change on main")
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+        self.assertFalse((self.repo / ".git" / "MERGE_HEAD").exists())
+
+
+class LocalWorktreeTest(LocalLandCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.tree = self.folder / "tree"
+        git(self.repo, "switch", "-q", "main")
+        git(self.repo, "worktree", "add", "-q", str(self.tree), LOCAL)
+        os.chdir(self.tree)
+
+    def test_the_merge_runs_in_the_main_checkout_and_the_worktree_goes(self) -> None:
+        self.record()
+        code, out, err, _ = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertFalse(self.tree.exists())
+        self.assertEqual(git(self.repo, "branch", "--format=%(refname:short)"), "main")
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s"), f"Merge branch '{LOCAL}'")
+        self.assertTrue(out.endswith(f"The main checkout {self.repo} is on main.\nRemoved the worktree {self.tree}. Run `cd {self.repo}`.\nDeleted the local branch {LOCAL}.\n"), out)
+
+    def test_a_main_checkout_on_another_branch_merges_in_the_worktree(self) -> None:
+        git(self.repo, "switch", "-q", "-c", "feat/other")
+        self.record()
+        code, out, err, _ = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertFalse(self.tree.exists())
+        self.assertEqual(git(self.repo, "branch", "--show-current"), "feat/other")
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s", "main"), f"Merge branch '{LOCAL}'")
+        self.assertNotIn(LOCAL, git(self.repo, "branch", "--format=%(refname:short)").split())
+
+    def test_a_worktree_with_an_untracked_file_stays(self) -> None:
+        self.record()
+        (self.tree / "notes.md").write_text("not committed\n")
+        code, out, _, _ = self.land()
+        self.assertEqual(code, 0)
+        self.assertIn(f"Kept the worktree {self.tree} and the branch {LOCAL}: it has changed or untracked files (notes.md).", out)
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s", "main"), f"Merge branch '{LOCAL}'")
 
 
 if __name__ == "__main__":

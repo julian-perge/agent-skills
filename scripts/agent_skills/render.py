@@ -202,6 +202,10 @@ def land_refusal(number: int, reasons: Sequence[str]) -> str:
     return "\n".join([f"Not landed: PR #{number}", *(f"- {reason}" for reason in reasons)])
 
 
+def branch_refusal(branch: str, reasons: Sequence[str]) -> str:
+    return "\n".join([f"Not landed: {branch}", *(f"- {reason}" for reason in reasons)])
+
+
 def land_report(number: int, url: str, base: str, notes: Sequence[str]) -> str:
     return "\n".join([f"Landed PR #{number} into {base}: {url}", *notes]) + "\n"
 

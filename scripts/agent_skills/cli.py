@@ -13,6 +13,9 @@ from agent_skills.github import GitHub, Runner, run_process
 
 Handler = Callable[[GitHub, argparse.Namespace], str]
 GATE_FILE = "docs/agents/workflow.md"
+REVIEWS_DIR = "docs/reviews"
+# These repos may have a GitHub origin and must still never push, so land --local accepts them.
+LOCAL_ONLY_REPOS = frozenset({"osrs-shorts", "osrs-handoff"})
 MERGEABLE_READS = 5
 
 
@@ -215,6 +218,10 @@ def ac_verb(gh: GitHub, args: argparse.Namespace) -> str:
 
 
 def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    if args.local:
+        return decide_local(gh, args)
+    if args.number is None:
+        raise CliError("decide needs the issue number N, or --local for the review of a branch in a repo with no GitHub remote.")
     if args.stage == "review" and args.reviewer is None:
         raise CliError(
             'Nothing posted: a review decision needs --reviewer <text> that names the agent that reviewed the PR, such as "agent-skills:code-reviewer subagent". '
@@ -238,6 +245,51 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
     return gh.comment(args.number, f"{header}\n\n{body}").strip() + "\n"
 
 
+def decide_local(gh: GitHub, args: argparse.Namespace) -> str:
+    """Writes the review of the current branch to its review file and commits only that file. It never pushes."""
+    if args.stage != "review":
+        raise CliError("--local goes with --from review only.")
+    if args.number is not None or args.pr is not None:
+        raise CliError("--local takes no issue number and no --pr: the review goes to a file on the branch.")
+    if args.reviewer is None:
+        raise CliError(
+            'Nothing written: a local review needs --reviewer <text> that names the agent that reviewed the branch, such as "agent-skills:code-reviewer subagent". '
+            "`agent-skills land --local` refuses a review without it.",
+            REFUSED,
+        )
+    body = sys.stdin.read().strip()
+    if not body:
+        raise CliError("Nothing written: the decisions come on stdin, and stdin was empty.", REFUSED)
+    root = checkout_root(gh)
+    branch = gh.current_branch()
+    base = default_local_branch(gh, root)
+    if branch == "HEAD":
+        raise CliError("Nothing written: HEAD is detached. Switch to the branch that was reviewed.", REFUSED)
+    if branch == base:
+        raise CliError(f"Nothing written: this checkout is on the base branch {base}. Switch to the branch that was reviewed.", REFUSED)
+    if gh.tree_has_changes():
+        raise CliError("Nothing written: the working tree has changes. Commit or stash them, so that the review covers a commit.", REFUSED)
+    header = f"### Decisions from the review of {branch}"
+    first, _, rest = body.partition("\n")
+    if first.strip() == header:
+        body = rest.strip()
+    path = review_path(branch)
+    target = root / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(f"{header}\n\nReviewed head: {gh.head_commit()}\nReviewer: {args.reviewer}\n\n{body}\n")
+    commit = gh.commit_path(str(root), path, f"docs: record the review of {branch}")
+    return f"{path}\n{commit}\n"
+
+
+def review_path(branch: str) -> str:
+    return f"{REVIEWS_DIR}/{branch.replace('/', '-')}.md"
+
+
+def default_local_branch(gh: GitHub, root: Path) -> str | None:
+    """The base branch of a repo with no remote: main when it exists, else master, else None."""
+    return next((name for name in ("main", "master") if gh.has_ref(str(root), f"refs/heads/{name}")), None)
+
+
 def gate_rules(gh: GitHub, root: Path, pull: land.LandPull) -> str:
     """The text of docs/agents/workflow.md that judges a pull request.
 
@@ -247,12 +299,17 @@ def gate_rules(gh: GitHub, root: Path, pull: land.LandPull) -> str:
     gh.fetch(str(root))
     if not gh.has_ref(str(root), f"origin/{pull.base}"):
         raise CliError(f"This clone has no origin/{pull.base}, so the gate of the base branch cannot be read. Run `git fetch origin {pull.base}:refs/remotes/origin/{pull.base}`, then run the command again.")
-    text = gh.file_at(f"origin/{pull.base}", GATE_FILE)
+    return gate_text(gh, root, f"origin/{pull.base}", pull.base, GATE_FILE in pull.paths, "this pull request")
+
+
+def gate_text(gh: GitHub, root: Path, ref: str, base: str, changed: bool, change: str) -> str:
+    """The text of docs/agents/workflow.md at `ref`, or in the checkout when `ref` has none. `changed` says whether `change` edits the file."""
+    text = gh.file_at(ref, GATE_FILE)
     if text is None:
         text = workflow_text(root)
-        print(f"Note: {pull.base} has no {GATE_FILE} yet, so the gate comes from this checkout.", file=sys.stderr)
-    elif GATE_FILE in pull.paths:
-        print(f"Note: this pull request changes {GATE_FILE}. The gate comes from {pull.base}.", file=sys.stderr)
+        print(f"Note: {base} has no {GATE_FILE} yet, so the gate comes from this checkout.", file=sys.stderr)
+    elif changed:
+        print(f"Note: {change} changes {GATE_FILE}. The gate comes from {base}.", file=sys.stderr)
     problems = land.workflow_problems(text)
     if problems:
         raise CliError("\n".join([f"{GATE_FILE} has list items that cannot be read:", *(f"- {problem}" for problem in problems)]))
@@ -273,7 +330,7 @@ def stale_review(gh: GitHub, root: Path, pull: land.LandPull) -> list[str]:
     for commit in (reviewed, pull.head_commit):
         if not gh.get_commit(str(root), commit):
             return [f"the review covers {reviewed[:8]}, but this clone does not have commit {commit[:8]} and `git fetch origin {commit}` cannot get it, so the two changes cannot be compared. {again}"]
-    before, after = (gh.patch_id(str(root), pull.base, commit) for commit in (reviewed, pull.head_commit))
+    before, after = (gh.patch_id(str(root), f"origin/{pull.base}", commit) for commit in (reviewed, pull.head_commit))
     if before != after:
         return [f"the review covers {reviewed[:8]}, but the PR head is {pull.head_commit[:8]} and its change differs. {again}"]
     print(f"Note: the review covers {reviewed[:8]} and the PR head is {pull.head_commit[:8]}, but the change of the pull request has the same patch-id at both, so the review still counts.", file=sys.stderr)
@@ -324,6 +381,14 @@ def settled_pull(gh: GitHub, number: int) -> land.LandPull:
 
 
 def land_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    if args.local:
+        if args.number is not None:
+            raise CliError("land --local takes no PR number: it lands the current branch.")
+        return land_local_verb(gh, args)
+    if args.number is None:
+        raise CliError("land needs the PR number, or --local to land the current branch in a repo with no GitHub remote.")
+    if args.base is not None:
+        raise CliError("--base goes with --local only.")
     root = checkout_root(gh)
     here = str(root.resolve())
     pull = settled_pull(gh, args.number)
@@ -435,6 +500,146 @@ def drop_branch(gh: GitHub, checkout: str, pull: land.LandPull) -> str:
         return f"Kept the local branch {pull.head}: it moved after the merge."
     gh.delete_branch(checkout, pull.head)
     return f"Deleted the local branch {pull.head}."
+
+
+def land_local_verb(gh: GitHub, args: argparse.Namespace) -> str:
+    """Lands the current branch into a local base branch with a merge commit. It never fetches or pushes."""
+    root = checkout_root(gh)
+    here = str(root.resolve())
+    trees = gh.worktrees()
+    main = trees[0][0]
+    url = gh.origin_url()
+    if url and "github.com" in url.lower() and Path(main).name not in LOCAL_ONLY_REPOS:
+        raise CliError(f"Not landed: origin points at GitHub ({url}). Push the branch, open a pull request and run `agent-skills land <pr>`.", REFUSED)
+    base = args.base or default_local_branch(gh, root)
+    if base is None:
+        raise CliError("This repo has no main or master branch. Pass --base <branch>.")
+    if not gh.has_ref(here, f"refs/heads/{base}"):
+        raise CliError(f"This repo has no local branch {base}.")
+    branch = gh.current_branch()
+    if branch in ("HEAD", base):
+        where = "HEAD is detached" if branch == "HEAD" else f"this checkout is on the base branch {base}"
+        raise CliError(render.branch_refusal(branch, [f"{where}. Switch to the branch to land."]), REFUSED)
+    workflow = gate_text(gh, root, base, base, GATE_FILE in gh.changed_paths(f"{base}...HEAD"), "this branch")
+    commands = land.checks(workflow)
+    commit = gh.head_commit()
+    reasons = []
+    if gh.tree_has_changes():
+        reasons.append("the working tree has changes. Commit them, or stash them.")
+    behind = gh.commits_missing(base)
+    if behind:
+        reasons.append(
+            f"the branch is {render.plural(behind, 'commit')} behind {base}, so the checks would not test the merged code. "
+            f"Run `git merge {base}` or `git rebase {base}` on the branch, and run the command again."
+        )
+    target, blocked = local_merge_target(gh, trees, here, base)
+    reasons += local_review_problems(gh, here, branch, base, commit)
+    if not commands:
+        reasons.append(f"{GATE_FILE} has no `## Checks` heading with a command, so the checks of the repo cannot run.")
+    reasons += blocked
+    if reasons:
+        raise CliError(render.branch_refusal(branch, reasons), REFUSED)
+    for command in commands:
+        code = run.run_command(shlex.split(command), None, 15, gh, sys.stdout, cwd=root)
+        if code != 0:
+            raise CliError(render.branch_refusal(branch, [f"the check `{command}` exited {code} on {branch}."]), REFUSED)
+    if gh.tree_has_changes() or gh.head_commit() != commit:
+        raise CliError(render.branch_refusal(branch, ["the checks changed tracked files or moved HEAD. Restore the checkout, then run the command again."]), REFUSED)
+    if target == here:
+        gh.switch(base)
+    merged = gh.merge_no_ff(target, branch)
+    if merged.returncode != 0:
+        gh.abort_merge(target)
+        if target == here:
+            gh.switch(branch)
+        why = (merged.stdout + merged.stderr).strip().splitlines()
+        raise CliError(
+            render.branch_refusal(branch, [
+                f"`git merge --no-ff {branch}` into {base} failed ({why[-1] if why else 'no output'}). The merge is aborted and {base} is as it was. "
+                f"Run `git merge {base}` on the branch, fix the conflicts, and run the command again."
+            ]),
+            REFUSED,
+        )
+    landed = gh.short_head(target)
+    try:
+        notes = local_sync(gh, main, here, target, branch, base, commit)
+    except CliError as error:
+        raise CliError(f"{branch} is merged into {base}, but the checkout is not synced: {error}") from None
+    return "\n".join([f"Landed {branch} into {base} at {landed}.", *notes]) + "\n"
+
+
+def local_merge_target(gh: GitHub, trees: list[tuple[str, str | None]], here: str, base: str) -> tuple[str, list[str]]:
+    """The checkout where the merge runs, and the reasons why it cannot run there.
+
+    The merge runs in this checkout after a switch to the base branch. When this checkout is a linked worktree and the main
+    checkout is on the base branch, the merge runs in the main checkout, as the GitHub land fast-forwards it.
+    """
+    main = str(Path(trees[0][0]).resolve())
+    holder = next((str(Path(path).resolve()) for path, held in trees if held == base), None)
+    if holder is None:
+        return here, []
+    if holder == main and here != main:
+        if gh.tree_has_changes(main):
+            return main, [f"the main checkout {main} is on {base} and has changed tracked files, so the merge cannot run there. Commit them, or stash them."]
+        return main, []
+    return here, [f"the base branch {base} is checked out in the worktree {holder}, so this checkout cannot switch to it for the merge."]
+
+
+def local_review_problems(gh: GitHub, here: str, branch: str, base: str, head: str) -> list[str]:
+    """Why the review file of the branch does not cover the change at HEAD. A note on stderr says when a review of an older commit still counts."""
+    path = review_path(branch)
+    decide = "`agent-skills decide --from review --local --reviewer <text>`"
+    record = gh.file_at("HEAD", path)
+    if record is None:
+        return [f"this branch has no review file {path}. A reviewer that did not write the code records it with {decide}."]
+    missing = [f"no `{label}` line" for label, pattern in (("Reviewed head:", land.REVIEWED_HEAD), ("Reviewer:", land.REVIEWER)) if land.review_line(record, pattern) is None]
+    if missing:
+        return [f"{path} has {' and '.join(missing)}. The reviewer records the review again with {decide}, which writes both lines."]
+    reviewed = land.review_line(record, land.REVIEWED_HEAD) or ""
+    again = f"Review the branch again and record the review with {decide}."
+    if not gh.has_ref(here, reviewed):
+        return [f"the review covers {reviewed[:8]}, but this repo does not have that commit, so the two changes cannot be compared. {again}"]
+    if reviewed.lower() == head.lower() or gh.changed_paths(reviewed, head) == [path]:
+        return []
+    paths = (".", f":(exclude){REVIEWS_DIR}")
+    before, after = (gh.patch_id(here, base, commit, paths) for commit in (reviewed, head))
+    if before != after:
+        return [f"the review covers {reviewed[:8]}, but HEAD is {head[:8]} and the change of the branch differs. {again}"]
+    print(f"Note: the review covers {reviewed[:8]} and HEAD is {head[:8]}, but the change of the branch has the same patch-id at both, so the review still counts.", file=sys.stderr)
+    return []
+
+
+def local_sync(gh: GitHub, main: str, here: str, target: str, branch: str, base: str, commit: str) -> list[str]:
+    """After the merge: deletes the branch and removes its linked worktree, unless the worktree holds unsaved work. Returns one line per thing done."""
+    if here == str(Path(main).resolve()):
+        gh.delete_merged_branch(here, branch)
+        return [f"This checkout is on {base}.", f"Deleted the local branch {branch}."]
+    notes = [f"The main checkout {main} is on {base}." if target != here else f"The worktree {here} is on {base}."]
+    if target == here:
+        gh.delete_merged_branch(here, branch)
+        notes.append(f"Deleted the local branch {branch}.")
+    status = gh.status(here)
+    unsaved = [line[3:] for line in status if not line.startswith("!!")]
+    stranded = [] if unsaved else gh.unpushed_in_submodules(here)
+    moved = target != here and gh.head_commit() != commit
+    if unsaved or stranded or moved:
+        if unsaved:
+            why = f"it has changed or untracked files ({render.some(unsaved, 1)})"
+        elif stranded:
+            why = f"a submodule in it holds a commit, a branch or a stash that no remote has ({stranded[0][:8]})"
+        else:
+            why = "its HEAD moved after the merge"
+        kept = f"the worktree {here}" + (f" and the branch {branch}" if target != here else "")
+        return [*notes, f"Kept {kept}: {why}. To remove it, run `git -C {main} worktree remove --force {here}`."]
+    ignored = [line[3:] for line in status if line.startswith("!!")]
+    gh.remove_worktree(main, here)
+    notes.append(f"Removed the worktree {here}. Run `cd {main}`.")
+    if ignored:
+        notes.append(f"Git-ignored paths that went with it: {render.some(ignored, 5)}.")
+    if target != here:
+        gh.delete_merged_branch(main, branch)
+        notes.append(f"Deleted the local branch {branch}.")
+    return notes
 
 
 CLAUDE_FILES = ("CLAUDE.md", ".claude/CLAUDE.md")
@@ -581,11 +786,19 @@ def build_parser() -> argparse.ArgumentParser:
     ac.add_argument("--tick", type=box_list, metavar="LIST", help="the box numbers to tick, such as 1,3; every other line of the body stays the same")
     ac.set_defaults(handler=ac_verb)
 
-    decide = verbs.add_parser("decide", help="post the decisions on stdin as one decision comment on an issue, and print its URL")
-    decide.add_argument("number", type=issue_number, metavar="N")
+    decide = verbs.add_parser(
+        "decide",
+        help="post the decisions on stdin as one decision comment on an issue, and print its URL. With --local, commit a review to a file on the branch",
+        description="Posts the decisions on stdin as one comment on issue N and prints its URL. With --from review --local --reviewer <text>, it takes no N: "
+        f"it writes {REVIEWS_DIR}/<branch, with / as ->.md on the current branch with the reviewed head and the reviewer, commits only that file, "
+        "and prints the path and the commit. It never pushes. It exits 1 and writes nothing on the base branch, on a working tree with changes, "
+        "without --reviewer or with empty stdin.",
+    )
+    decide.add_argument("number", type=issue_number, nargs="?", metavar="N", help="the issue that gets the comment. Leave it out with --local")
     decide.add_argument("--from", dest="stage", type=stage_arg, required=True, metavar="STAGE", help=f"one of {', '.join(brief.STAGES)}, or {', '.join(brief.COMMAND_NAMES)}")
     decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from. Needed with --from review, where the comment also records its head commit")
     decide.add_argument("--reviewer", type=one_line, metavar="TEXT", help="needed with --from review: the agent that reviewed the PR, such as \"agent-skills:code-reviewer subagent\". It is recorded, not verified")
+    decide.add_argument("--local", action="store_true", help=f"with --from review: record the review of the current branch in {REVIEWS_DIR}/ for `land --local`, in a repo with no GitHub remote")
     decide.set_defaults(handler=decide_verb)
 
     evidence = verbs.add_parser(
@@ -604,9 +817,16 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run it on the PR branch. Exits 1 and merges nothing when the pull request is not open, is a draft, has merge conflicts, is behind its "
         "base branch, has no review decision comment that covers the change at its head or lacks evidence, when the checkout has changed tracked files or is not at the head commit of the "
         "pull request, or when docs/agents/workflow.md has no command under `## Checks` or one of them fails. Otherwise it merges, moves the checkout to "
-        "the base branch, and deletes the PR branch and its worktree.",
+        "the base branch, and deletes the PR branch and its worktree. "
+        "With --local, in a repo with no GitHub remote: it lands the current branch into its local base branch with `git merge --no-ff`. "
+        "It reads the gate from the base branch, and needs a review file from `decide --from review --local` that covers the change at HEAD. "
+        "It exits 1 and merges nothing on the base branch, on a working tree with changes, on a branch behind the base branch, when the base branch is "
+        "checked out in another worktree, when the review file is missing, lacks a line or is stale, when a check fails, on a merge conflict, and "
+        "when origin points at GitHub. Then it deletes the branch and its worktree. It never fetches or pushes.",
     )
-    land_parser.add_argument("number", type=issue_number, metavar="PR")
+    land_parser.add_argument("number", type=issue_number, nargs="?", metavar="PR", help="the pull request. Leave it out with --local")
+    land_parser.add_argument("--local", action="store_true", help="land the current branch into its local base branch, in a repo with no GitHub remote")
+    land_parser.add_argument("--base", metavar="BRANCH", help="with --local: the branch to land into (default: main, else master)")
     land_parser.set_defaults(handler=land_verb)
 
     doctor = verbs.add_parser(
