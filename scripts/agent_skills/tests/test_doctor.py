@@ -49,7 +49,19 @@ class DoctorVerbTest(unittest.TestCase):
     def test_agents_file_without_claude_file_passes_with_a_note(self) -> None:
         self.write("AGENTS.md", "# Agents\n")
         code, out, err, _ = self.run_doctor()
-        self.assertEqual((code, out, err), (0, "No CLAUDE.md in this repo, so Claude Code reads AGENTS.md itself.\n", ""))
+        self.assertEqual((code, out, err), (0, "No CLAUDE.md in this repo or its parent folders, so Claude Code reads AGENTS.md itself.\n", ""))
+
+    def test_claude_file_in_a_parent_folder_fails(self) -> None:
+        repo = self.root / "repo"
+        (repo).mkdir()
+        (repo / "AGENTS.md").write_text("# Agents\n")
+        self.write("CLAUDE.md", "# Parent\n")
+        runner = FakeRunner().on("git", "rev-parse", "--show-toplevel", stdout=str(repo) + "\n")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(["doctor"], runner)
+        self.assertEqual((code, out.getvalue()), (1, ""))
+        self.assertIn("exists in a parent folder", err.getvalue())
 
     def test_claude_local_file_alone_fails(self) -> None:
         self.write("AGENTS.md", "# Agents\n")

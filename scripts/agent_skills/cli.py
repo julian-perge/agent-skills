@@ -461,7 +461,17 @@ def doctor_verb(gh: GitHub, args: argparse.Namespace) -> str:
                 "so it never loads the rules in AGENTS.md. Create CLAUDE.md with the line `@AGENTS.md`.",
                 REFUSED,
             )
-        return "No CLAUDE.md in this repo, so Claude Code reads AGENTS.md itself.\n"
+        # Claude Code also reads CLAUDE files in every parent folder, and one there stops the AGENTS.md fallback. The one in ~/.claude is user memory and does not.
+        for folder in root.parents:
+            for name in ("CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md"):
+                found = folder / name
+                if found.is_file() and found != Path.home() / ".claude/CLAUDE.md":
+                    raise CliError(
+                        f"{found} exists in a parent folder, so Claude Code reads it and not AGENTS.md. "
+                        "Create CLAUDE.md in this repo with the line `@AGENTS.md`.",
+                        REFUSED,
+                    )
+        return "No CLAUDE.md in this repo or its parent folders, so Claude Code reads AGENTS.md itself.\n"
     for claude in claudes:
         name = claude.relative_to(root).as_posix()
         if claude.is_symlink() and claude.resolve() == agents.resolve():
