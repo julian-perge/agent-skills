@@ -460,13 +460,17 @@ class GitHub:
             return True
         return self._run(["git", "-C", checkout, "fetch", "--quiet", "origin", commit]).returncode == 0 and self.has_ref(checkout, commit)
 
-    def patch_id(self, checkout: str, base: str, commit: str) -> str:
-        """The verbatim patch-id of the change that `commit` makes on top of its merge base with origin/<base>, or "" when that change is empty."""
-        fork = self._git(["git", "-C", checkout, "merge-base", f"origin/{base}", commit]).strip()
+    def patch_id(self, checkout: str, base_ref: str, commit: str, paths: Sequence[str] = ()) -> str:
+        """The verbatim patch-id of the change that `commit` makes on top of its merge base with `base_ref`, or "" when that change is empty.
+
+        When `paths` is given, only the change to those git pathspecs counts.
+        """
+        fork = self._git(["git", "-C", checkout, "merge-base", base_ref, commit]).strip()
         # The runner starts each command without a shell, and git patch-id reads its input only from stdin, so a short sh script joins the two commands.
         # The script stops when git diff fails, so a failed diff cannot give the patch-id of an empty change.
-        script = 'change=$(git -C "$1" diff --no-color --no-ext-diff "$2" "$3") && printf "%s\\n" "$change" | git -C "$1" patch-id --verbatim'
-        return (self._git(["sh", "-c", script, "sh", checkout, fork, commit]).split() or [""])[0]
+        script = 'checkout=$1 fork=$2 commit=$3; shift 3; change=$(git -C "$checkout" diff --no-color --no-ext-diff "$fork" "$commit" "$@") && printf "%s\\n" "$change" | git -C "$checkout" patch-id --verbatim'
+        pathspecs = ["--", *paths] if paths else []
+        return (self._git(["sh", "-c", script, "sh", checkout, fork, commit, *pathspecs]).split() or [""])[0]
 
     def commits_ahead(self, checkout: str, branch: str, merged: str) -> int:
         """How many commits the local branch has that neither origin/<branch> nor the commit `merged` holds, or 0 when the checkout has no such local branch."""
@@ -498,8 +502,39 @@ class GitHub:
         # -D, because -d refuses when this checkout is not on the base branch. The caller checks first that the branch is at the merged commit.
         self._git(["git", "-C", checkout, "branch", "-D", branch])
 
-    def tree_has_changes(self) -> bool:
-        return bool(self._git(["git", "status", "--porcelain", "--untracked-files=no", "--ignore-submodules=untracked"]).strip())
+    def tree_has_changes(self, checkout: str | None = None) -> bool:
+        return bool(self._git(["git", *(["-C", checkout] if checkout else []), "status", "--porcelain", "--untracked-files=no", "--ignore-submodules=untracked"]).strip())
+
+    def origin_url(self) -> str | None:
+        """The origin URL as the git config holds it, before any insteadOf rewrite, or None when the repo has no origin remote."""
+        result = self._run(["git", "config", "--get", "remote.origin.url"])
+        return result.stdout.strip() if result.returncode == 0 else None
+
+    def commits_missing(self, ref: str) -> int:
+        """How many commits of `ref` HEAD lacks."""
+        return int(self._git(["git", "rev-list", "--count", f"HEAD..{ref}"]).strip())
+
+    def changed_paths(self, *revisions: str) -> list[str]:
+        return self._git(["git", "diff", "--name-only", "--no-renames", *revisions]).splitlines()
+
+    def commit_path(self, checkout: str, path: str, message: str) -> str:
+        """Commits only `path`, whatever else the index holds, and returns the new commit."""
+        self._git(["git", "-C", checkout, "add", "--", path])
+        self._git(["git", "-C", checkout, "commit", "--quiet", "-m", message, "--", path])
+        return self._git(["git", "-C", checkout, "rev-parse", "HEAD"]).strip()
+
+    def merge_no_ff(self, checkout: str, branch: str) -> Result:
+        return self._run(["git", "-C", checkout, "merge", "--no-ff", "--no-edit", branch])
+
+    def abort_merge(self, checkout: str) -> None:
+        # A merge that git refused before it started leaves nothing to abort, and then git merge --abort fails, which is fine.
+        self._run(["git", "-C", checkout, "merge", "--abort"])
+
+    def delete_merged_branch(self, checkout: str, branch: str, base: str) -> None:
+        """Deletes `branch` when `base` holds all of it. git branch -d is not enough: it refuses a branch whose upstream lacks the merge."""
+        if self._run(["git", "-C", checkout, "merge-base", "--is-ancestor", f"refs/heads/{branch}", f"refs/heads/{base}"]).returncode != 0:
+            raise CliError(f"{base} does not hold every commit of {branch}, so the branch stays.")
+        self._git(["git", "-C", checkout, "branch", "-D", branch])
 
     def default_branch(self) -> str:
         result = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"])
