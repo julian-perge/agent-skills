@@ -17,7 +17,15 @@ from gitrepo import RealGit, commit, git, hermetic, new_origin
 URCHIN = "julian-perge/urchin"
 HEAD = "6baf62c2ba12fbdb9f53609af6710f6bcfa45b55"
 BRANCH = "fix/227-inventory-doll"
-DECISION = "### Decisions from the review of PR #326\n\n- No findings."
+REVIEWER = "agent-skills:code-reviewer subagent"
+
+
+def decision(head: str | None, reviewer: str | None = REVIEWER) -> str:
+    lines = [f"Reviewed head: {head}"] * (head is not None) + [f"Reviewer: {reviewer}"] * (reviewer is not None)
+    return "### Decisions from the review of PR #326\n\n" + "".join(f"{line}\n" for line in lines) + "\n- No findings."
+
+
+DECISION = decision(HEAD)
 OPEN = land.LandPull(326, "Place the doll", base="main", head=BRANCH, head_commit=HEAD, comments=(DECISION,))
 NO_EVIDENCE = land.Evidence(configured=False)
 GATE = "docs/agents/workflow.md"
@@ -72,17 +80,37 @@ class RefusalsTest(unittest.TestCase):
         self.assertEqual(
             reasons,
             ["no review decision comment names PR #326 on the pull request, on an issue it closes or on the parent of one. "
-             "The review posts it with `agent-skills decide <issue or PR> --from review --pr 326`."],
+             "The review posts it with `agent-skills decide <issue or PR> --from review --pr 326 --reviewer <reviewer>`."],
         )
+
+    def test_a_review_decision_without_its_two_lines(self) -> None:
+        cases = ((decision(None), "no `Reviewed head:` line"), (decision(HEAD, None), "no `Reviewer:` line"),
+                 (decision(None, None), "no `Reviewed head:` line and no `Reviewer:` line"), (decision(HEAD[:8]), "no `Reviewed head:` line"))
+        for body, missing in cases:
+            with self.subTest(body=body):
+                self.assertEqual(
+                    refusals(changed(comments=(body,))),
+                    [f"the newest review decision comment of PR #326 has {missing}. The reviewer posts the decision again with "
+                     "`agent-skills decide <issue or PR> --from review --pr 326 --reviewer <reviewer>`, which writes both lines."],
+                )
+
+    def test_only_the_newest_review_decision_counts(self) -> None:
+        self.assertIn("has no `Reviewer:` line", refusals(changed(comments=(DECISION, decision(HEAD, None))))[0])
+        self.assertEqual(refusals(changed(comments=(decision(HEAD, None), DECISION))), [])
+
+    def test_a_stale_review_is_a_reason_only_when_the_comment_is_whole(self) -> None:
+        stale = ["the review covers 11111111, but the PR head is 6baf62c2 and its change differs."]
+        self.assertEqual(land.refusals(OPEN, BRANCH, HEAD, False, 0, NO_EVIDENCE, ("just gut",), stale=stale), stale)
+        self.assertEqual(len(land.refusals(changed(comments=()), BRANCH, HEAD, False, 0, NO_EVIDENCE, ("just gut",), stale=stale)), 1)
 
     def test_only_a_whole_first_line_is_a_review_decision(self) -> None:
         for body in ("### Decisions from the review of PR #3260", "### Decisions from the review of PR #326 are not made yet",
                      "Decisions pending. Later: decisions from the review of PR #326", "Notes\n### Decisions from the review of PR #326"):
             with self.subTest(body=body):
-                self.assertFalse(land.has_review_decision(326, [body]))
+                self.assertIsNone(land.review_decision(326, [body]))
         for body in (DECISION, "**Decisions from the review of PR #326**\n\n- a", "decisions from the review of pr #326"):
             with self.subTest(body=body):
-                self.assertTrue(land.has_review_decision(326, [body]))
+                self.assertEqual(land.review_decision(326, [body]), body)
 
     def test_a_branch_that_is_not_the_pr_branch_gets_no_behind_reason(self) -> None:
         self.assertEqual(len(refusals(branch="main", behind=4)), 1)
@@ -147,9 +175,14 @@ class LandCase(unittest.TestCase):
     def pull(self, **changes: object) -> str:
         data = json.loads(fixture_text("land-urchin-326.json"))
         files = {"totalCount": 1, "nodes": [{"path": "app.txt"}]}
-        pull = {"state": "OPEN", "mergeable": "MERGEABLE", "headRefName": BRANCH, "headRefOid": self.head, "files": files, "body": "Closes #227\n", **changes}
+        pull = {"state": "OPEN", "mergeable": "MERGEABLE", "headRefName": BRANCH, "headRefOid": self.head, "files": files, "body": "Closes #227\n",
+                "comments": self.comments(decision(self.head)), **changes}
         data["data"]["repository"]["pullRequest"].update(pull)
         return json.dumps(data)
+
+    def comments(self, *bodies: str) -> dict[str, object]:
+        """Comments that are newer than every comment of the fixture."""
+        return {"nodes": [{"body": body, "createdAt": f"2026-11-23T{10 + index:02}:00:00Z"} for index, body in enumerate(bodies)]}
 
     def merge_on_origin(self) -> None:
         side = self.folder / "merger"
@@ -274,17 +307,17 @@ class LandVerbTest(LandCase):
         self.sleep.assert_called_once_with(2)
 
     def test_no_review_decision_comment_is_refused(self) -> None:
-        issue = {"comments": {"nodes": [{"body": "### Decisions from the build of #227\n\n- a"}]}, "parent": None}
-        self.assert_refused("no review decision comment names PR #326", self.runner(self.pull(closingIssuesReferences={"nodes": [issue]})))
+        issue = {"comments": self.comments("### Decisions from the build of #227\n\n- a"), "parent": None}
+        self.assert_refused("no review decision comment names PR #326", self.runner(self.pull(comments=self.comments(), closingIssuesReferences={"nodes": [issue]})))
 
     def test_a_decision_comment_on_the_parent_issue_counts(self) -> None:
-        issue = {"comments": {"nodes": []}, "parent": {"comments": {"nodes": [{"body": DECISION}]}}}
-        code, _, _, runner = self.land(self.merging(self.pull(closingIssuesReferences={"nodes": [issue]})))
+        issue = {"comments": self.comments(), "parent": {"comments": self.comments(decision(self.head))}}
+        code, _, _, runner = self.land(self.merging(self.pull(comments=self.comments(), closingIssuesReferences={"nodes": [issue]})))
         self.assertEqual(code, 0)
         self.assertTrue(self.merged(runner))
 
     def test_a_decision_comment_on_the_pull_request_itself_counts(self) -> None:
-        pull = self.pull(closingIssuesReferences={"nodes": []}, comments={"nodes": [{"body": DECISION}]})
+        pull = self.pull(closingIssuesReferences={"nodes": []}, comments=self.comments(decision(self.head)))
         code, _, _, runner = self.land(self.merging(pull))
         self.assertEqual(code, 0)
         self.assertTrue(self.merged(runner))
@@ -343,9 +376,9 @@ class LandVerbTest(LandCase):
         self.assertEqual(git(self.origin, "rev-parse", BRANCH), self.head)
 
     def test_six_closing_issues_are_all_read(self) -> None:
-        silent = {"comments": {"nodes": []}, "parent": None}
-        last = {"comments": {"nodes": [{"body": DECISION}]}, "parent": None}
-        code, _, _, _ = self.land(self.merging(self.pull(closingIssuesReferences={"nodes": [silent] * 5 + [last]})))
+        silent = {"comments": self.comments(), "parent": None}
+        last = {"comments": self.comments(decision(self.head)), "parent": None}
+        code, _, _, _ = self.land(self.merging(self.pull(comments=self.comments(), closingIssuesReferences={"nodes": [silent] * 5 + [last]})))
         self.assertEqual(code, 0)
         self.assertIn("closingIssuesReferences(first: 50)", LAND_QUERY)
 
@@ -364,6 +397,62 @@ class LandVerbTest(LandCase):
         self.assertEqual(code, 0)
         self.assertIn(f"Kept the local branch {BRANCH}: it moved after the merge.\n", out)
         self.assertEqual(git(self.work, "log", "-1", "--format=%s", BRANCH), "fix: one more thing")
+
+
+class ReviewFreshnessTest(LandCase):
+    def push_branch(self) -> str:
+        git(self.work, "push", "-q", "--force", "origin", BRANCH)
+        return git(self.work, "rev-parse", "HEAD")
+
+    def land_after_review_of(self, reviewed: str) -> tuple[int, str, str, RealGit]:
+        return self.land(self.merging(self.pull(comments=self.comments(decision(reviewed)))))
+
+    def test_a_review_of_the_head_commit_lands_with_no_note(self) -> None:
+        code, _, err, runner = self.land_after_review_of(self.head)
+        self.assertEqual((code, err), (0, ""))
+        self.assertTrue(self.merged(runner))
+
+    def test_a_rebase_that_keeps_the_change_keeps_the_review(self) -> None:
+        reviewed = self.head
+        self.push_to_main()
+        git(self.work, "fetch", "-q", "origin")
+        git(self.work, "rebase", "-q", "origin/main")
+        self.head = self.push_branch()
+        code, _, err, runner = self.land_after_review_of(reviewed)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err, f"Note: the review covers {reviewed[:8]} and the PR head is {self.head[:8]}, but the change of the pull request has the same patch-id at both, so the review still counts.\n")
+        self.assertTrue(self.merged(runner))
+
+    def test_a_merge_of_the_base_branch_keeps_the_review(self) -> None:
+        reviewed = self.head
+        self.push_to_main()
+        git(self.work, "fetch", "-q", "origin")
+        git(self.work, "merge", "-q", "--no-edit", "origin/main")
+        self.head = self.push_branch()
+        code, _, err, _ = self.land_after_review_of(reviewed)
+        self.assertEqual(code, 0, err)
+        self.assertIn("has the same patch-id at both", err)
+
+    def test_a_push_that_changes_the_change_needs_a_new_review(self) -> None:
+        reviewed = self.head
+        commit(self.work, {"app.txt": "three\n"}, "fix: one more thing")
+        self.head = self.push_branch()
+        self.assert_refused(
+            f"the review covers {reviewed[:8]}, but the PR head is {self.head[:8]} and its change differs. "
+            "Review the PR again and post the decision with `agent-skills decide`.",
+            self.runner(self.pull(comments=self.comments(decision(reviewed)))),
+        )
+
+    def test_a_review_comment_without_the_reviewer_line_is_refused(self) -> None:
+        pull = self.pull(comments=self.comments(decision(self.head, None)))
+        self.assert_refused("the newest review decision comment of PR #326 has no `Reviewer:` line. The reviewer posts the decision again with `agent-skills decide", self.runner(pull))
+
+    def test_a_reviewed_commit_that_cannot_be_fetched_is_refused(self) -> None:
+        gone = "0123456789abcdef" * 2 + "01234567"
+        self.assert_refused(
+            f"the review covers 01234567, but this clone does not have commit 01234567 and `git fetch origin {gone}` cannot get it, so the two changes cannot be compared.",
+            self.runner(self.pull(comments=self.comments(decision(gone)))),
+        )
 
 
 class LinkedWorktreeTest(LandCase):

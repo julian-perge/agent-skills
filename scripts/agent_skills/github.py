@@ -137,11 +137,11 @@ LAND_QUERY = """query($owner: String!, $name: String!, $number: Int!) {
         totalCount
         nodes { path }
       }
-      comments(last: 50) { nodes { body } }
+      comments(last: 50) { nodes { body createdAt } }
       closingIssuesReferences(first: 50) {
         nodes {
-          comments(last: 50) { nodes { body } }
-          parent { comments(last: 50) { nodes { body } } }
+          comments(last: 50) { nodes { body createdAt } }
+          parent { comments(last: 50) { nodes { body createdAt } } }
         }
       }
     }
@@ -250,10 +250,11 @@ def parse_pull_request(node: dict[str, Any]) -> PullRequest:
 
 
 def parse_land_pull(node: dict[str, Any], paths: tuple[str, ...]) -> LandPull:
-    """The body stays exactly as GitHub stores it, because `evidence --add` writes it back."""
+    """The body stays exactly as GitHub stores it, because `evidence --add` writes it back. The comments of all threads are oldest first."""
     threads = [node["comments"]]
     for issue in node["closingIssuesReferences"]["nodes"]:
         threads += [issue["comments"], (issue["parent"] or {}).get("comments") or {"nodes": []}]
+    comments = sorted((comment for thread in threads for comment in thread["nodes"]), key=lambda comment: comment["createdAt"])
     return LandPull(
         number=node["number"],
         title=node["title"],
@@ -266,7 +267,7 @@ def parse_land_pull(node: dict[str, Any], paths: tuple[str, ...]) -> LandPull:
         head_commit=node["headRefOid"],
         mergeable=node["mergeable"],
         paths=paths,
-        comments=tuple(text(comment["body"]) for thread in threads for comment in thread["nodes"]),
+        comments=tuple(text(comment["body"]) for comment in comments),
     )
 
 
@@ -382,6 +383,9 @@ class GitHub:
             paths = tuple(listing.splitlines())
         return parse_land_pull(node, paths)
 
+    def pull_head(self, number: int) -> str:
+        return self._gh(["gh", "pr", "view", str(number), "--repo", self.repo, "--json", "headRefOid", "--jq", ".headRefOid"]).strip()
+
     def pull_body(self, number: int) -> str:
         return self.graphql(PULL_BODY_QUERY, number=number)["repository"]["pullRequest"]["body"] or ""
 
@@ -449,6 +453,20 @@ class GitHub:
 
     def has_ref(self, checkout: str, ref: str) -> bool:
         return self._run(["git", "-C", checkout, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"]).returncode == 0
+
+    def get_commit(self, checkout: str, commit: str) -> bool:
+        """Whether the clone has the commit, after a fetch of that one commit from origin when it lacks it."""
+        if self.has_ref(checkout, commit):
+            return True
+        return self._run(["git", "-C", checkout, "fetch", "--quiet", "origin", commit]).returncode == 0 and self.has_ref(checkout, commit)
+
+    def patch_id(self, checkout: str, base: str, commit: str) -> str:
+        """The stable patch-id of the change that `commit` makes on top of its merge base with origin/<base>, or "" when that change is empty."""
+        fork = self._git(["git", "-C", checkout, "merge-base", f"origin/{base}", commit]).strip()
+        # The runner starts each command without a shell, and git patch-id reads its input only from stdin, so a short sh script joins the two commands.
+        # The script stops when git diff fails, so a failed diff cannot give the patch-id of an empty change.
+        script = 'change=$(git -C "$1" diff --no-color --no-ext-diff "$2" "$3") && printf "%s\\n" "$change" | git -C "$1" patch-id --stable'
+        return (self._git(["sh", "-c", script, "sh", checkout, fork, commit]).split() or [""])[0]
 
     def commits_ahead(self, checkout: str, branch: str, merged: str) -> int:
         """How many commits the local branch has that neither origin/<branch> nor the commit `merged` holds, or 0 when the checkout has no such local branch."""
