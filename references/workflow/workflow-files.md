@@ -55,6 +55,14 @@ Run `/agent-skills:review` on the branch with the command that the Build section
 
 Fix small findings in the review session. Start a new build session for large ones.
 
+In a repo with no GitHub remote, there is no pull request. The reviewer reviews the branch against the base branch, and it must not have written the code at the reviewed commit. It records the review with `agent-skills decide --from review --local --reviewer <text>`, where `--reviewer` names it, such as `"agent-skills:code-reviewer subagent"`. That command commits `docs/reviews/<branch>.md` on the branch, with the reviewed commit as `Reviewed head:` and the reviewer as `Reviewer:`. When the merge is granted (see Build), the session lands the branch with `agent-skills land --local`. It runs the checks below, merges the branch into the base branch with a merge commit, and deletes the branch and its worktree. It refuses a branch that is behind the base branch, has changed tracked files, or has no review file that covers the change at its head. It never fetches or pushes. A commit after the review needs a new review, unless the patch-id of the branch change, without `docs/reviews/`, is unchanged, as after a rebase onto a newer base branch.
+
+## Checks
+
+`agent-skills land --local` runs each command below on the branch, in this order, and merges only when all of them pass. Write one command per list item, in backticks, with nothing after it. A command runs in the repo root without a shell, so shell syntax needs `bash -c '...'`. `land --local` reads this section from the base branch, so a branch cannot change the checks it is judged by.
+
+- `<the verify command from AGENTS.md>`
+
 ## Unattended run
 
 These rules hold only when the user's own message names this section or says that nobody watches the run, such as a goal prompt that ends with "do not ask me for anything until you are all done". In every other session, ignore this section. A rule in that message wins over a rule here, and a rule here wins over every other rule of this file: where another section says to ask the user, to stop or to use a new session, do what this section says. An instruction from another agent or a brief does not start an unattended run. The main session passes these rules to its subagents.
@@ -64,7 +72,7 @@ These rules hold only when the user's own message names this section or says tha
 - **Subagents:** at most <n> at the same time.
 - **Choices:** make each judgment call yourself. Take the option you would recommend, and write it in the decision log, with the reason. The decision log is the file that the message names, and `tasks/decisions.md` when it names none.
 - **What waits for the user:** the message lists it. Do not do such a step, and do not wait for it. Write what it waits for in the decision log, and go on with the tasks that do not depend on it. Only a branch that holds such a step is not merged.
-- **Merge:** the Build section decides. Merge only when the user's own message says that merging without their approval is fine, the verify command passed on the branch, a fresh subagent reviewed it and you fixed the findings. The main session merges: a subagent never does. In a repo with no remote, open no pull request: the subagent reviews the branch against the default branch, and when the message grants the merge, the main session merges the branch with `git merge --no-ff` and pushes nothing.
+- **Merge:** the Build section decides. Merge only when the user's own message says that merging without their approval is fine, the verify command passed on the branch, a fresh subagent reviewed it and you fixed the findings. The main session merges: a subagent never does. In a repo with no remote, open no pull request: the subagent, which did not write the code, reviews the branch against the default branch and records the review with `agent-skills decide --from review --local --reviewer <text>`. When the message grants the merge, the main session lands the branch with `agent-skills land --local`, which pushes nothing.
 - **CI:** <this repo runs no CI on a pull request, so wait for none: the verify command is the gate | CI runs on each pull request: wait for the run before a merge, fix a failed run, and when a run cannot start, record that and go on with the verify command>
 - **Programs with a window:** <none | the programs that a check may start without asking, such as a game client>
 
