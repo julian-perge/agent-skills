@@ -65,9 +65,12 @@ Run it on the PR branch. It works in this order:
    - The PR branch is behind `origin/<base>`, after a fetch. The checks would then not test the code that the merge makes.
    - The pull request has merge conflicts, or `mergeable` is still `UNKNOWN`.
    - No comment has the first line `Decisions from the review of PR #<PR>`, after any leading `#`, `*` and spaces and with nothing after the number. The comments of the pull request, of each issue it closes (up to 50) and of their parents are read (the last 50 of each).
+   - The newest such comment, by the time GitHub gives, has no `Reviewed head: <full sha>` line or no `Reviewer: <text>` line. The message names the `decide` command that writes both.
+   - The review does not cover the change at the PR head (see Review freshness below).
    - `evidence` would exit 1.
    - The file has no command under `## Checks`.
    - The sync after the merge would fail: the base branch is checked out in another worktree, or the local base branch has commits that neither `origin/<base>` nor the pull request holds.
+   **Review freshness.** When the `Reviewed head:` sha is the PR head, the review counts. Otherwise `land` fetches each of the two commits that the clone lacks with `git fetch origin <sha>`, and computes the patch-id of the PR change at each: `git diff $(git merge-base origin/<base> <sha>) <sha> | git patch-id --stable`. Equal patch-ids mean a rebase or a merge of the base branch that did not change the PR's own diff: the review counts, and a note on stderr says so. Different patch-ids give the line "the review covers <short sha>, but the PR head is <short sha> and its change differs. Review the PR again and post the decision with `agent-skills decide`." A commit that the fetch cannot get gives a line that says so. pstack's Shipping playbook has the same rule: a verdict holds for one patch-id, and only from an agent that did not write the code.
 3. **Checks.** Each command under `## Checks` runs through the run wrapper, in the repo root, with no shell, in order. The first one that fails stops the verb with exit 1. After the checks, changed tracked files or a moved `HEAD` also stop it with exit 1.
 4. **Merge:** `gh pr merge PR --repo OWNER/REPO --merge --delete-branch --match-head-commit <head commit>`. A merge commit keeps the commit ids that pull request bodies and decision comments cite, and one commit per task of `/build auto`. `--match-head-commit` makes GitHub refuse when the branch moved after the checks. The exit code of `gh` is not trusted in either direction, so `land` then reads the state of the pull request. `gh` merges first and deletes the remote branch second: when it fails and the pull request is merged all the same, `land` prints a note and goes on. When `gh` ends without an error and the pull request is not merged, as a merge queue can do, `land` exits 2 and leaves the checkout as it was.
 5. **Sync.** It starts with `git fetch --prune origin`, which also drops the remote-tracking ref of the merged branch.
@@ -78,10 +81,16 @@ Run it on the PR branch. It works in this order:
    - The output is `Landed PR #<PR> into <base>: <url>`, then one line per thing done.
 6. **A failure after the merge** exits 2, and its message starts with `PR #<PR> is merged, but the checkout is not synced:`.
 
+### `decide N --from review`
+
+- `--reviewer <text>` is required. Without it, `decide` exits 1 and posts nothing. The other stages refuse the option with exit 2.
+- The comment gets two lines right after its heading: `Reviewed head: <sha>`, the PR head that `gh pr view <PR> --json headRefOid` reports when `decide` runs, and `Reviewer: <text>`. Without `--pr` it gets only the `Reviewer:` line, and `land` does not read such a comment.
+- The reviewer identity is recorded, not verified. `land` reads the line and does not check which agent or account posted the comment. The rule that the reviewer did not write the code is kept by the stage commands, not by a check.
+
 ### The stage commands and the seed
 
-- **`review`:** step 1 runs `evidence`, and exit 1 is a Required finding that the review fixes. Step 6 posts a decision comment in every review, also with no finding. Step 8 runs `land` without asking, unless a choice still waits for the user.
-- **`build`:** it runs `evidence` after the pull request is open, and it runs `land` after it finishes the review that its subagent started.
+- **`review`:** step 1 runs `evidence`, and exit 1 is a Required finding that the review fixes. Step 6 posts a decision comment in every review, also with no finding. The decision comes from an agent that did not write the code at the reviewed head: when the review session committed fixes, an `agent-skills:code-reviewer` subagent reviews them and posts it. Step 8 runs `land` without asking, unless a choice still waits for the user.
+- **`build`:** it runs `evidence` after the pull request is open, and it runs `land` after it finishes the review that its subagent started. The reviewer subagent posts the review decision, with `--reviewer "agent-skills:code-reviewer subagent"`. When the build session pushes after that, a new reviewer subagent reviews the new head and posts a new decision, unless the patch-id of the PR change is the same.
 - **`references/workflow/workflow-github.md`:** the two verbs in the Helpers table, the land rule under Build and Review, and the `## Checks` and `## Evidence paths` sections. `setup-workflow` fills both sections.
 - **Merge rule:** a session may merge only with `land`. It replaces "the user merges, unless the user's own message says otherwise".
 
@@ -98,7 +107,8 @@ scripts/agent_skills/tests/fixtures/land-urchin-326.json, land-urchin-328.json  
 
 ## Testing strategy
 
-- **Rules:** unit tests of the glob rules, the two headings, the Verification section, the body edit and each refusal.
+- **Rules:** unit tests of the glob rules, the two headings, the Verification section, the body edit and each refusal, also a review decision without one of its two lines and an older full comment behind a newer one that lacks a line.
+- **Review freshness:** real git. A review of the head lands with no note. A rebase onto a moved base and a merge of the base keep the review, with a note. A new commit on the branch, and a reviewed sha that the fetch cannot get, are refused.
 - **`land` and `evidence --add`:** `cli.main` with real git against a local bare repo (`tests/gitrepo.py`). Only `gh` is faked, and its fake merge really merges on the bare repo. The tests look at the repos afterwards: the branch, the worktree, the index file, the evidence branch. The checks are real `python3 -c` children that write a marker file, so a test can prove that no check ran.
 - **`evidence`:** `cli.main` with the fake runner.
 - **Hermetic:** the tests that run git drop every `GIT_*` variable of the caller and read no user or system git config, so a run inside a commit hook cannot write to the repo around it.
@@ -120,7 +130,7 @@ scripts/agent_skills/tests/fixtures/land-urchin-326.json, land-urchin-328.json  
 - **An update of a branch that is behind.** `land` refuses, and the session merges the base branch itself.
 - **Base branch moves between the gate and the merge.** The window is the run time of the checks. A branch rule or CI closes it, and these repos have neither.
 - **Pull requests from a fork, and a head branch that must outlive its pull request.** `land` deletes the head branch.
-- **A decision comment that is older than the last commit.** `land` does not compare the two.
+- **Proof of the reviewer.** `land` trusts the `Reviewer:` line. A session that wrote the code can still post a review decision that names a subagent.
 - **A second run that only syncs.** After exit 2 "is merged, but the checkout is not synced", the user syncs by hand.
 - **A timeout for the checks.**
 - **Untracked files that the checks read.** A check can pass because of a file that is not in the pull request. A refusal would stop every checkout that holds scratch files.
