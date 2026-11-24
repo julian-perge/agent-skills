@@ -303,11 +303,15 @@ def gate_rules(gh: GitHub, root: Path, pull: land.LandPull) -> str:
 
 
 def gate_text(gh: GitHub, root: Path, ref: str, base: str, changed: bool, change: str) -> str:
-    """The text of docs/agents/workflow.md at `ref`, or in the checkout when `ref` has none. `changed` says whether `change` edits the file."""
+    """The text of docs/agents/workflow.md at `ref`, or in the checkout when `ref` has none or has one with no checks. `changed` says whether `change` edits the file."""
     text = gh.file_at(ref, GATE_FILE)
     if text is None:
         text = workflow_text(root)
         print(f"Note: {base} has no {GATE_FILE} yet, so the gate comes from this checkout.", file=sys.stderr)
+    elif not land.checks(text) and (root / GATE_FILE).is_file() and land.checks(mine := (root / GATE_FILE).read_text(encoding="utf-8")):
+        # A base file with no checks can never pass, so the setup that adds the first checks to an older repo could never land. That file holds no gate to weaken.
+        text = mine
+        print(f"Note: the {GATE_FILE} of {base} has no `## Checks` yet, so the gate comes from this checkout.", file=sys.stderr)
     elif changed:
         print(f"Note: {change} changes {GATE_FILE}. The gate comes from {base}.", file=sys.stderr)
     problems = land.workflow_problems(text)
