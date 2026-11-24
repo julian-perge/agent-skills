@@ -4,6 +4,8 @@ This is the agent-skills project — a collection of production-grade engineerin
 
 > **Scope:** This file configures agents working on `julian-perge/agent-skills` itself, a fork of [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) that diverges on purpose, not other projects. Don't copy it into another project or a global agent configuration; the reusable assets are the skills in `skills/`.
 
+@AGENTS.md
+
 ## Project Structure
 
 ```
