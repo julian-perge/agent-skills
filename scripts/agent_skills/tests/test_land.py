@@ -763,6 +763,15 @@ class LocalLandCase(unittest.TestCase):
         return err
 
 
+def add_origin(case: LocalLandCase) -> None:
+    """A bare origin that is not on GitHub, with main pushed to it and fetched."""
+    origin = case.folder / "origin.git"
+    git(case.folder, "init", "-q", "--bare", "-b", "main", str(origin))
+    git(case.repo, "remote", "add", "origin", str(origin))
+    git(case.repo, "push", "-q", "origin", "main")
+    git(case.repo, "fetch", "-q", "origin")
+
+
 class DecideLocalTest(LocalLandCase):
     def test_it_writes_and_commits_only_the_review_file(self) -> None:
         (self.repo / "notes.md").write_text("untracked\n")
@@ -872,6 +881,24 @@ class LandLocalTest(LocalLandCase):
         self.assertEqual(err, f"Note: the review covers {self.reviewed[:8]} and HEAD is {head[:8]}, but the change of the branch has the same patch-id at both, so the review still counts.\n")
         self.assertEqual(git(self.repo, "rev-parse", "HEAD^2"), head)
 
+    def test_a_merge_of_the_base_branch_that_drops_its_change_is_refused(self) -> None:
+        self.record()
+        git(self.repo, "switch", "-q", "main")
+        commit(self.repo, {"base.txt": "only on main\n"}, "feat: a change on main")
+        git(self.repo, "switch", "-q", LOCAL)
+        git(self.repo, "merge", "-q", "-s", "ours", "--no-edit", "main")
+        head = git(self.repo, "rev-parse", "HEAD")
+        self.assert_refused(f"- the review covers {self.reviewed[:8]}, but HEAD is {head[:8]} and the change of the branch differs.")
+
+    def test_a_branch_whose_upstream_lacks_the_merge_is_still_deleted(self) -> None:
+        add_origin(self)
+        git(self.repo, "branch", "-q", "-u", "origin/main", LOCAL)
+        self.record()
+        code, out, err, _ = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn(f"Deleted the local branch {LOCAL}.", out)
+        self.assertEqual(git(self.repo, "branch", "--format=%(refname:short)"), "main")
+
     def test_a_github_origin_is_refused(self) -> None:
         self.record()
         git(self.repo, "remote", "add", "origin", URL)
@@ -972,6 +999,29 @@ class LocalWorktreeTest(LocalLandCase):
         self.assertEqual(git(self.repo, "branch", "--show-current"), "feat/other")
         self.assertEqual(git(self.repo, "log", "-1", "--format=%s", "main"), f"Merge branch '{LOCAL}'")
         self.assertNotIn(LOCAL, git(self.repo, "branch", "--format=%(refname:short)").split())
+
+    def test_a_worktree_branch_whose_upstream_lacks_the_merge_goes_with_its_worktree(self) -> None:
+        git(self.repo, "switch", "-q", "-c", "feat/other")
+        add_origin(self)
+        git(self.tree, "branch", "-q", "-u", "origin/main")
+        self.record()
+        code, out, err, _ = self.land()
+        self.assertEqual((code, err), (0, ""))
+        self.assertFalse(self.tree.exists())
+        self.assertNotIn(LOCAL, git(self.repo, "branch", "--format=%(refname:short)").split())
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%s", "main"), f"Merge branch '{LOCAL}'")
+
+    def test_untracked_files_that_block_the_merge_are_named(self) -> None:
+        commit(self.tree, {"new.txt": "from the branch\n"}, "feat: a new file")
+        self.record()
+        (self.repo / "new.txt").write_text("untracked in the main checkout\n")
+        main_before = git(self.repo, "rev-parse", "main")
+        code, out, err, _ = self.land()
+        self.assertEqual((code, out.count("Landed")), (1, 0), err)
+        self.assertIn(f"- untracked files in {self.repo} (new.txt) block the merge of {LOCAL} into main. The merge is aborted and main is as it was. Move or remove them", err)
+        self.assertNotIn("fix the conflicts", err)
+        self.assertEqual(git(self.repo, "rev-parse", "main"), main_before)
+        self.assertTrue(self.tree.exists())
 
     def test_a_worktree_with_an_untracked_file_stays(self) -> None:
         self.record()

@@ -530,8 +530,11 @@ class GitHub:
         # A merge that git refused before it started leaves nothing to abort, and then git merge --abort fails, which is fine.
         self._run(["git", "-C", checkout, "merge", "--abort"])
 
-    def delete_merged_branch(self, checkout: str, branch: str) -> None:
-        self._git(["git", "-C", checkout, "branch", "-d", branch])
+    def delete_merged_branch(self, checkout: str, branch: str, base: str) -> None:
+        """Deletes `branch` when `base` holds all of it. git branch -d is not enough: it refuses a branch whose upstream lacks the merge."""
+        if self._run(["git", "-C", checkout, "merge-base", "--is-ancestor", f"refs/heads/{branch}", f"refs/heads/{base}"]).returncode != 0:
+            raise CliError(f"{base} does not hold every commit of {branch}, so the branch stays.")
+        self._git(["git", "-C", checkout, "branch", "-D", branch])
 
     def default_branch(self) -> str:
         result = self._run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"])

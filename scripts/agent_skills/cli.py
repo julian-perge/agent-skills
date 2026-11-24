@@ -552,20 +552,26 @@ def land_local_verb(gh: GitHub, args: argparse.Namespace) -> str:
         gh.abort_merge(target)
         if target == here:
             gh.switch(branch)
-        why = (merged.stdout + merged.stderr).strip().splitlines()
-        raise CliError(
-            render.branch_refusal(branch, [
-                f"`git merge --no-ff {branch}` into {base} failed ({why[-1] if why else 'no output'}). The merge is aborted and {base} is as it was. "
-                f"Run `git merge {base}` on the branch, fix the conflicts, and run the command again."
-            ]),
-            REFUSED,
-        )
+        raise CliError(render.branch_refusal(branch, [merge_failure(merged.stdout + merged.stderr, target, branch, base)]), REFUSED)
     landed = gh.short_head(target)
     try:
         notes = local_sync(gh, main, here, target, branch, base, commit)
     except CliError as error:
         raise CliError(f"{branch} is merged into {base}, but the checkout is not synced: {error}") from None
     return "\n".join([f"Landed {branch} into {base} at {landed}.", *notes]) + "\n"
+
+
+def merge_failure(output: str, checkout: str, branch: str, base: str) -> str:
+    """Why `git merge` failed, from its output: untracked files in the way, or else a conflict."""
+    lines = output.strip().splitlines()
+    aborted = f"The merge is aborted and {base} is as it was."
+    if any("untracked working tree files would be overwritten" in line for line in lines):
+        start = next(index for index, line in enumerate(lines) if "untracked working tree files would be overwritten" in line)
+        names = [line.strip() for line in lines[start + 1 :] if line.startswith("\t")]
+        listed = f" ({render.some(names, 5)})" if names else ""
+        return f"untracked files in {checkout}{listed} block the merge of {branch} into {base}. {aborted} Move or remove them, and run the command again."
+    why = next((line for line in lines if "CONFLICT" in line), lines[-1] if lines else "no output")
+    return f"`git merge --no-ff {branch}` into {base} failed ({why}). {aborted} Run `git merge {base}` on the branch, fix the conflicts, and run the command again."
 
 
 def local_merge_target(gh: GitHub, trees: list[tuple[str, str | None]], here: str, base: str) -> tuple[str, list[str]]:
@@ -599,25 +605,24 @@ def local_review_problems(gh: GitHub, here: str, branch: str, base: str, head: s
     again = f"Review the branch again and record the review with {decide}."
     if not gh.has_ref(here, reviewed):
         return [f"the review covers {reviewed[:8]}, but this repo does not have that commit, so the two changes cannot be compared. {again}"]
-    if reviewed.lower() == head.lower() or gh.changed_paths(reviewed, head) == [path]:
+    if reviewed.lower() == head.lower():
         return []
+    # Only the patch-id accepts an older review. A tree that differs only by the review file does not, because a merge of the base branch with -s ours keeps that tree and drops the change of the base branch.
     paths = (".", f":(exclude){REVIEWS_DIR}")
     before, after = (gh.patch_id(here, base, commit, paths) for commit in (reviewed, head))
     if before != after:
         return [f"the review covers {reviewed[:8]}, but HEAD is {head[:8]} and the change of the branch differs. {again}"]
-    print(f"Note: the review covers {reviewed[:8]} and HEAD is {head[:8]}, but the change of the branch has the same patch-id at both, so the review still counts.", file=sys.stderr)
+    if gh.changed_paths(reviewed, head) != [path]:
+        print(f"Note: the review covers {reviewed[:8]} and HEAD is {head[:8]}, but the change of the branch has the same patch-id at both, so the review still counts.", file=sys.stderr)
     return []
 
 
 def local_sync(gh: GitHub, main: str, here: str, target: str, branch: str, base: str, commit: str) -> list[str]:
     """After the merge: deletes the branch and removes its linked worktree, unless the worktree holds unsaved work. Returns one line per thing done."""
     if here == str(Path(main).resolve()):
-        gh.delete_merged_branch(here, branch)
+        gh.delete_merged_branch(here, branch, base)
         return [f"This checkout is on {base}.", f"Deleted the local branch {branch}."]
     notes = [f"The main checkout {main} is on {base}." if target != here else f"The worktree {here} is on {base}."]
-    if target == here:
-        gh.delete_merged_branch(here, branch)
-        notes.append(f"Deleted the local branch {branch}.")
     status = gh.status(here)
     unsaved = [line[3:] for line in status if not line.startswith("!!")]
     stranded = [] if unsaved else gh.unpushed_in_submodules(here)
@@ -629,16 +634,17 @@ def local_sync(gh: GitHub, main: str, here: str, target: str, branch: str, base:
             why = f"a submodule in it holds a commit, a branch or a stash that no remote has ({stranded[0][:8]})"
         else:
             why = "its HEAD moved after the merge"
-        kept = f"the worktree {here}" + (f" and the branch {branch}" if target != here else "")
-        return [*notes, f"Kept {kept}: {why}. To remove it, run `git -C {main} worktree remove --force {here}`."]
+        if target != here:
+            return [*notes, f"Kept the worktree {here} and the branch {branch}: {why}. To remove it, run `git -C {main} worktree remove --force {here}`."]
+        gh.delete_merged_branch(here, branch, base)
+        return [*notes, f"Deleted the local branch {branch}.", f"Kept the worktree {here}: {why}. To remove it, run `git -C {main} worktree remove --force {here}`."]
     ignored = [line[3:] for line in status if line.startswith("!!")]
     gh.remove_worktree(main, here)
     notes.append(f"Removed the worktree {here}. Run `cd {main}`.")
     if ignored:
         notes.append(f"Git-ignored paths that went with it: {render.some(ignored, 5)}.")
-    if target != here:
-        gh.delete_merged_branch(main, branch)
-        notes.append(f"Deleted the local branch {branch}.")
+    gh.delete_merged_branch(main, branch, base)
+    notes.append(f"Deleted the local branch {branch}.")
     return notes
 
 
