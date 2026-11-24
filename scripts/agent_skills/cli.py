@@ -584,7 +584,7 @@ def build_parser() -> argparse.ArgumentParser:
     decide = verbs.add_parser("decide", help="post the decisions on stdin as one decision comment on an issue, and print its URL")
     decide.add_argument("number", type=issue_number, metavar="N")
     decide.add_argument("--from", dest="stage", type=stage_arg, required=True, metavar="STAGE", help=f"one of {', '.join(brief.STAGES)}, or {', '.join(brief.COMMAND_NAMES)}")
-    decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from. With --from review, the comment also records its head commit")
+    decide.add_argument("--pr", type=issue_number, metavar="P", help="the pull request the decisions came from. Needed with --from review, where the comment also records its head commit")
     decide.add_argument("--reviewer", type=one_line, metavar="TEXT", help="needed with --from review: the agent that reviewed the PR, such as \"agent-skills:code-reviewer subagent\". It is recorded, not verified")
     decide.set_defaults(handler=decide_verb)
 

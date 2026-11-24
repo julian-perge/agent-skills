@@ -84,13 +84,13 @@ Run it on the PR branch. It works in this order:
 ### `decide N --from review`
 
 - `--reviewer <text>` is required. Without it, `decide` exits 1 and posts nothing. The other stages refuse the option with exit 2.
-- The comment gets two lines right after its heading: `Reviewed head: <sha>`, the PR head that `gh pr view <PR> --json headRefOid` reports when `decide` runs, and `Reviewer: <text>`. Without `--pr` it gets only the `Reviewer:` line, and `land` does not read such a comment.
+- The comment gets two lines right after its heading: `Reviewed head: <sha>`, the PR head that `gh pr view <PR> --json headRefOid` reports when `decide` runs, and `Reviewer: <text>`. A review decision without `--pr` or `--reviewer` exits 1 and posts nothing.
 - The reviewer identity is recorded, not verified. `land` reads the line and does not check which agent or account posted the comment. The rule that the reviewer did not write the code is kept by the stage commands, not by a check.
 
 ### The stage commands and the seed
 
 - **`review`:** step 1 runs `evidence`, and exit 1 is a Required finding that the review fixes. Step 6 posts a decision comment in every review, also with no finding. The decision comes from an agent that did not write the code at the reviewed head: when the review session committed fixes, an `agent-skills:code-reviewer` subagent reviews them and posts it. Step 8 runs `land` without asking, unless a choice still waits for the user.
-- **`build`:** it runs `evidence` after the pull request is open, and it runs `land` after it finishes the review that its subagent started. The reviewer subagent posts the review decision, with `--reviewer "agent-skills:code-reviewer subagent"`. When the build session pushes after that, a new reviewer subagent reviews the new head and posts a new decision, unless the patch-id of the PR change is the same.
+- **`build`:** it runs `evidence` after the pull request is open, and it runs `land` after it finishes the review that its subagent started. The reviewer subagent posts the review decision, with `--reviewer "agent-skills:code-reviewer subagent"`, only when it applied no finding. When it applied findings, or the build session pushes after the decision, a new reviewer subagent reviews the new head and posts a new decision, unless the patch-id of the PR change is the same.
 - **`references/workflow/workflow-github.md`:** the two verbs in the Helpers table, the land rule under Build and Review, and the `## Checks` and `## Evidence paths` sections. `setup-workflow` fills both sections.
 - **Merge rule:** a session may merge only with `land`. It replaces "the user merges, unless the user's own message says otherwise".
 
