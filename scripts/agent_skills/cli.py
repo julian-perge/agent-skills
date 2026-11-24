@@ -221,6 +221,8 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
             "`agent-skills land` refuses a review decision without it.",
             REFUSED,
         )
+    if args.stage == "review" and args.pr is None:
+        raise CliError("Nothing posted: a review decision needs --pr <n>, because `agent-skills land` reads the head commit that it records.", REFUSED)
     if args.stage != "review" and args.reviewer is not None:
         raise CliError("--reviewer goes with --from review only.")
     body = sys.stdin.read().strip()
@@ -232,8 +234,7 @@ def decide_verb(gh: GitHub, args: argparse.Namespace) -> str:
     if first.strip() == header:
         body = rest.strip()
     if args.stage == "review":
-        head = [f"Reviewed head: {gh.pull_head(args.pr)}"] if args.pr is not None else []
-        body = "\n".join([*head, f"Reviewer: {args.reviewer}"]) + f"\n\n{body}"
+        body = f"Reviewed head: {gh.pull_head(args.pr)}\nReviewer: {args.reviewer}\n\n{body}"
     return gh.comment(args.number, f"{header}\n\n{body}").strip() + "\n"
 
 

@@ -433,6 +433,16 @@ class ReviewFreshnessTest(LandCase):
         self.assertEqual(code, 0, err)
         self.assertIn("has the same patch-id at both", err)
 
+    def test_a_push_that_changes_only_whitespace_needs_a_new_review(self) -> None:
+        reviewed = self.head
+        commit(self.work, {"app.txt": "  two\n"}, "fix: indent the app")
+        self.head = self.push_branch()
+        self.assert_refused(
+            f"the review covers {reviewed[:8]}, but the PR head is {self.head[:8]} and its change differs. "
+            "Review the PR again and post the decision with `agent-skills decide`.",
+            self.runner(self.pull(comments=self.comments(decision(reviewed)))),
+        )
+
     def test_a_push_that_changes_the_change_needs_a_new_review(self) -> None:
         reviewed = self.head
         commit(self.work, {"app.txt": "three\n"}, "fix: one more thing")

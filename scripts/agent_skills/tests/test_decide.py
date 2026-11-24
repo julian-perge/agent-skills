@@ -52,10 +52,11 @@ class DecideVerbTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(runner.calls, [])
 
-    def test_a_review_without_a_pr_records_only_the_reviewer(self) -> None:
-        _, _, _, runner = self.run_cli(["decide", "215", "--from", "review", *REVIEWER], "- a\n")
-        self.assertEqual(self.posted(runner), "### Decisions from the review of #215\n\nReviewer: agent-skills:code-reviewer subagent\n\n- a")
-        self.assertEqual(len(runner.gh_calls()), 1)
+    def test_a_review_without_a_pr_exits_1_and_posts_nothing(self) -> None:
+        code, _, err, runner = self.run_cli(["decide", "215", "--from", "review", *REVIEWER], "- a\n")
+        self.assertEqual(code, 1)
+        self.assertIn("a review decision needs --pr <n>", err)
+        self.assertEqual(runner.calls, [])
 
     def test_a_body_that_starts_with_the_same_header_posts_it_once(self) -> None:
         stdin = "### Decisions from the review of PR #287\n\n- Start!, not PLAY.\n"

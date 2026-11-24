@@ -461,11 +461,11 @@ class GitHub:
         return self._run(["git", "-C", checkout, "fetch", "--quiet", "origin", commit]).returncode == 0 and self.has_ref(checkout, commit)
 
     def patch_id(self, checkout: str, base: str, commit: str) -> str:
-        """The stable patch-id of the change that `commit` makes on top of its merge base with origin/<base>, or "" when that change is empty."""
+        """The verbatim patch-id of the change that `commit` makes on top of its merge base with origin/<base>, or "" when that change is empty."""
         fork = self._git(["git", "-C", checkout, "merge-base", f"origin/{base}", commit]).strip()
         # The runner starts each command without a shell, and git patch-id reads its input only from stdin, so a short sh script joins the two commands.
         # The script stops when git diff fails, so a failed diff cannot give the patch-id of an empty change.
-        script = 'change=$(git -C "$1" diff --no-color --no-ext-diff "$2" "$3") && printf "%s\\n" "$change" | git -C "$1" patch-id --stable'
+        script = 'change=$(git -C "$1" diff --no-color --no-ext-diff "$2" "$3") && printf "%s\\n" "$change" | git -C "$1" patch-id --verbatim'
         return (self._git(["sh", "-c", script, "sh", checkout, fork, commit]).split() or [""])[0]
 
     def commits_ahead(self, checkout: str, branch: str, merged: str) -> int:
